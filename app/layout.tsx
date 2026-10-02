@@ -1,29 +1,42 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import "./globals.css";
-import { Geist, Geist_Mono, Cormorant_Garamond } from 'next/font/google';
+import { Geist, Geist_Mono } from "next/font/google";
 
 const geistSans = Geist({
-  subsets: ['latin'],
-  variable: '--font-sans',
-  display: 'swap'
+  subsets: ["latin"],
+  variable: "--font-sans",
+  display: "swap",
 });
 
 const geistMono = Geist_Mono({
-  subsets: ['latin'],
-  variable: '--font-mono',
-  display: 'swap'
-});
-
-const cormorant = Cormorant_Garamond({
-  subsets: ['latin'],
-  weight: ['500', '600'],
-  variable: '--font-wordmark',
-  display: 'swap'
+  subsets: ["latin"],
+  variable: "--font-mono",
+  display: "swap",
 });
 
 export const metadata: Metadata = {
-  title: "FlareField",
-  description: "Space weather alert app for rural workers in Argentina",
+  title: "AetherScope — Deep Space Spectral Navigator",
+  description:
+    "Visualizador y analizador del espacio profundo en lienzo celeste abierto, potenciado por datos reales de telescopios espaciales (JWST, Hubble, Chandra, Gaia) a través de encuestas HiPS/CDS/ESA.",
+  keywords: [
+    "astronomy",
+    "JWST",
+    "Hubble",
+    "Chandra",
+    "Gaia",
+    "Aladin Lite",
+    "HiPS",
+    "deep space",
+    "celestial map",
+  ],
+};
+
+export const viewport: Viewport = {
+  width: "device-width",
+  initialScale: 1.0,
+  maximumScale: 1.0,
+  userScalable: false,
+  themeColor: "#000000",
 };
 
 export default function RootLayout({
@@ -34,11 +47,11 @@ export default function RootLayout({
   return (
     <html
       lang="es"
-      data-theme="dark"
-      className={`h-full antialiased ${geistSans.variable} ${geistMono.variable} ${cormorant.variable}`}
-      suppressHydrationWarning
+      className={`dark h-full w-full overflow-hidden select-none bg-black ${geistSans.variable} ${geistMono.variable}`}
     >
-      <body className="min-h-full flex flex-col">{children}</body>
+      <body className="h-full w-full overflow-hidden bg-black text-white antialiased">
+        {children}
+      </body>
     </html>
   );
 }
