@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from "next";
 import "./globals.css";
 import { Geist, Geist_Mono } from "next/font/google";
+import SquircleInitializer from "@/components/providers/SquircleInitializer";
 
 const geistSans = Geist({
   subsets: ["latin"],
@@ -50,6 +51,7 @@ export default function RootLayout({
       className={`dark h-full w-full overflow-hidden select-none bg-black ${geistSans.variable} ${geistMono.variable}`}
     >
       <body className="h-full w-full overflow-hidden bg-black text-white antialiased">
+        <SquircleInitializer />
         {children}
       </body>
     </html>

@@ -1,6 +1,6 @@
 "use client";
 
-import React, { createContext, useContext, useState, useCallback, useRef } from "react";
+import React, { createContext, useContext, useState, useEffect, useCallback, useRef } from "react";
 import {
   DEFAULT_TARGET,
   type CosmicTarget,
@@ -100,50 +100,59 @@ export function SpaceProvider({
   const [activeTelescopeId, setActiveTelescopeIdState] = useState<"jwst" | "hubble">("jwst");
   const activeTelescope = TELESCOPES[activeTelescopeId];
 
-  // Initial decimal coordinates: explicit props > sessionStorage cache > default target
+  // Initial decimal coordinates: explicit props > default target (deterministic SSR)
   const defaultDecimal = sexagesimalToDecimal(DEFAULT_TARGET.ra, DEFAULT_TARGET.dec);
 
   const [currentRa, setCurrentRa] = useState<number>(() => {
     if (initialRa !== undefined && !isNaN(initialRa)) return initialRa;
-    if (typeof window !== "undefined") {
-      try {
-        const saved = sessionStorage.getItem("aetherscope_active_coords");
-        if (saved) {
-          const parsed = JSON.parse(saved);
-          if (typeof parsed.ra === "number" && !isNaN(parsed.ra)) return parsed.ra;
-        }
-      } catch {}
-    }
     return defaultDecimal.raDeg;
   });
 
   const [currentDec, setCurrentDec] = useState<number>(() => {
     if (initialDec !== undefined && !isNaN(initialDec)) return initialDec;
-    if (typeof window !== "undefined") {
-      try {
-        const saved = sessionStorage.getItem("aetherscope_active_coords");
-        if (saved) {
-          const parsed = JSON.parse(saved);
-          if (typeof parsed.dec === "number" && !isNaN(parsed.dec)) return parsed.dec;
-        }
-      } catch {}
-    }
     return defaultDecimal.decDeg;
   });
 
   const [currentFov, setCurrentFov] = useState<number>(() => {
     if (initialFov !== undefined && !isNaN(initialFov)) return initialFov;
-    if (typeof window !== "undefined") {
-      try {
-        const savedFov = sessionStorage.getItem("aetherscope_active_fov");
-        if (savedFov) {
-          const parsedFov = JSON.parse(savedFov);
-          if (typeof parsedFov === "number" && !isNaN(parsedFov)) return parsedFov;
-        }
-      } catch {}
-    }
     return DEFAULT_TARGET.fov;
   });
+
+  // Hydrate client-only persisted session storage after initial render
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      if (initialRa === undefined && initialDec === undefined) {
+        try {
+          const saved = sessionStorage.getItem("aetherscope_active_coords");
+          if (saved) {
+            const parsed = JSON.parse(saved);
+            if (
+              typeof parsed.ra === "number" &&
+              !isNaN(parsed.ra) &&
+              typeof parsed.dec === "number" &&
+              !isNaN(parsed.dec)
+            ) {
+              setCurrentRa(parsed.ra);
+              setCurrentDec(parsed.dec);
+            }
+          }
+        } catch {}
+      }
+      if (initialFov === undefined) {
+        try {
+          const savedFov = sessionStorage.getItem("aetherscope_active_fov");
+          if (savedFov) {
+            const parsedFov = JSON.parse(savedFov);
+            if (typeof parsedFov === "number" && !isNaN(parsedFov)) {
+              setCurrentFov(parsedFov);
+            }
+          }
+        } catch {}
+      }
+    }, 0);
+
+    return () => clearTimeout(timer);
+  }, [initialRa, initialDec, initialFov]);
 
   // Optical base permanent survey: DSS2 Color baseline with 0 overlay
   const [primarySurvey, setPrimarySurveyState] = useState<SpectralSurvey>(DEFAULT_PRIMARY_SURVEY);
@@ -207,7 +216,7 @@ export function SpaceProvider({
 
     if (aladinRef.current) {
       try {
-        aladinRef.current.animateToRaDec(raDeg, decDeg, 1.4);
+        aladinRef.current.animateToRaDec(raDeg, decDeg, 0.5);
         aladinRef.current.setFov(tel.fovInitial);
       } catch {}
     }
@@ -224,7 +233,7 @@ export function SpaceProvider({
 
     if (aladinRef.current) {
       try {
-        aladinRef.current.animateToRaDec(raDeg, decDeg, 1.4);
+        aladinRef.current.animateToRaDec(raDeg, decDeg, 0.5);
         aladinRef.current.setFov(target.fov);
       } catch (err) {
         console.warn("[SpaceContext] Error en animación de cámara:", err);

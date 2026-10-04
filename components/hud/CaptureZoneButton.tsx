@@ -59,37 +59,37 @@ export default function CaptureZoneButton() {
       <div className="flex flex-col items-center gap-2">
         {/* Detected Target Badge if notable object is in local range */}
         {localMatch && (
-          <div className="animate-in fade-in slide-in-from-bottom-2 duration-300 px-3.5 py-1 rounded-full bg-emerald-500/15 border border-emerald-500/30 backdrop-blur-xl flex items-center gap-2 text-[11px] font-mono text-emerald-300 shadow-lg">
-            <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
-            <span className="font-semibold">{localMatch.name}</span>
-            <span className="text-emerald-400/50">•</span>
-            <span className="text-emerald-400/80 text-[10px]">{localMatch.objectType}</span>
+          <div className="animate-in fade-in slide-in-from-bottom-2 duration-300 px-3.5 py-1 rounded-full bg-[#10B981]/15 border border-[#10B981]/30 backdrop-blur-xl flex items-center gap-2 text-[11px] font-sans text-emerald-300 shadow-md">
+            <span className="w-1.5 h-1.5 rounded-full bg-emerald-400" />
+            <span className="font-semibold text-white/95">{localMatch.name}</span>
+            <span className="text-white/40">•</span>
+            <span className="text-emerald-400/90 text-[10px] font-mono">{localMatch.objectType}</span>
           </div>
         )}
 
-        {/* Target Scanner Button (Apple Pro Glass) */}
+        {/* Target Scanner Button (Apple Pro Glass + Squircle) */}
         <button
           onClick={handleCapture}
           disabled={isScanning}
-          className="group flex items-center gap-3 bg-[#080b11]/80 hover:bg-[#080b11]/95 text-white font-medium px-6 py-3 rounded-full border border-white/15 backdrop-blur-2xl shadow-2xl transition-all duration-300 cursor-pointer disabled:opacity-75 disabled:cursor-wait active:scale-95"
+          className="squircle group flex items-center gap-3 bg-[#0a0d14]/82 hover:bg-[#0a0d14]/95 text-white/95 font-medium px-5 py-2.5 rounded-full border border-white/10 border-t-white/20 backdrop-blur-2xl shadow-[0_20px_50px_rgba(0,0,0,0.7),inset_0_1px_0_0_rgba(255,255,255,0.15)] transition-all duration-150 ease-out cursor-pointer disabled:opacity-75 disabled:cursor-wait active:scale-[0.98]"
           title="Analizar e investigar sector enfocado en el Laboratorio Astrofísico"
         >
           {/* Target Scanner Icon */}
-          <div className="flex items-center justify-center w-6 h-6 rounded-full bg-amber-500/20 border border-amber-500/40 text-amber-300 group-hover:scale-110 transition-transform">
+          <div className="flex items-center justify-center w-6 h-6 rounded-full bg-amber-500/15 border border-amber-500/30 text-amber-400 group-hover:scale-105 transition-transform duration-150">
             {isScanning ? (
               <Loader2 className="w-3.5 h-3.5 animate-spin text-amber-400" />
             ) : (
-              <Target className="w-3.5 h-3.5 text-amber-400 animate-pulse" />
+              <Target className="w-3.5 h-3.5 text-amber-400" />
             )}
           </div>
 
           {/* Action Label & Coordinates */}
           <div className="flex items-center gap-2.5">
-            <span className="text-xs sm:text-sm tracking-wide text-white font-semibold">
-              🎯 Analizar e Investigar Zona
+            <span className="text-xs sm:text-sm font-sans tracking-wide text-white/95 font-semibold">
+              Analizar Sector
             </span>
-            <span className="hidden sm:inline-block w-px h-3.5 bg-white/20" />
-            <span className="hidden sm:inline-block text-[11px] font-mono text-white/50">
+            <span className="hidden sm:inline-block w-px h-3.5 bg-white/15" />
+            <span className="hidden sm:inline-block text-[11px] font-mono text-white/50 tabular-nums">
               {coords.raHms} • {coords.decDms}
             </span>
           </div>

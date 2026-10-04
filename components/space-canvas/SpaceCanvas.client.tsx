@@ -371,7 +371,7 @@ export default function SpaceCanvas(props: SpaceCanvasProps = {}) {
       currentTargetIdRef.current = activeTarget.id;
       try {
         const { raDeg, decDeg } = sexagesimalToDecimal(activeTarget.ra, activeTarget.dec);
-        aladin.animateToRaDec(raDeg, decDeg, 1.4);
+        aladin.animateToRaDec(raDeg, decDeg, 0.5);
         aladin.setFov(activeTarget.fov);
       } catch (e) {
         console.warn("[AetherScope] Falló animación de objetivo:", e);

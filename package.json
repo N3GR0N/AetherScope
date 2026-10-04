@@ -10,6 +10,7 @@
   },
   "dependencies": {
     "@react-spring/web": "^10.1.0",
+    "@usespaceui/squircle": "^0.1.2",
     "aladin-lite": "^3.9.2-beta",
     "framer-motion": "^12.42.2",
     "gsap": "^3.15.0",
