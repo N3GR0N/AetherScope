@@ -10,6 +10,10 @@ const DynamicSpaceCanvas = dynamic(
 );
 
 interface SpaceCanvasWrapperProps {
+  containerId?: string;
+  initialRa?: number;
+  initialDec?: number;
+  initialFov?: number;
   primarySurvey?: SpectralSurvey;
   secondarySurvey?: SpectralSurvey;
   blendOpacity?: number;

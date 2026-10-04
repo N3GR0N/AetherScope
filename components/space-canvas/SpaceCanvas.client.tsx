@@ -40,7 +40,9 @@ export interface AladinInstance {
   setFov: (fovDeg: number) => void;
   getRaDec: () => [number, number];
   getFov: () => [number, number] | number;
-  showCooGrid: (show: boolean) => void;
+  showCooGrid: () => void;
+  hideCooGrid?: () => void;
+  setCooGrid: (options: { enabled: boolean; color?: string; opacity?: number; thickness?: number }) => void;
   on: (event: string, callback: (...args: unknown[]) => void) => void;
 }
 
@@ -85,27 +87,39 @@ export default function SpaceCanvas(props: SpaceCanvasProps = {}) {
     onReadyRef.current = onAladinReady;
   });
 
-  // Intercept unhandled HiPS rejections to avoid Turbopack / Next.js red overlay
+  // Intercept unhandled HiPS rejections & errors to avoid Turbopack / Next.js red overlay
   useEffect(() => {
     if (typeof window === "undefined") return;
 
+    const isHipsError = (msg: string) =>
+      msg.includes("HiPS") ||
+      msg.includes("CDS ID") ||
+      msg.includes("aladin") ||
+      msg.includes("mirrors") ||
+      msg.includes("not found at url") ||
+      msg.includes("does not refer to a found");
+
     const handleRejection = (event: PromiseRejectionEvent) => {
       const reasonStr = String(event?.reason?.message || event?.reason || "");
-      if (
-        reasonStr.includes("HiPS") ||
-        reasonStr.includes("CDS ID") ||
-        reasonStr.includes("aladin") ||
-        reasonStr.includes("mirrors") ||
-        reasonStr.includes("does not refer to a found")
-      ) {
+      if (isHipsError(reasonStr)) {
         console.warn("[AetherScope] Notificación HiPS gestionada:", reasonStr);
         event.preventDefault();
       }
     };
 
+    const handleGlobalError = (event: ErrorEvent) => {
+      const msg = String(event?.message || "");
+      if (isHipsError(msg)) {
+        console.warn("[AetherScope] Notificación de error HiPS interceptada:", msg);
+        event.preventDefault();
+      }
+    };
+
     window.addEventListener("unhandledrejection", handleRejection);
+    window.addEventListener("error", handleGlobalError);
     return () => {
       window.removeEventListener("unhandledrejection", handleRejection);
+      window.removeEventListener("error", handleGlobalError);
     };
   }, []);
 
@@ -174,6 +188,16 @@ export default function SpaceCanvas(props: SpaceCanvasProps = {}) {
           showGotoControl: false,
           showFrame: false,
           showCooGrid: showGrid,
+          gridColor: "#ffffff",
+          gridOpacity: 0.15,
+          gridOptions: {
+            enabled: showGrid,
+            color: "#ffffff",
+            opacity: 0.15,
+            showLabels: true,
+            thickness: 1,
+            labelSize: 11,
+          },
           showProjectionControl: false,
           showSimbadPointerControl: false,
           showCooGridControl: false,
@@ -257,6 +281,10 @@ export default function SpaceCanvas(props: SpaceCanvasProps = {}) {
       clearTimeout(timer);
       registerRef.current(null);
       aladinInstanceRef.current = null;
+      const container = document.getElementById(containerId);
+      if (container) {
+        container.innerHTML = "";
+      }
     };
   }, [retryCount, containerId]);
 
@@ -300,7 +328,7 @@ export default function SpaceCanvas(props: SpaceCanvasProps = {}) {
     if (!aladin || loadingState !== "ready") return;
 
     try {
-      if (blendOpacity > 0.02) {
+      if (blendOpacity > 0.02 && secondarySurvey?.hipsUrl) {
         const overlayUrl = secondarySurvey.hipsUrl || secondarySurvey.hipsId;
         try {
           aladin.setOverlayImageLayer(overlayUrl);
@@ -351,13 +379,25 @@ export default function SpaceCanvas(props: SpaceCanvasProps = {}) {
     }
   }, [activeTarget, loadingState]);
 
-  // Handle celestial coordinate grid toggle
+  // Handle celestial coordinate grid toggle and styling
   useEffect(() => {
     const aladin = aladinInstanceRef.current;
     if (!aladin || loadingState !== "ready") return;
 
     try {
-      aladin.showCooGrid(showGrid);
+      if (showGrid) {
+        aladin.setCooGrid({
+          enabled: true,
+          color: "#ffffff",
+          opacity: 0.15,
+          thickness: 1,
+        });
+      } else {
+        aladin.setCooGrid({ enabled: false });
+        if (typeof aladin.hideCooGrid === "function") {
+          aladin.hideCooGrid();
+        }
+      }
     } catch (e) {
       console.warn("[AetherScope] Error alternando rejilla:", e);
     }

@@ -1,4 +1,5 @@
 import type { CatalogTarget } from "./database";
+import type { AstronomicalObjectResult } from "./crossmatch";
 
 export interface SpectralFilterOption {
   id: string;
@@ -14,53 +15,53 @@ export interface SpectralFilterOption {
 export const LABORATORY_SPECTRAL_FILTERS: SpectralFilterOption[] = [
   {
     id: "dss2",
-    name: "Óptico (Luz Visible - DSS2)",
-    shortLabel: "ÓPTICO",
+    name: "Luz Visible (DSS2 Óptico)",
+    shortLabel: "ÓPTICO DSS2",
     band: "optical",
     wavelength: "400 - 750 nm",
     colorHex: "#38bdf8",
     hipsUrl: "https://alasky.cds.unistra.fr/DSS/DSSColor",
-    description: "Fotometría en el espectro visible capturada por telescopios terrestres Schmidt.",
+    description: "Fotometría de continuo en el espectro visible capturada por telescopios terrestres Schmidt.",
   },
   {
     id: "jwst",
-    name: "Infrarrojo Profundo (JWST / NIRCam)",
-    shortLabel: "JWST INFRA",
+    name: "Infrarrojo Profundo (JWST NIRCam)",
+    shortLabel: "JWST NIRCAM",
     band: "infrared",
     wavelength: "0.6 - 5.0 µm",
     colorHex: "#f59e0b",
-    hipsUrl: "https://alasky.cds.unistra.fr/HST-hips/color", // Direct high-stability NASA composite fallback
-    description: "Penetra el polvo cósmico opaco y revela protoestrellas y galaxias primordiales.",
+    hipsUrl: "https://skies.esac.esa.int/JWST/NIRCam_Imaging/",
+    description: "Penetra el polvo cósmico opaco y revela protoestrellas, discos circumestelares y galaxias primordiales.",
   },
   {
     id: "allwise",
     name: "Infrarrojo Térmico (AllWISE)",
-    shortLabel: "TÉRMICO WISE",
+    shortLabel: "ALLWISE TÉRMICO",
     band: "infrared",
-    wavelength: "3.4 - 22 µm",
+    wavelength: "3.4 - 22 µm (W1-W4)",
     colorHex: "#f97316",
-    hipsUrl: "https://alasky.cds.unistra.fr/AllWISE/color",
-    description: "Mapeo criogénico espacial sensible al polvo interestelar caliente y estrellas frías.",
+    hipsUrl: "https://alasky.cds.unistra.fr/AllWISE/RGB-W4-W2-W1",
+    description: "Mapeo pancósmico térmico sensible a polvo interestelar caliente, enanas marrones y núcleos activos.",
   },
   {
     id: "chandra",
     name: "Rayos X de Alta Energía (Chandra)",
-    shortLabel: "RAYOS X",
+    shortLabel: "CHANDRA RAYOS X",
     band: "xray",
-    wavelength: "0.1 - 10 keV",
+    wavelength: "0.1 - 10 keV (0.12 - 12 nm)",
     colorHex: "#a855f7",
-    hipsUrl: "https://alasky.cds.unistra.fr/Chandra/color",
-    description: "Detecta fenómenos de alta energía: plasmas a millones de grados y acreción relativista.",
+    hipsUrl: "https://cdaftp.cfa.harvard.edu/cxc-hips",
+    description: "Detecta fenómenos de alta energía: plasmas a millones de grados, acreción relativista y remanentes.",
   },
   {
     id: "gaia",
     name: "Densidad Estelar (Gaia DR3)",
     shortLabel: "GAIA DR3",
     band: "stellar",
-    wavelength: "Astrometría Óptica",
+    wavelength: "Astrometría Óptica Banda G",
     colorHex: "#10b981",
-    hipsUrl: "https://alasky.cds.unistra.fr/Gaia/DR3/color",
-    description: "Censo astrométrico de más de mil millones de estrellas de la Vía Láctea.",
+    hipsUrl: "https://alasky.cds.unistra.fr/ancillary/GaiaDR3/color-Rp-G-Bp-flux-map",
+    description: "Cartografía astrométrica y cinemática de precisión de más de 1.800 millones de estrellas.",
   },
 ];
 
@@ -76,7 +77,7 @@ export interface DetectedChemicalElement {
 
 export interface AstrophysicalAnalysisResult {
   activeFilters: string[];
-  matchedTarget: CatalogTarget | null;
+  matchedTarget: AstronomicalObjectResult | CatalogTarget | null;
   detectedElements: DetectedChemicalElement[];
   dominantPhenomenon: string;
   scientificConclusion: string;
@@ -85,17 +86,21 @@ export interface AstrophysicalAnalysisResult {
 }
 
 /**
- * Ejecuta el algoritmo de detección e inferencia química y física según los filtros espectrales
- * activados y el objetivo astronómico identificado en la zona.
+ * Algoritmo de inferencia espectral y detección química/física según los filtros activos
+ * y las características del objeto astronómico identificado.
+ *
+ * Mapeo físico:
+ * - Rayos X: gas a alta temperatura (>10⁶ K), acreción gravitacional, fuente compacta.
+ * - Infrarrojo: polvo de silicatos, monóxido de carbono (CO), nubes moleculares (H₂).
+ * - Óptico / Gaia: fotosferas estelares, población de secuencia principal.
  */
 export function runAstrophysicalAnalysis(
   activeFilterIds: string[],
-  matchedTarget: CatalogTarget | null,
+  matchedTarget: AstronomicalObjectResult | CatalogTarget | null,
   blendOpacity: number
 ): AstrophysicalAnalysisResult {
   const elements: DetectedChemicalElement[] = [];
 
-  // Multi-spectral overlay blend factor modulates observational confidence
   const blendWeight = Math.min(1.0, 0.9 + Math.max(0, blendOpacity) * 0.1);
 
   const hasOptical = activeFilterIds.includes("dss2");
@@ -103,29 +108,43 @@ export function runAstrophysicalAnalysis(
   const hasThermal = activeFilterIds.includes("allwise");
   const hasXray = activeFilterIds.includes("chandra");
   const hasGaia = activeFilterIds.includes("gaia");
-
   const hasInfrared = hasJWST || hasThermal;
 
-  // 1. Detección por Rayos X (Chandra)
+  const targetName = matchedTarget ? matchedTarget.name.toLowerCase() : "";
+  const isHighEnergyObject =
+    targetName.includes("sagitario") ||
+    targetName.includes("sgr a") ||
+    targetName.includes("cangrejo") ||
+    targetName.includes("crab") ||
+    targetName.includes("púlsar") ||
+    targetName.includes("agujero negro");
+
+  const isDustyNursery =
+    targetName.includes("pilares") ||
+    targetName.includes("m16") ||
+    targetName.includes("carina") ||
+    targetName.includes("sombrero") ||
+    targetName.includes("nebulosa");
+
+  // 1. Rayos X de Alta Energía (Chandra)
   if (hasXray) {
-    const isHighEnergyObject = matchedTarget?.id === "sgr-a-star" || matchedTarget?.id === "crab-nebula";
     elements.push({
       formula: "Plasma Térmico",
-      name: "Gas a Millones de Grados (10⁶ - 10⁷ K)",
+      name: "Gas a Alta Temperatura (>10⁶ K)",
       category: "Plasma de Alta Energía",
-      abundancePct: isHighEnergyObject ? 88 : 54,
-      confidencePct: 94,
-      detectionBand: "Rayos X (0.1 - 10 keV)",
+      abundancePct: isHighEnergyObject ? 90 : 58,
+      confidencePct: 95,
+      detectionBand: "Rayos X de Alta Energía (0.1 - 10 keV)",
       status: isHighEnergyObject ? "dominante" : "detectado",
     });
 
     elements.push({
-      formula: "e⁻ Relativistas",
-      name: "Discos de Acreción Relativistas / Sincrotrón",
+      formula: "Acreción Gravitacional",
+      name: "Acreción Gravitacional / Fuente Compacta",
       category: "Plasma de Alta Energía",
-      abundancePct: isHighEnergyObject ? 76 : 42,
-      confidencePct: 89,
-      detectionBand: "Rayos X (Chandra)",
+      abundancePct: isHighEnergyObject ? 82 : 44,
+      confidencePct: 91,
+      detectionBand: "Rayos X (Chandra CXC)",
       status: isHighEnergyObject ? "dominante" : "detectado",
     });
 
@@ -133,147 +152,171 @@ export function runAstrophysicalAnalysis(
       formula: "Fe XXV / XXVI",
       name: "Hierro Altamente Ionizado",
       category: "Gas Ionizado",
-      abundancePct: 35,
-      confidencePct: 82,
-      detectionBand: "Rayos X (K-Shell)",
+      abundancePct: isHighEnergyObject ? 45 : 28,
+      confidencePct: 84,
+      detectionBand: "Rayos X (K-Shell 6.7 keV)",
       status: "trazas",
     });
   }
 
-  // 2. Detección por Infrarrojo (JWST & AllWISE)
+  // 2. Infrarrojo Profundo & Térmico (JWST & AllWISE)
   if (hasInfrared) {
-    const isDustyNursery =
-      matchedTarget?.id === "pillars-of-creation" ||
-      matchedTarget?.id === "carina-nebula" ||
-      matchedTarget?.id === "sombrero-galaxy";
-
     elements.push({
       formula: "Mg₂SiO₄ / Fe₂SiO₄",
       name: "Polvo de Silicatos Interestelar",
       category: "Polvo Interestelar",
-      abundancePct: isDustyNursery ? 85 : 62,
+      abundancePct: isDustyNursery ? 88 : 64,
       confidencePct: 96,
-      detectionBand: "Infrarrojo Medio (NIRCam/WISE)",
+      detectionBand: "Infrarrojo Profundo (JWST NIRCam)",
       status: isDustyNursery ? "dominante" : "detectado",
     });
 
     elements.push({
       formula: "H₂ Molecular",
-      name: "Nubes Moleculares de Hidrógeno",
+      name: "Nubes Moleculares (H₂)",
       category: "Gas Molecular",
-      abundancePct: isDustyNursery ? 92 : 68,
-      confidencePct: 91,
-      detectionBand: "Infrarrojo Cercano",
+      abundancePct: isDustyNursery ? 94 : 70,
+      confidencePct: 93,
+      detectionBand: "Infrarrojo Cercano (2.12 µm)",
       status: "dominante",
     });
 
     elements.push({
       formula: "CO",
-      name: "Monóxido de Carbono Gaseoso",
+      name: "Monóxido de Carbono (CO)",
       category: "Gas Molecular",
-      abundancePct: isDustyNursery ? 48 : 28,
-      confidencePct: 86,
-      detectionBand: "Infrarrojo Térmico (4.6 µm)",
+      abundancePct: isDustyNursery ? 52 : 32,
+      confidencePct: 88,
+      detectionBand: "Infrarrojo Térmico (AllWISE W2)",
       status: "detectado",
     });
 
     elements.push({
-      formula: "H₂O (Hielo/Vapor)",
-      name: "Vapor de Agua en Discos",
-      category: "Gas Molecular",
-      abundancePct: isDustyNursery ? 36 : 18,
-      confidencePct: 78,
-      detectionBand: "Infrarrojo Térmico (6.0 µm)",
+      formula: "PAH Aromáticos",
+      name: "Hidrocarburos Aromáticos Policíclicos",
+      category: "Polvo Interestelar",
+      abundancePct: isDustyNursery ? 42 : 22,
+      confidencePct: 82,
+      detectionBand: "Infrarrojo Medio (3.3 - 7.7 µm)",
       status: "trazas",
     });
   }
 
-  // 3. Detección por Luz Visible Óptica (DSS2)
+  // 3. Luz Visible Óptica (DSS2)
   if (hasOptical) {
     elements.push({
-      formula: "H-alfa (656.3 nm)",
-      name: "Hidrógeno Ionizado (H II)",
-      category: "Gas Ionizado",
-      abundancePct: 78,
-      confidencePct: 98,
-      detectionBand: "Óptico Rojo",
+      formula: "Fotosferas Estelares",
+      name: "Fotosferas Estelares (Secuencia Principal)",
+      category: "Estelar",
+      abundancePct: 76,
+      confidencePct: 97,
+      detectionBand: "Luz Visible (DSS2 Óptico)",
       status: "dominante",
+    });
+
+    elements.push({
+      formula: "H-alfa (656.3 nm)",
+      name: "Hidrógeno Ionizado H II (Gas Luminoso)",
+      category: "Gas Ionizado",
+      abundancePct: isDustyNursery ? 85 : 55,
+      confidencePct: 96,
+      detectionBand: "Óptico Rojo (Balmer Alpha)",
+      status: isDustyNursery ? "dominante" : "detectado",
     });
 
     elements.push({
       formula: "[O III] (500.7 nm)",
       name: "Oxígeno Doblemente Ionizado",
       category: "Gas Ionizado",
-      abundancePct: 52,
-      confidencePct: 94,
-      detectionBand: "Óptico Verde-Azul",
+      abundancePct: 48,
+      confidencePct: 92,
+      detectionBand: "Óptico Verde-Cian",
       status: "detectado",
-    });
-
-    elements.push({
-      formula: "Población Estelar",
-      name: "Estrellas de Secuencia Principal",
-      category: "Estelar",
-      abundancePct: 70,
-      confidencePct: 95,
-      detectionBand: "Fotometría Óptica Visible",
-      status: "dominante",
     });
   }
 
   // 4. Densidad Estelar (Gaia DR3)
   if (hasGaia) {
     elements.push({
-      formula: "Paralaje Gaia",
-      name: "Densidad de Campo Estelar",
+      formula: "Población Estelar Gaia",
+      name: "Población de Secuencia Principal / Astrometría",
       category: "Estelar",
-      abundancePct: 84,
+      abundancePct: 86,
       confidencePct: 99,
-      detectionBand: "Astrometría Gaia DR3",
+      detectionBand: "Astrometría Óptica Gaia DR3",
       status: "dominante",
     });
   }
 
-  // Si no se activó ningún filtro (fallback)
   if (elements.length === 0) {
     elements.push({
       formula: "H I Neutro",
-      name: "Hidrógeno Neutro de Fondo",
+      name: "Hidrógeno Neutro de Fondo (Línea de 21 cm)",
       category: "Gas Molecular",
       abundancePct: 40,
       confidencePct: 70,
-      detectionBand: "Banda Base",
+      detectionBand: "Banda Base Óptica",
       status: "detectado",
     });
   }
 
-  // Inferencia del fenómeno dominante y conclusión científica
+  // Inferencia física y de temperatura
   let dominantPhenomenon = "Emisión continua estelar difusa de campo profundo";
   let estimatedTemperature = "10 K a 10.000 K";
   let radiationFieldIntensity: AstrophysicalAnalysisResult["radiationFieldIntensity"] = "Moderada";
 
   if (hasXray) {
     radiationFieldIntensity = "Extrema";
-    estimatedTemperature = "10⁶ K a 10⁷ K (Régimen de Coronas y Acreción Relativista)";
-    dominantPhenomenon = "Plasma térmico de alta energía e interacciones magnetohidrodinámicas extremas";
+    estimatedTemperature = ">10⁶ K (Gas caliente, acreción y choque relativista)";
+    dominantPhenomenon =
+      "Gas a alta temperatura (>10⁶ K), acreción gravitacional extrema y presencia de fuentes compactas.";
   } else if (hasInfrared && hasOptical) {
     radiationFieldIntensity = "Alta";
-    estimatedTemperature = "20 K (núcleos fríos) a 8.500 K (envolturas H II)";
-    dominantPhenomenon = "Formación estelar activa con desocultamiento de gas molecular por fotólisis";
+    estimatedTemperature = "20 K (núcleos fríos) a 9.000 K (envolturas ionizadas)";
+    dominantPhenomenon =
+      "Interacción mixta: polvo de silicatos y nubes moleculares (H₂, CO) contrastadas con fotosferas estelares visibles.";
   } else if (hasInfrared) {
     radiationFieldIntensity = "Moderada";
-    estimatedTemperature = "15 K a 300 K (Régimen Térmico Frío)";
-    dominantPhenomenon = "Opacidad por granos de polvo interestelar y absorción en líneas moleculares";
-  } else {
+    estimatedTemperature = "15 K a 350 K (Régimen térmico frío / infrarrojo)";
+    dominantPhenomenon =
+      "Nubes moleculares frías de H₂, emisión de monóxido de carbono (CO) y opacidad por polvo de silicatos.";
+  } else if (hasGaia || hasOptical) {
     radiationFieldIntensity = "Moderada";
-    estimatedTemperature = "3.000 K a 9.000 K";
-    dominantPhenomenon = "Dispersión Rayleigh y fotones térmicos de secuencia principal";
+    estimatedTemperature = "3.000 K a 8.500 K (Fotosferas estelares)";
+    dominantPhenomenon =
+      "Fotosferas estelares activas y población dominante de estrellas de secuencia principal.";
   }
 
-  // Conclusión contextual
+  // Síntesis astrofísica contextual
   let scientificConclusion = "";
-  if (matchedTarget) {
-    scientificConclusion = `Coincidencia positiva con ${matchedTarget.name} (${matchedTarget.nature}) a ${matchedTarget.distanceLy}. `;
+  if (matchedTarget && "source" in matchedTarget && matchedTarget.source === "local_dossier") {
+    scientificConclusion = `Coincidencia positiva en dossier local con ${matchedTarget.name} (${matchedTarget.objectType})${
+      matchedTarget.distanceLy ? ` a ${matchedTarget.distanceLy}` : ""
+    }. `;
+    if (hasXray) {
+      scientificConclusion +=
+        "El canal de Rayos X de Chandra corrobora gas sobrecalentado (>10⁶ K) y fuentes de acreción gravitacional compactas en la región.";
+    } else if (hasInfrared) {
+      scientificConclusion +=
+        "La visión infrarroja (JWST / AllWISE) desvela nubes moleculares de H₂, monóxido de carbono (CO) y granos de silicatos interestelares.";
+    } else {
+      scientificConclusion +=
+        "La morfología óptica de DSS2 define con nitidez las fotosferas de secuencia principal y la emisión ionizada.";
+    }
+  } else if (matchedTarget && "source" in matchedTarget && matchedTarget.source === "simbad_api") {
+    scientificConclusion = `Identificación validada vía SIMBAD TAP (CDS Estrasburgo): ${matchedTarget.name} (${matchedTarget.objectType}). `;
+    if (hasXray) {
+      scientificConclusion +=
+        "La sobreposición de Rayos X permite evaluar acreción gravitacional y gas térmico ultraenergético.";
+    } else if (hasInfrared) {
+      scientificConclusion +=
+        "El espectro infrarrojo penetra el velo óptico, identificando componentes moleculares y polvo térmico circundante.";
+    } else {
+      scientificConclusion +=
+        "El flujo en luz visible confirma la posición astrométrica ICRS y la emisión de continuo estelar.";
+    }
+  } else if (matchedTarget && !("source" in matchedTarget)) {
+    scientificConclusion = `Coincidencia positiva en catálogo de referencia con ${matchedTarget.name} (${matchedTarget.nature}) a ${matchedTarget.distanceLy}. `;
     if (hasXray) {
       scientificConclusion +=
         "La firma espectral de Rayos X de Chandra confirma procesos de aceleración de partículas y la presencia de plasma térmico sobrecalentado.";
@@ -286,16 +329,16 @@ export function runAstrophysicalAnalysis(
     }
   } else {
     scientificConclusion =
-      "Sector astronómico profundo no registrado en el catálogo de objetos emblemáticos. ";
+      "Sector de cielo profundo en exploración / estrellas de fondo no catalogadas de manera singular. ";
     if (hasXray) {
       scientificConclusion +=
-        "Detección inusual de emisión energética en Rayos X; podría corresponder a un núcleo galáctico activo (AGN) de fondo o un remanente compacto no catalogado.";
+        "Detección inusual en Rayos X; podría asociarse a emisión coronal o núcleos activos de fondo difuso.";
     } else if (hasInfrared) {
       scientificConclusion +=
-        "La correlación de polvo de silicatos y emisión infrarroja térmica sugiere un sector denso del medio interestelar (ISM) propicio para condensación gravitatoria.";
+        "Detección de polvo de silicatos y emisión térmica del medio interestelar difuso.";
     } else {
       scientificConclusion +=
-        "Fotometría de luz visible estándar correspondiente a un campo estelar galáctico con absorción media del medio interestelar.";
+        "Fotometría estándar dominada por fotosferas estelares de secuencia principal y campo óptico abierto.";
     }
   }
 

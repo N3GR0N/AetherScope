@@ -1,10 +1,13 @@
 "use client";
 
-import { Suspense, useState, useMemo } from "react";
+import { Suspense, useState, useMemo, useEffect } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 import SpaceCanvas from "@/components/space-canvas/SpaceCanvas.client";
 import { SpaceProvider } from "@/context/SpaceContext";
-import { crossMatchCelestialTarget } from "@/lib/astronomy/database";
+import {
+  identifyCelestialTarget,
+  type AstronomicalObjectResult,
+} from "@/lib/astronomy/crossmatch";
 import {
   LABORATORY_SPECTRAL_FILTERS,
   runAstrophysicalAnalysis,
@@ -22,34 +25,91 @@ import {
   Radio,
   Atom,
   Thermometer,
+  Loader2,
+  Database,
+  Globe2,
 } from "lucide-react";
 
 function LaboratoryContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
 
-  // Read query params or fallback to default
-  const raParam = parseFloat(searchParams.get("ra") || "274.7001");
-  const decParam = parseFloat(searchParams.get("dec") || "-13.8067");
-  const fovParam = parseFloat(searchParams.get("fov") || "0.18");
+  // Read angular coordinates and field of view with high precision
+  const raParam = parseFloat(searchParams.get("ra") || "274.70000");
+  const decParam = parseFloat(searchParams.get("dec") || "-13.80600");
+  const fovParam = parseFloat(searchParams.get("fov") || "0.1800");
 
+  // Spectral layer states
   const [activePrimaryFilter, setActivePrimaryFilter] = useState<SpectralFilterOption>(
-    LABORATORY_SPECTRAL_FILTERS[0] // DSS2 Optical base
+    LABORATORY_SPECTRAL_FILTERS[0] // DSS2 Optical visible base
   );
   const [activeOverlayFilter, setActiveOverlayFilter] = useState<SpectralFilterOption | null>(
-    LABORATORY_SPECTRAL_FILTERS[1] // JWST Infrared overlay
+    LABORATORY_SPECTRAL_FILTERS[1] // JWST Deep Infrared overlay default
   );
   const [blendOpacity, setBlendOpacity] = useState<number>(0.65);
+
+  const currentCoordKey = `${raParam.toFixed(5)},${decParam.toFixed(5)}`;
+
+  // Target identification state (Hybrid: Local -> SIMBAD TAP -> Unregistered)
+  const [targetState, setTargetState] = useState<{
+    target: AstronomicalObjectResult | null;
+    loading: boolean;
+    queryKey: string;
+  }>({
+    target: null,
+    loading: true,
+    queryKey: "",
+  });
+
+  // User observation notes
   const [userObservationNote, setUserObservationNote] = useState<string>("");
   const [noteSaved, setNoteSaved] = useState<boolean>(false);
 
-  // Cross-match with official catalog
-  const crossMatch = useMemo(
-    () => crossMatchCelestialTarget(raParam, decParam),
-    [raParam, decParam]
-  );
+  // Execute hybrid cross-match
+  useEffect(() => {
+    let cancelled = false;
 
-  // Run dynamic chemical/physical analysis
+    const runCrossMatch = async () => {
+      try {
+        const result = await identifyCelestialTarget(raParam, decParam);
+        if (!cancelled) {
+          setTargetState({
+            target: result,
+            loading: false,
+            queryKey: currentCoordKey,
+          });
+        }
+      } catch (err) {
+        console.warn("[AetherScope] Error en cross-match híbrido:", err);
+        if (!cancelled) {
+          setTargetState({
+            target: {
+              source: "unregistered",
+              name: "Sector de Cielo Profundo",
+              objectType: "Sector de cielo profundo en exploración / estrellas de fondo no catalogadas",
+              ra: raParam,
+              dec: decParam,
+              description: "Sector astronómico no registrado de forma singular en bases de datos.",
+              spectralFeatures: ["Emisión difusa de continuo"],
+            },
+            loading: false,
+            queryKey: currentCoordKey,
+          });
+        }
+      }
+    };
+
+    void runCrossMatch();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [raParam, decParam, currentCoordKey]);
+
+  const isIdentifying = targetState.loading || targetState.queryKey !== currentCoordKey;
+  const identifiedTarget = targetState.target;
+
+  // Run dynamic chemical/physical analysis based on active filters & identified target
   const activeFilterIds = useMemo(() => {
     const ids = [activePrimaryFilter.id];
     if (activeOverlayFilter && blendOpacity > 0.05) {
@@ -59,16 +119,17 @@ function LaboratoryContent() {
   }, [activePrimaryFilter, activeOverlayFilter, blendOpacity]);
 
   const analysis = useMemo(
-    () => runAstrophysicalAnalysis(activeFilterIds, crossMatch.target, blendOpacity),
-    [activeFilterIds, crossMatch.target, blendOpacity]
+    () => runAstrophysicalAnalysis(activeFilterIds, identifiedTarget, blendOpacity),
+    [activeFilterIds, identifiedTarget, blendOpacity]
   );
 
   const coords = formatCoordinates(raParam, decParam);
   const fovInfo = formatFov(fovParam);
-  const constellation = getConstellation(raParam, decParam);
+  const constellation = identifiedTarget?.constellation || getConstellation(raParam, decParam);
 
+  // Return to free explorer preserving exact coordinates
   const handleReturnToExplorer = () => {
-    router.push(`/?ra=${raParam.toFixed(4)}&dec=${decParam.toFixed(4)}&fov=${fovParam.toFixed(4)}`);
+    router.push(`/?ra=${raParam.toFixed(5)}&dec=${decParam.toFixed(5)}&fov=${fovParam.toFixed(4)}`);
   };
 
   const handleSaveObservation = () => {
@@ -79,7 +140,8 @@ function LaboratoryContent() {
         ra: raParam,
         dec: decParam,
         fov: fovParam,
-        target: crossMatch.target?.name || "Sector Sin Catalogar",
+        target: identifiedTarget?.name || "Sector Sin Catalogar",
+        source: identifiedTarget?.source || "unregistered",
         note: userObservationNote,
         date: new Date().toISOString(),
       });
@@ -95,17 +157,17 @@ function LaboratoryContent() {
       id: activePrimaryFilter.id,
       name: activePrimaryFilter.name,
       shortLabel: activePrimaryFilter.shortLabel,
-      telescope: "Space Observatory",
-      agency: "NASA / ESA / CDS",
+      telescope: "Observatorio Espacial",
+      agency: "CDS / NASA / ESA",
       hipsId: `CDS/P/${activePrimaryFilter.id}`,
       hipsUrl: activePrimaryFilter.hipsUrl,
       wavelengthBand: activePrimaryFilter.wavelength,
       spectralRange: activePrimaryFilter.wavelength,
-      frequency: "Optical to High Energy",
+      frequency: "Óptico / Alta Energía",
       accentColor: activePrimaryFilter.colorHex,
       tagColor: "text-white",
       description: activePrimaryFilter.description,
-      astrophysicalFocus: "Astrophysical survey",
+      astrophysicalFocus: "Relevamiento astrofísico multiespectral",
       keyEmissions: [],
     }),
     [activePrimaryFilter]
@@ -118,32 +180,35 @@ function LaboratoryContent() {
             id: activeOverlayFilter.id,
             name: activeOverlayFilter.name,
             shortLabel: activeOverlayFilter.shortLabel,
-            telescope: "Space Observatory",
-            agency: "NASA / ESA / CDS",
+            telescope: "Observatorio Espacial",
+            agency: "CDS / NASA / ESA",
             hipsId: `CDS/P/${activeOverlayFilter.id}`,
             hipsUrl: activeOverlayFilter.hipsUrl,
             wavelengthBand: activeOverlayFilter.wavelength,
             spectralRange: activeOverlayFilter.wavelength,
-            frequency: "Optical to High Energy",
+            frequency: "Infrarrojo / Rayos X",
             accentColor: activeOverlayFilter.colorHex,
             tagColor: "text-white",
             description: activeOverlayFilter.description,
-            astrophysicalFocus: "Astrophysical survey",
+            astrophysicalFocus: "Relevamiento astrofísico multiespectral",
             keyEmissions: [],
           }
         : undefined,
     [activeOverlayFilter]
   );
 
+  const isRegistered =
+    identifiedTarget?.source === "local_dossier" || identifiedTarget?.source === "simbad_api";
+
   return (
-    <div className="relative w-screen h-screen overflow-hidden bg-[#050811] text-white select-none flex flex-col font-sans">
+    <div className="relative w-screen h-screen overflow-hidden bg-[#080b11] text-white select-none flex flex-col font-sans">
       {/* 1. Top Unified Apple Pro Header */}
       <header className="h-14 shrink-0 px-4 flex items-center justify-between border-b border-white/10 bg-[#080b11]/90 backdrop-blur-2xl z-40">
         {/* Left: Return Button & Branding */}
         <div className="flex items-center gap-3">
           <button
             onClick={handleReturnToExplorer}
-            className="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-white/10 hover:bg-white/15 border border-white/15 text-xs font-medium text-white transition-all cursor-pointer shadow-sm active:scale-95"
+            className="flex items-center gap-2 px-3.5 py-1.5 rounded-xl bg-white/10 hover:bg-white/15 border border-white/15 text-xs font-medium text-white transition-all cursor-pointer shadow-sm active:scale-95"
             title="Volver al lienzo de exploración libre preservando las coordenadas"
           >
             <ArrowLeft className="w-4 h-4 text-amber-400" />
@@ -169,27 +234,35 @@ function LaboratoryContent() {
         {/* Center: Captured Coordinates Readout */}
         <div className="hidden md:flex items-center gap-3 px-3.5 py-1 rounded-full bg-black/50 border border-white/10 font-mono text-xs text-white/80">
           <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
-          <span>RA: {coords.raHms} ({raParam.toFixed(4)}°)</span>
+          <span>RA: {coords.raHms} ({raParam.toFixed(5)}°)</span>
           <span className="text-white/30">•</span>
-          <span>Dec: {coords.decDms} ({decParam.toFixed(4)}°)</span>
+          <span>Dec: {coords.decDms} ({decParam.toFixed(5)}°)</span>
           <span className="text-white/30">•</span>
           <span className="text-amber-300">FOV: {fovInfo.rawText}</span>
         </div>
 
-        {/* Right: Constellation & Target Badge */}
+        {/* Right: Constellation & Detection Status Badge */}
         <div className="flex items-center gap-2 text-xs font-mono">
           <span className="px-2.5 py-1 rounded-lg bg-white/5 border border-white/10 text-white/60 hidden lg:inline">
             Constelación: <strong className="text-white/90">{constellation}</strong>
           </span>
-          {crossMatch.matched ? (
-            <span className="px-2.5 py-1 rounded-lg bg-emerald-500/20 border border-emerald-500/40 text-emerald-300 font-semibold flex items-center gap-1.5 text-[11px]">
-              <CheckCircle2 className="w-3 h-3 text-emerald-400" />
-              <span>CATALOGADO</span>
+
+          {isIdentifying ? (
+            <span className="px-3 py-1 rounded-lg bg-sky-500/15 border border-sky-500/30 text-sky-300 font-semibold flex items-center gap-1.5 text-[11px]">
+              <Loader2 className="w-3 h-3 animate-spin text-sky-400" />
+              <span>CONSULTANDO CDS...</span>
+            </span>
+          ) : isRegistered ? (
+            <span className="px-3 py-1 rounded-lg bg-emerald-500/20 border border-emerald-500/40 text-emerald-300 font-semibold flex items-center gap-1.5 text-[11px] shadow-sm">
+              <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
+              <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400" />
+              <span>REGISTRADO EN SIMBAD/NASA</span>
             </span>
           ) : (
-            <span className="px-2.5 py-1 rounded-lg bg-amber-500/20 border border-amber-500/40 text-amber-300 font-semibold flex items-center gap-1.5 text-[11px]">
-              <AlertCircle className="w-3 h-3 text-amber-400" />
-              <span>NO CATALOGADO</span>
+            <span className="px-3 py-1 rounded-lg bg-amber-500/20 border border-amber-500/40 text-amber-300 font-semibold flex items-center gap-1.5 text-[11px] shadow-sm">
+              <span className="w-2 h-2 rounded-full bg-amber-400" />
+              <AlertCircle className="w-3.5 h-3.5 text-amber-400" />
+              <span>SECTOR NO CATALOGADO</span>
             </span>
           )}
         </div>
@@ -199,7 +272,7 @@ function LaboratoryContent() {
       <div className="relative flex-1 flex overflow-hidden">
         {/* Left Side: Captured Celestial Field Viewport & Spectral Mixer */}
         <div className="relative flex-1 h-full bg-black flex flex-col overflow-hidden">
-          {/* Aladin Lite WebGL Canvas locked on captured area */}
+          {/* Aladin Lite WebGL Canvas locked on captured coordinates */}
           <div className="absolute inset-0">
             <SpaceCanvas
               containerId="aladin-analyze-div"
@@ -212,7 +285,7 @@ function LaboratoryContent() {
             />
           </div>
 
-          {/* Precision Target Crosshair Reticle (Static visual overlay on captured center) */}
+          {/* Precision Crosshair Reticle (Static visual overlay on captured center) */}
           <div className="absolute inset-0 pointer-events-none flex items-center justify-center">
             <div className="relative w-40 h-40 flex items-center justify-center">
               <div className="absolute w-28 h-28 rounded-full border border-white/20 border-dashed" />
@@ -229,11 +302,11 @@ function LaboratoryContent() {
             </div>
           </div>
 
-          {/* Bottom Floating Spectral Filters & Mixing Dock */}
+          {/* Bottom Floating Spectral Filters & Mixing Dock (Apple Liquid Glass) */}
           <div className="absolute bottom-4 left-4 right-4 z-30 pointer-events-none flex justify-center">
             <div className="w-full max-w-4xl bg-[#080b11]/90 backdrop-blur-2xl backdrop-saturate-[180%] border border-white/15 rounded-2xl p-3 shadow-[0_20px_50px_rgba(0,0,0,0.8)] pointer-events-auto flex flex-col gap-2.5">
               
-              {/* Filter Dial Row */}
+              {/* Filter Row: 5 Spectral Surveys */}
               <div className="flex flex-wrap items-center justify-between gap-2">
                 <div className="flex items-center gap-1.5 text-xs font-mono text-white/70">
                   <Layers className="w-3.5 h-3.5 text-amber-400" />
@@ -250,13 +323,13 @@ function LaboratoryContent() {
                         key={filter.id}
                         onClick={() => {
                           if (isPrimary) {
-                            // If clicking active primary, do nothing
+                            // Already base layer
                           } else if (isOverlay) {
-                            // Swap: make it primary
+                            // Swap overlay with base
                             setActivePrimaryFilter(filter);
                             setActiveOverlayFilter(activePrimaryFilter);
                           } else {
-                            // Set as overlay
+                            // Set as active overlay
                             setActiveOverlayFilter(filter);
                           }
                         }}
@@ -294,7 +367,9 @@ function LaboratoryContent() {
               <div className="flex items-center justify-between gap-4 pt-2 border-t border-white/10 text-xs font-mono">
                 <div className="flex items-center gap-2 text-white/70">
                   <Sliders className="w-3.5 h-3.5 text-sky-400" />
-                  <span>Mezcla Multiespectral ({activeOverlayFilter ? activeOverlayFilter.shortLabel : "Sin capa"}):</span>
+                  <span>
+                    Mezcla Multiespectral ({activeOverlayFilter ? activeOverlayFilter.shortLabel : "Sin capa superpuesta"}):
+                  </span>
                 </div>
 
                 <div className="flex items-center gap-3 flex-1 max-w-xs">
@@ -318,79 +393,88 @@ function LaboratoryContent() {
         </div>
 
         {/* Right Side: Professional Astrophysical Analysis Dashboard Panel */}
-        <aside className="w-[420px] max-w-full shrink-0 h-full border-l border-white/10 bg-[#080b11]/95 backdrop-blur-2xl overflow-y-auto p-4 flex flex-col gap-4 z-20">
+        <aside className="w-[430px] max-w-full shrink-0 h-full border-l border-white/10 bg-[#080b11]/95 backdrop-blur-2xl overflow-y-auto p-4 flex flex-col gap-4 z-20">
           
-          {/* Card 1: Cross-Match Identification Result */}
+          {/* Card 1: Identification & Cross-Match Dossier */}
           <div className="rounded-2xl bg-black/40 border border-white/10 p-3.5 space-y-3 shadow-lg">
             <div className="flex items-center justify-between border-b border-white/10 pb-2">
-              <span className="text-[10px] font-mono tracking-wider text-white/50 uppercase">
-                Identificación de Objetivo
+              <span className="text-[10px] font-mono tracking-wider text-white/50 uppercase flex items-center gap-1.5">
+                <Database className="w-3 h-3 text-amber-400" />
+                <span>Ficha de Identificación</span>
               </span>
               <span
                 className={`text-[9px] font-mono font-semibold px-2 py-0.5 rounded-full border ${
-                  crossMatch.matched
-                    ? "bg-emerald-500/15 border-emerald-500/30 text-emerald-400"
-                    : "bg-amber-500/15 border-amber-500/30 text-amber-400"
+                  identifiedTarget?.source === "local_dossier"
+                    ? "bg-purple-500/15 border-purple-500/30 text-purple-300"
+                    : identifiedTarget?.source === "simbad_api"
+                    ? "bg-emerald-500/15 border-emerald-500/30 text-emerald-300"
+                    : "bg-amber-500/15 border-amber-500/30 text-amber-300"
                 }`}
               >
-                {crossMatch.matched ? "CATÁLOGO REGISTRADO" : "SECTOR EN EXPLORACIÓN"}
+                {identifiedTarget?.source === "local_dossier"
+                  ? "DOSSIER LOCAL NOTABLE"
+                  : identifiedTarget?.source === "simbad_api"
+                  ? "SIMBAD TAP (CDS)"
+                  : "CIELO PROFUNDO"}
               </span>
             </div>
 
-            {crossMatch.matched && crossMatch.target ? (
-              <div className="space-y-2">
+            {isIdentifying ? (
+              <div className="py-6 flex flex-col items-center justify-center gap-2 text-xs text-white/60 font-mono">
+                <Loader2 className="w-5 h-5 animate-spin text-amber-400" />
+                <span>Interrogando catálogo astronómico...</span>
+              </div>
+            ) : identifiedTarget ? (
+              <div className="space-y-2.5">
                 <div className="flex items-start justify-between">
                   <div>
                     <h2 className="text-base font-bold text-white tracking-wide">
-                      {crossMatch.target.name}
+                      {identifiedTarget.name}
                     </h2>
-                    <span className="text-xs font-mono text-amber-400">
-                      {crossMatch.target.catalogId}
-                    </span>
+                    {identifiedTarget.designation && (
+                      <span className="text-xs font-mono text-amber-400">
+                        {identifiedTarget.designation}
+                      </span>
+                    )}
                   </div>
-                  <span className="text-[10px] font-mono text-white/50 bg-white/5 px-2 py-0.5 rounded">
-                    Δθ {crossMatch.angularSeparationDeg.toFixed(3)}°
-                  </span>
+                  <div className="flex items-center gap-1 text-[10px] font-mono text-white/50 bg-white/5 px-2 py-0.5 rounded">
+                    <Globe2 className="w-3 h-3 text-sky-400" />
+                    <span>J2000</span>
+                  </div>
                 </div>
 
                 <div className="grid grid-cols-2 gap-2 text-xs font-mono">
                   <div className="p-2 rounded-xl bg-white/5 border border-white/5">
-                    <span className="text-[9px] text-white/40 block">Naturaleza:</span>
-                    <span className="font-semibold text-white/90 truncate block">
-                      {crossMatch.target.nature}
+                    <span className="text-[9px] text-white/40 block">Clasificación:</span>
+                    <span className="font-semibold text-white/90 truncate block text-[11px]" title={identifiedTarget.objectType}>
+                      {identifiedTarget.objectType}
                     </span>
                   </div>
                   <div className="p-2 rounded-xl bg-white/5 border border-white/5">
-                    <span className="text-[9px] text-white/40 block">Distancia:</span>
-                    <span className="font-semibold text-white/90 truncate block">
-                      {crossMatch.target.distanceLy}
+                    <span className="text-[9px] text-white/40 block">Distancia estimada:</span>
+                    <span className="font-semibold text-white/90 truncate block text-[11px]">
+                      {identifiedTarget.distanceLy || "Desconocida (fondo cósmico)"}
                     </span>
                   </div>
                 </div>
 
                 <p className="text-xs text-white/70 leading-relaxed font-sans bg-black/30 p-2.5 rounded-xl border border-white/5">
-                  {crossMatch.target.description}
+                  {identifiedTarget.description}
                 </p>
 
-                <div className="text-[10px] font-mono text-white/50 space-y-1 pt-1">
-                  <div>• Masa/Extensión: <span className="text-white/80">{crossMatch.target.astrophysicalDetails.massOrSize}</span></div>
-                  <div>• Rango Térmico: <span className="text-white/80">{crossMatch.target.astrophysicalDetails.temperatureRange}</span></div>
-                </div>
+                {identifiedTarget.spectralFeatures && identifiedTarget.spectralFeatures.length > 0 && (
+                  <div className="text-[10px] font-mono text-white/60 space-y-1 pt-1">
+                    <div className="text-white/40 uppercase tracking-wider text-[9px]">Firmas observacionales:</div>
+                    {identifiedTarget.spectralFeatures.map((feat, idx) => (
+                      <div key={idx} className="flex items-start gap-1.5">
+                        <span className="text-amber-400">•</span>
+                        <span className="text-white/80">{feat}</span>
+                      </div>
+                    ))}
+                  </div>
+                )}
               </div>
-            ) : (
-              <div className="space-y-2 text-xs">
-                <h3 className="font-semibold text-amber-200">
-                  Sector Profundo No Catalogado en Objetos Emblemáticos
-                </h3>
-                <p className="text-xs text-white/60 leading-relaxed font-sans">
-                  El sector enfocado en la constelación de <strong className="text-white">{constellation}</strong> no
-                  coincide con los objetivos primarios preconfigurados. Se procede al escaneo espectrométrico de campo continuo.
-                </p>
-                <div className="p-2.5 rounded-xl bg-amber-500/10 border border-amber-500/20 text-[11px] font-mono text-amber-300">
-                  Modo de descubrimiento activo: Análisis de fondo cosmológico y firmas infrarrojas/rayos X.
-                </div>
-              </div>
-            )}
+            ) : null}
           </div>
 
           {/* Card 2: Materials & Chemical Detection Inspector */}
@@ -398,10 +482,10 @@ function LaboratoryContent() {
             <div className="flex items-center justify-between border-b border-white/10 pb-2">
               <div className="flex items-center gap-1.5 text-xs font-semibold text-amber-400">
                 <Atom className="w-3.5 h-3.5" />
-                <span>INSPECTOR DE ESPECIES QUÍMICAS</span>
+                <span>INSPECTOR DE COMPOSICIÓN & FENÓMENOS</span>
               </div>
               <span className="text-[9px] font-mono text-white/40">
-                {analysis.detectedElements.length} especies
+                {analysis.detectedElements.length} firmas activas
               </span>
             </div>
 
@@ -450,7 +534,7 @@ function LaboratoryContent() {
                   <Thermometer className="w-3 h-3 text-amber-400" />
                   <span>Régimen Térmico:</span>
                 </div>
-                <span className="font-semibold text-white/90 text-[11px] block truncate">
+                <span className="font-semibold text-white/90 text-[11px] block truncate" title={analysis.estimatedTemperature}>
                   {analysis.estimatedTemperature}
                 </span>
               </div>
@@ -458,7 +542,7 @@ function LaboratoryContent() {
               <div className="p-2 rounded-xl bg-white/5 border border-white/5 space-y-0.5">
                 <div className="flex items-center gap-1 text-white/40">
                   <Radio className="w-3 h-3 text-sky-400" />
-                  <span>Campo de Radiación:</span>
+                  <span>Campo Radiativo:</span>
                 </div>
                 <span
                   className={`font-semibold text-[11px] block truncate ${
@@ -475,7 +559,7 @@ function LaboratoryContent() {
             </div>
           </div>
 
-          {/* Card 3: Astrophysical Synthesis & Scientific Conclusion */}
+          {/* Card 3: Astrophysical Synthesis */}
           <div className="rounded-2xl bg-black/40 border border-white/10 p-3.5 space-y-2.5 shadow-lg">
             <div className="flex items-center gap-1.5 text-xs font-semibold text-sky-400 border-b border-white/10 pb-2">
               <Sparkles className="w-3.5 h-3.5" />
@@ -487,7 +571,7 @@ function LaboratoryContent() {
             </p>
 
             <div className="text-[10px] font-mono text-white/50">
-              • Fenómeno primario: <span className="text-white/80">{analysis.dominantPhenomenon}</span>
+              • Fenómeno inferido: <span className="text-white/80">{analysis.dominantPhenomenon}</span>
             </div>
           </div>
 

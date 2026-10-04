@@ -2,7 +2,6 @@
 
 import React, { createContext, useContext, useState, useCallback, useRef } from "react";
 import {
-  COSMIC_TARGETS,
   DEFAULT_TARGET,
   type CosmicTarget,
   sexagesimalToDecimal,
@@ -11,8 +10,6 @@ import {
   DEFAULT_PRIMARY_SURVEY,
   DEFAULT_OVERLAY_SURVEY,
   NASA_COMPOSITE_SURVEY,
-  SPECTRAL_SURVEYS,
-  JWST_NIRCAM_OVERLAY_URL,
   type SpectralSurvey,
 } from "@/lib/astronomy/surveys";
 import {
@@ -21,7 +18,6 @@ import {
 } from "@/lib/astronomy/telescopes";
 
 export type ApplicationMode = "observatory" | "dossier";
-export type CameraPerspective = "third-person" | "first-person";
 
 // Minimal interface for Aladin engine interaction
 export interface AladinEngineBridge {
@@ -31,7 +27,9 @@ export interface AladinEngineBridge {
   getRaDec: () => [number, number];
   getFov: () => [number, number] | number;
   setImageSurvey: (survey: string | object) => void;
-  showCooGrid: (show: boolean) => void;
+  showCooGrid?: () => void;
+  hideCooGrid?: () => void;
+  setCooGrid?: (options: { enabled: boolean; color?: string; opacity?: number; thickness?: number }) => void;
 }
 
 interface SpaceContextValue {
@@ -44,11 +42,6 @@ interface SpaceContextValue {
   returnToFreeFlight: () => void;
   toggleCatalog: () => void;
   setCatalogOpen: (open: boolean) => void;
-
-  // Dual Camera Perspective (3ª Persona Órbita 360° vs 1ª Persona Sensor POV)
-  cameraPerspective: CameraPerspective;
-  setCameraPerspective: (perspective: CameraPerspective) => void;
-  toggleCameraPerspective: () => void;
 
   // Active Space Telescope
   activeTelescopeId: "jwst" | "hubble";
@@ -82,37 +75,81 @@ interface SpaceContextValue {
 
   // Engine Bridge
   registerAladinInstance: (instance: AladinEngineBridge | null) => void;
+  getAladinInstance: () => AladinEngineBridge | null;
+}
+
+interface SpaceProviderProps {
+  children: React.ReactNode;
+  initialRa?: number;
+  initialDec?: number;
+  initialFov?: number;
 }
 
 const SpaceContext = createContext<SpaceContextValue | null>(null);
 
-export function SpaceProvider({ children }: { children: React.ReactNode }) {
-  // Modes: "observatory" (360° free flight) | "dossier" (curated laboratory inspection)
+export function SpaceProvider({
+  children,
+  initialRa,
+  initialDec,
+  initialFov,
+}: SpaceProviderProps) {
   const [currentMode, setCurrentMode] = useState<ApplicationMode>("observatory");
   const [selectedTarget, setSelectedTarget] = useState<CosmicTarget>(DEFAULT_TARGET);
   const [isCatalogOpen, setIsCatalogOpen] = useState<boolean>(false);
 
-  // Dual Camera Perspective: "third-person" (Orbital Lock) | "first-person" (Sensor POV)
-  const [cameraPerspective, setCameraPerspectiveState] = useState<CameraPerspective>("third-person");
-
-  // Active Telescope: "jwst" | "hubble"
   const [activeTelescopeId, setActiveTelescopeIdState] = useState<"jwst" | "hubble">("jwst");
   const activeTelescope = TELESCOPES[activeTelescopeId];
 
-  // Initial decimal coordinates calculated from default target
-  const initialCoords = sexagesimalToDecimal(DEFAULT_TARGET.ra, DEFAULT_TARGET.dec);
-  const [currentRa, setCurrentRa] = useState<number>(initialCoords.raDeg);
-  const [currentDec, setCurrentDec] = useState<number>(initialCoords.decDeg);
-  const [currentFov, setCurrentFov] = useState<number>(DEFAULT_TARGET.fov);
+  // Initial decimal coordinates: explicit props > sessionStorage cache > default target
+  const defaultDecimal = sexagesimalToDecimal(DEFAULT_TARGET.ra, DEFAULT_TARGET.dec);
 
-  // Surveys state: NASA Composite preset default with 70% overlay
-  const [primarySurvey, setPrimarySurveyState] = useState<SpectralSurvey>(DEFAULT_PRIMARY_SURVEY);
-  const [secondarySurvey, setSecondarySurvey] = useState<SpectralSurvey>({
-    ...DEFAULT_OVERLAY_SURVEY,
-    hipsUrl: JWST_NIRCAM_OVERLAY_URL,
+  const [currentRa, setCurrentRa] = useState<number>(() => {
+    if (initialRa !== undefined && !isNaN(initialRa)) return initialRa;
+    if (typeof window !== "undefined") {
+      try {
+        const saved = sessionStorage.getItem("aetherscope_active_coords");
+        if (saved) {
+          const parsed = JSON.parse(saved);
+          if (typeof parsed.ra === "number" && !isNaN(parsed.ra)) return parsed.ra;
+        }
+      } catch {}
+    }
+    return defaultDecimal.raDeg;
   });
-  const [blendOpacity, setBlendOpacity] = useState<number>(0.7); // 70% default for NASA Composite
-  const [isNasaComposite, setIsNasaComposite] = useState<boolean>(true);
+
+  const [currentDec, setCurrentDec] = useState<number>(() => {
+    if (initialDec !== undefined && !isNaN(initialDec)) return initialDec;
+    if (typeof window !== "undefined") {
+      try {
+        const saved = sessionStorage.getItem("aetherscope_active_coords");
+        if (saved) {
+          const parsed = JSON.parse(saved);
+          if (typeof parsed.dec === "number" && !isNaN(parsed.dec)) return parsed.dec;
+        }
+      } catch {}
+    }
+    return defaultDecimal.decDeg;
+  });
+
+  const [currentFov, setCurrentFov] = useState<number>(() => {
+    if (initialFov !== undefined && !isNaN(initialFov)) return initialFov;
+    if (typeof window !== "undefined") {
+      try {
+        const savedFov = sessionStorage.getItem("aetherscope_active_fov");
+        if (savedFov) {
+          const parsedFov = JSON.parse(savedFov);
+          if (typeof parsedFov === "number" && !isNaN(parsedFov)) return parsedFov;
+        }
+      } catch {}
+    }
+    return DEFAULT_TARGET.fov;
+  });
+
+  // Optical base permanent survey: DSS2 Color baseline with 0 overlay
+  const [primarySurvey, setPrimarySurveyState] = useState<SpectralSurvey>(DEFAULT_PRIMARY_SURVEY);
+  const [secondarySurvey, setSecondarySurvey] = useState<SpectralSurvey>(DEFAULT_OVERLAY_SURVEY);
+  const [blendOpacity, setBlendOpacity] = useState<number>(0.0);
+  const [isNasaComposite, setIsNasaComposite] = useState<boolean>(false);
 
   // HUD Toggles
   const [showCrosshair, setShowCrosshair] = useState<boolean>(true);
@@ -125,13 +162,23 @@ export function SpaceProvider({ children }: { children: React.ReactNode }) {
     aladinRef.current = instance;
   }, []);
 
+  const getAladinInstance = useCallback(() => {
+    return aladinRef.current;
+  }, []);
+
   const updateCoordinates = useCallback((ra: number, dec: number) => {
     setCurrentRa(ra);
     setCurrentDec(dec);
+    try {
+      sessionStorage.setItem("aetherscope_active_coords", JSON.stringify({ ra, dec }));
+    } catch {}
   }, []);
 
   const updateFov = useCallback((fov: number) => {
     setCurrentFov(fov);
+    try {
+      sessionStorage.setItem("aetherscope_active_fov", JSON.stringify(fov));
+    } catch {}
   }, []);
 
   const setMode = useCallback((mode: ApplicationMode) => {
@@ -144,14 +191,6 @@ export function SpaceProvider({ children }: { children: React.ReactNode }) {
   const returnToFreeFlight = useCallback(() => {
     setCurrentMode("observatory");
     setIsCatalogOpen(false);
-  }, []);
-
-  const setCameraPerspective = useCallback((perspective: CameraPerspective) => {
-    setCameraPerspectiveState(perspective);
-  }, []);
-
-  const toggleCameraPerspective = useCallback(() => {
-    setCameraPerspectiveState((prev) => (prev === "third-person" ? "first-person" : "third-person"));
   }, []);
 
   const setActiveTelescopeId = useCallback((id: "jwst" | "hubble") => {
@@ -172,22 +211,6 @@ export function SpaceProvider({ children }: { children: React.ReactNode }) {
         aladinRef.current.setFov(tel.fovInitial);
       } catch {}
     }
-
-    if (id === "jwst") {
-      setIsNasaComposite(true);
-      setPrimarySurveyState(NASA_COMPOSITE_SURVEY);
-      setSecondarySurvey((prev) => ({
-        ...prev,
-        hipsUrl: JWST_NIRCAM_OVERLAY_URL,
-      }));
-      setBlendOpacity(0.7);
-    } else {
-      // Hubble: Optical base, pure spectral
-      setIsNasaComposite(false);
-      setBlendOpacity(0.0);
-      const optical = SPECTRAL_SURVEYS.find((s) => s.id === "optical") || DEFAULT_PRIMARY_SURVEY;
-      setPrimarySurveyState(optical);
-    }
   }, []);
 
   const navigateToTarget = useCallback((target: CosmicTarget) => {
@@ -199,29 +222,12 @@ export function SpaceProvider({ children }: { children: React.ReactNode }) {
     setCurrentDec(decDeg);
     setCurrentFov(target.fov);
 
-    // Smooth camera glide
     if (aladinRef.current) {
       try {
         aladinRef.current.animateToRaDec(raDeg, decDeg, 1.4);
         aladinRef.current.setFov(target.fov);
       } catch (err) {
         console.warn("[SpaceContext] Error en animación de cámara:", err);
-      }
-    }
-
-    // Auto-tune primary survey if specified
-    if (target.primarySurveyId) {
-      if (target.primarySurveyId === "nasa-composite") {
-        setIsNasaComposite(true);
-        setPrimarySurveyState(NASA_COMPOSITE_SURVEY);
-        setBlendOpacity(0.7);
-      } else {
-        const found = SPECTRAL_SURVEYS.find((s) => s.id === target.primarySurveyId);
-        if (found) {
-          setIsNasaComposite(false);
-          setPrimarySurveyState(found);
-          setBlendOpacity(0.0);
-        }
       }
     }
   }, []);
@@ -264,27 +270,17 @@ export function SpaceProvider({ children }: { children: React.ReactNode }) {
       const next = !prev;
       if (next) {
         setPrimarySurveyState(NASA_COMPOSITE_SURVEY);
-        setSecondarySurvey((s) => ({ ...s, hipsUrl: JWST_NIRCAM_OVERLAY_URL }));
         setBlendOpacity(0.7);
-        const pillars = COSMIC_TARGETS.find((t) => t.id === "pillars") || DEFAULT_TARGET;
-        navigateToTarget(pillars);
       } else {
+        setPrimarySurveyState(DEFAULT_PRIMARY_SURVEY);
         setBlendOpacity(0.0);
       }
       return next;
     });
-  }, [navigateToTarget]);
+  }, []);
 
   const setPrimarySurvey = useCallback((survey: SpectralSurvey) => {
-    const isComp = survey.id === "nasa-composite";
-    setIsNasaComposite(isComp);
     setPrimarySurveyState(survey);
-    // If user selects a manual survey, hide overlay (pure spectral analysis)
-    if (!isComp) {
-      setBlendOpacity(0.0);
-    } else {
-      setBlendOpacity(0.7);
-    }
   }, []);
 
   const toggleCrosshair = useCallback(() => {
@@ -296,7 +292,18 @@ export function SpaceProvider({ children }: { children: React.ReactNode }) {
       const next = !v;
       if (aladinRef.current) {
         try {
-          aladinRef.current.showCooGrid(next);
+          if (typeof aladinRef.current.setCooGrid === "function") {
+            aladinRef.current.setCooGrid({
+              enabled: next,
+              color: "#ffffff",
+              opacity: 0.15,
+              thickness: 1,
+            });
+          } else if (!next && typeof aladinRef.current.hideCooGrid === "function") {
+            aladinRef.current.hideCooGrid();
+          } else if (next && typeof aladinRef.current.showCooGrid === "function") {
+            aladinRef.current.showCooGrid();
+          }
         } catch {}
       }
       return next;
@@ -312,9 +319,6 @@ export function SpaceProvider({ children }: { children: React.ReactNode }) {
     returnToFreeFlight,
     toggleCatalog,
     setCatalogOpen,
-    cameraPerspective,
-    setCameraPerspective,
-    toggleCameraPerspective,
     activeTelescopeId,
     activeTelescope,
     setActiveTelescopeId,
@@ -338,6 +342,7 @@ export function SpaceProvider({ children }: { children: React.ReactNode }) {
     toggleCrosshair,
     toggleGrid,
     registerAladinInstance,
+    getAladinInstance,
   };
 
   return <SpaceContext.Provider value={value}>{children}</SpaceContext.Provider>;
