@@ -1,5 +1,5 @@
 /**
- * AetherScope - Astronomical Coordinate Utilities
+ * AetherScope - Astronomical Coordinate Utilities & Zoom Threshold Config
  * Precision conversions for J2000 Equatorial Coordinates and Celestial FOV
  */
 
@@ -16,12 +16,38 @@ export interface FormattedCoordinates {
   epoch: string;       // "J2000"
 }
 
+// ─────────────────────────────────────────────────────────────────────────────
+// UMBRAL DE CAPTURA & RESOLUCIÓN ANGULAR PARA "ANALIZAR SECTOR"
+// ─────────────────────────────────────────────────────────────────────────────
+/**
+ * UMBRAL DE CAMPO DE VISIÓN MÁXIMO (FOV) PERMITIDO PARA ANÁLISIS ESPECTRAL
+ *
+ * Justificación astrofísica y de producto:
+ * 1. Con un FOV > 2.0° (~4 veces el diámetro de la Luna Llena), el sector captura
+ *    decenas de miles de estrellas de campo no resueltas de la Vía Láctea, diluyendo
+ *    la firma espectroscópica en un continuo estelar difuso sin singularidad científica.
+ * 2. Un FOV ≤ 2.0° (120 arcmin) enfoca frentes de ionización, cúmulos estelares singulares,
+ *    galaxias individuales o remanentes de supernova con suficiente densidad de datos HiPS
+ *    para permitir el cross-match preciso (tolerancia típica CDS de 0.4° a 0.5°).
+ * 3. En términos de escala, 2.0° representa un "zoom" mínimo efectivo en Aladin Lite
+ *    donde el usuario ha focalizado intencionalmente un cuadrante celeste de interés.
+ *
+ * Configuración: Ajustar este valor numérico en grados decimales:
+ * - Para capturas más abiertas: aumentar a 3.0° o 4.0°.
+ * - Para análisis ultraespecíficos / núcleo de objetos: reducir a 0.8° o 0.5°.
+ */
+export const MAX_ANALYSIS_FOV_THRESHOLD_DEG = 2.0;
+
+/**
+ * FOV objetivo recomendado al que se aproxima la cámara en el zoom-in guiado
+ */
+export const TARGET_ANALYSIS_ZOOM_FOV_DEG = 0.85;
+
 /**
  * Converts Right Ascension from decimal degrees to sexagesimal hours, minutes, seconds.
  * 360 degrees = 24 hours (1 hour = 15 degrees)
  */
 export function raToSexagesimal(raDeg: number): string {
-  // Normalize to [0, 360)
   const normalized = ((raDeg % 360) + 360) % 360;
   const totalHours = normalized / 15;
   const hours = Math.floor(totalHours);
@@ -40,7 +66,6 @@ export function raToSexagesimal(raDeg: number): string {
  * Converts Declination from decimal degrees to sexagesimal degrees, arcminutes, arcseconds.
  */
 export function decToSexagesimal(decDeg: number): string {
-  // Clamp to [-90, 90]
   const clamped = Math.max(-90, Math.min(90, decDeg));
   const sign = clamped < 0 ? '-' : '+';
   const abs = Math.abs(clamped);
@@ -89,10 +114,36 @@ export function formatFov(fovDeg: number): { value: string; unit: string; rawTex
 }
 
 /**
+ * Calcula la distancia angular en la esfera celeste mediante la fórmula de Haversine.
+ * Retorna la distancia en grados decimales. Numéricamente estable para separaciones pequeñas.
+ */
+export function calculateAngularSeparation(
+  ra1Deg: number,
+  dec1Deg: number,
+  ra2Deg: number,
+  dec2Deg: number
+): number {
+  const toRad = Math.PI / 180;
+  const dRa = (ra2Deg - ra1Deg) * toRad;
+  const dDec = (dec2Deg - dec1Deg) * toRad;
+  const dec1 = dec1Deg * toRad;
+  const dec2 = dec2Deg * toRad;
+
+  const a =
+    Math.sin(dDec / 2) * Math.sin(dDec / 2) +
+    Math.cos(dec1) * Math.cos(dec2) * Math.sin(dRa / 2) * Math.sin(dRa / 2);
+
+  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+  return (c * 180) / Math.PI;
+}
+
+// Alias de retrocompatibilidad
+export const calculateOrthodromicDistance = calculateAngularSeparation;
+
+/**
  * Estimates the constellation for a given RA and Dec (approximate celestial bounding regions)
  */
 export function getConstellation(raDeg: number, decDeg: number): string {
-  // Approximate boundaries for key deep space targets
   if (raDeg >= 155 && raDeg <= 165 && decDeg <= -55 && decDeg >= -65) return 'Carina';
   if (raDeg >= 105 && raDeg <= 115 && decDeg <= -70 && decDeg >= -78) return 'Volans';
   if (raDeg >= 270 && raDeg <= 280 && decDeg <= -10 && decDeg >= -18) return 'Serpens Cauda';

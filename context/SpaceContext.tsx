@@ -136,7 +136,9 @@ export function SpaceProvider({
               setCurrentDec(parsed.dec);
             }
           }
-        } catch {}
+        } catch (err) {
+          console.warn("[AetherScope] Error leyendo coords de sessionStorage:", err);
+        }
       }
       if (initialFov === undefined) {
         try {
@@ -147,7 +149,9 @@ export function SpaceProvider({
               setCurrentFov(parsedFov);
             }
           }
-        } catch {}
+        } catch (err) {
+          console.warn("[AetherScope] Error leyendo fov de sessionStorage:", err);
+        }
       }
     }, 0);
 
@@ -180,14 +184,18 @@ export function SpaceProvider({
     setCurrentDec(dec);
     try {
       sessionStorage.setItem("aetherscope_active_coords", JSON.stringify({ ra, dec }));
-    } catch {}
+    } catch (err) {
+      console.warn("[AetherScope] Error guardando coords en sessionStorage:", err);
+    }
   }, []);
 
   const updateFov = useCallback((fov: number) => {
     setCurrentFov(fov);
     try {
       sessionStorage.setItem("aetherscope_active_fov", JSON.stringify(fov));
-    } catch {}
+    } catch (err) {
+      console.warn("[AetherScope] Error guardando fov en sessionStorage:", err);
+    }
   }, []);
 
   const setMode = useCallback((mode: ApplicationMode) => {
@@ -218,7 +226,9 @@ export function SpaceProvider({
       try {
         aladinRef.current.animateToRaDec(raDeg, decDeg, 0.5);
         aladinRef.current.setFov(tel.fovInitial);
-      } catch {}
+      } catch (err) {
+        console.warn("[AetherScope] Error moviendo telescopio activo:", err);
+      }
     }
   }, []);
 
@@ -262,7 +272,9 @@ export function SpaceProvider({
         aladinRef.current.gotoRaDec(newRa, newDec);
         setCurrentRa(newRa);
         setCurrentDec(newDec);
-      } catch {}
+      } catch (err) {
+        console.warn("[AetherScope] Error sincronizando orientación orbital:", err);
+      }
     }
   }, []);
 
@@ -313,7 +325,9 @@ export function SpaceProvider({
           } else if (next && typeof aladinRef.current.showCooGrid === "function") {
             aladinRef.current.showCooGrid();
           }
-        } catch {}
+        } catch (err) {
+          console.warn("[AetherScope] Error alternando rejilla en Aladin:", err);
+        }
       }
       return next;
     });

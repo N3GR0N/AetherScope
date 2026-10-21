@@ -1,19 +1,24 @@
 /**
  * Base de Datos Astronómica Curada (NASA / ESA / CDS Strasbourg).
- * Catálogo de referencia para el motor de cross-match y detección de objetivos celestes.
+ * Catálogo unificado de referencia para el motor de cross-match, dossier y laboratorio astrofísico.
  */
+
+import { calculateAngularSeparation } from "./coordinates";
 
 export interface CatalogTarget {
   id: string;
   name: string;
-  catalogId: string; // ej. M16, Sgr A*, M104, NGC 3372
+  designation: string; // ej. Messier 16 / NGC 6611
+  catalogId: string;
   constellation: string;
   nature: string;
+  objectType: string;
   distanceLy: string;
   raDeg: number;
   decDeg: number;
-  toleranceDeg: number; // Radio de búsqueda angular (por defecto 0.5°)
+  toleranceDeg: number; // Radio de búsqueda angular (por defecto 0.4° - 0.6°)
   description: string;
+  spectralFeatures: string[];
   astrophysicalDetails: {
     spectralSignature: string;
     dominantElements: string[];
@@ -26,15 +31,23 @@ export const CELESTIAL_CATALOG: CatalogTarget[] = [
   {
     id: "sgr-a-star",
     name: "Sagitario A*",
+    designation: "Sgr A* / Centro Galáctico",
     catalogId: "Sgr A* / Centro Galáctico",
     constellation: "Sagitario (Sgr)",
     nature: "Agujero Negro Supermasivo",
+    objectType: "Agujero negro supermasivo",
     distanceLy: "26.673 años luz",
     raDeg: 266.4168,
     decDeg: -29.0078,
-    toleranceDeg: 0.6,
+    toleranceDeg: 0.5,
     description:
-      "El agujero negro supermasivo central de nuestra Vía Láctea, con una masa estimada de 4,15 millones de masas solares. Rodeado por un disco de acreción caliente y fuentes de intensa emisión de rayos X y radioondas relativistas.",
+      "El agujero negro supermasivo central de nuestra Vía Láctea, con una masa de 4,15 millones de masas solares. Su entorno genera intensa radiación sincrotrón relativista y acreción térmica detectada en rayos X y ondas de radio.",
+    spectralFeatures: [
+      "Emisión sincrotrón relativista de electrones ultraenergéticos",
+      "Fogonazos térmicos en rayos X (Fe XXV / XXVI)",
+      "Emisión submilimétrica en la banda de 1.3 mm (VLBI / EHT)",
+      "Polarización magnética en el disco de acreción",
+    ],
     astrophysicalDetails: {
       spectralSignature: "Emisión synchrotron relativista y Rayos X térmicos",
       dominantElements: ["Plasma de Hidrógeno Relativista", "Electrones ultraenergéticos", "Hierro altamente ionizado [Fe XXV]"],
@@ -44,16 +57,24 @@ export const CELESTIAL_CATALOG: CatalogTarget[] = [
   },
   {
     id: "pillars-of-creation",
-    name: "Los Pilares de la Creación (M16)",
+    name: "Pilares de la Creación / M16",
+    designation: "Messier 16 / NGC 6611",
     catalogId: "Messier 16 / NGC 6611",
     constellation: "Serpens (Serpiente)",
     nature: "Guardería Estelar / Nebulosa de Emisión",
+    objectType: "Región H II / guardería estelar",
     distanceLy: "7.000 años luz",
-    raDeg: 274.7001,
-    decDeg: -13.8067,
-    toleranceDeg: 0.5,
+    raDeg: 274.7,
+    decDeg: -13.806,
+    toleranceDeg: 0.45,
     description:
-      "Icónica región de formación estelar dentro de la Nebulosa del Águila. Columnas colosales de gas molecular interestelar frío y polvo de silicatos esculpidas por la intensa radiación ultravioleta de estrellas jóvenes masivas.",
+      "Colosales columnas de gas molecular frío y polvo de silicatos esculpidas por vientos estelares y radiación ultravioleta extrema procedente de estrellas masivas jóvenes del cúmulo NGC 6611.",
+    spectralFeatures: [
+      "Excitación de hidrógeno ionizado H-alfa (656.3 nm)",
+      "Líneas prohibidas de oxígeno ionizado [O III] (500.7 nm)",
+      "Emisión de hidrógeno molecular frío H₂ (2.12 µm)",
+      "Fuerte absorción de polvo en infrarrojo medio",
+    ],
     astrophysicalDetails: {
       spectralSignature: "Líneas de excitación de H-alfa [N II] y fuerte absorción de polvo en infrarrojo",
       dominantElements: ["Hidrógeno Molecular (H₂)", "Polvo de Silicatos", "Oxígeno Ionizado [O III]", "Monóxido de Carbono (CO)"],
@@ -64,15 +85,23 @@ export const CELESTIAL_CATALOG: CatalogTarget[] = [
   {
     id: "carina-nebula",
     name: "Nebulosa Carina (NGC 3372)",
+    designation: "NGC 3372 / Acantilados Cósmicos",
     catalogId: "NGC 3372 / Acantilados Cósmicos",
     constellation: "Carina (La Quilla)",
     nature: "Nebulosa de Emisión Masiva",
+    objectType: "Nebulosa de emisión difusa",
     distanceLy: "8.500 años luz",
-    raDeg: 161.265,
-    decDeg: -59.87,
-    toleranceDeg: 0.7,
+    raDeg: 161.285,
+    decDeg: -59.8678,
+    toleranceDeg: 0.5,
     description:
-      "Una de las regiones de formación estelar más grandes y luminosas de la galaxia. Alberga a Eta Carinae, una de las estrellas hipermasivas más inestables conocidas, e intrincadas crestas de polvo reveladas en infrarrojo por JWST.",
+      "Una de las regiones de formación estelar más energéticas y masivas de la galaxia. Alberga a la hipergigante inestable Eta Carinae y frentes de ionización fotoevaporativa conocidos como Acantilados Cósmicos.",
+    spectralFeatures: [
+      "Emisión ultra-intensa de H-alfa y nitrógeno [N II] en frentes de choque",
+      "Emisión de hidrocarburos aromáticos policíclicos (PAH) a 3.3 µm y 7.7 µm",
+      "Rayos X térmicos procedentes de vientos estelares colisionantes",
+      "Protoestrellas de clase 0/I embebidas en glóbulos de Bok",
+    ],
     astrophysicalDetails: {
       spectralSignature: "Fuerte emisión óptica H-alfa combinada con emisión térmica infrarroja",
       dominantElements: ["Hidrógeno Ionizado (H II)", "Azufre [S II]", "Polvo Carbonáceo y Silicatos", "Nitrógeno [N II]"],
@@ -83,15 +112,23 @@ export const CELESTIAL_CATALOG: CatalogTarget[] = [
   {
     id: "smacs-0723",
     name: "Campo Profundo SMACS 0723",
+    designation: "SMACS J0723.3-7327",
     catalogId: "SMACS J0723.3-7327",
     constellation: "Volans (El Pez Volador)",
     nature: "Cúmulo de Galaxias / Lente Gravitacional",
+    objectType: "Cúmulo de galaxias / lente gravitacional",
     distanceLy: "4.600 millones de años luz",
-    raDeg: 110.8375,
-    decDeg: -73.4542,
-    toleranceDeg: 0.5,
+    raDeg: 110.83,
+    decDeg: -73.454,
+    toleranceDeg: 0.45,
     description:
-      "Un inmenso cúmulo de galaxias cuya masa combinada actúa como una lente gravitacional natural, curvando y magnificando la luz de galaxias primordiales situadas a más de 13.000 millones de años luz, en las primeras etapas del universo.",
+      "Cúmulo masivo de galaxias cuya colosal gravedad curva y amplifica la luz de galaxias primordiales situadas detrás, revelando arcos gravitacionales y fuentes con alto corrimiento al rojo (z > 7).",
+    spectralFeatures: [
+      "Emisión de líneas con alto corrimiento al rojo (redshift z = 7 a 9.5)",
+      "Arcos de distorsión y magnificación gravitacional relativista",
+      "Gas intracumular caliente emitiendo rayos X por Bremsstrahlung térmico",
+      "Fotometría infrarroja profunda en bandas F090W a F444W (NIRCam)",
+    ],
     astrophysicalDetails: {
       spectralSignature: "Galaxias con alto corrimiento al rojo (redshift z > 7 a 9)",
       dominantElements: ["Gas intrarradial primordial", "Hidrógeno", "Helio", "Metales traza primigenios"],
@@ -102,15 +139,23 @@ export const CELESTIAL_CATALOG: CatalogTarget[] = [
   {
     id: "sombrero-galaxy",
     name: "Galaxia del Sombrero (M104)",
+    designation: "Messier 104 / NGC 4594",
     catalogId: "Messier 104 / NGC 4594",
     constellation: "Virgo",
     nature: "Galaxia Espiral SA(s)a",
+    objectType: "Galaxia espiral",
     distanceLy: "31,1 millones de años luz",
     raDeg: 189.9975,
     decDeg: -11.6231,
-    toleranceDeg: 0.5,
+    toleranceDeg: 0.45,
     description:
-      "Galaxia espiral icónica con un bulbo galáctico prominente y una banda de polvo oscuro y denso en su disco ecuatorial. Alberga un agujero negro supermasivo de 1.000 millones de masas solares en su núcleo.",
+      "Galaxia espiral icónica distinguida por un gigantesco bulbo central y una densa banda simétrica de polvo interestelar oscuro en su plano ecuatorial. Aloja un agujero negro central de mil millones de masas solares.",
+    spectralFeatures: [
+      "Banda ancha de absorción por polvo frío en el disco ecuatorial",
+      "Población estelar madura tipo II dominando el bulbo luminoso",
+      "Emisión térmica infrarroja de polvo circumgaláctico a 24 µm",
+      "Línea de 21 cm de hidrógeno neutro interestelar (H I)",
+    ],
     astrophysicalDetails: {
       spectralSignature: "Disco de absorción de polvo en luz visible y radiación infrarroja térmica",
       dominantElements: ["Poblaciones estelares viejas (Tipo II)", "Polvo interestelar", "Hidrógeno neutro (H I)"],
@@ -121,15 +166,23 @@ export const CELESTIAL_CATALOG: CatalogTarget[] = [
   {
     id: "crab-nebula",
     name: "Nebulosa del Cangrejo (M1)",
+    designation: "Messier 1 / NGC 1952",
     catalogId: "Messier 1 / NGC 1952",
     constellation: "Taurus (Tauro)",
     nature: "Remanente de Supernova / Púlsar",
+    objectType: "Remanente de supernova / púlsar",
     distanceLy: "6.500 años luz",
     raDeg: 83.6331,
     decDeg: 22.0145,
-    toleranceDeg: 0.5,
+    toleranceDeg: 0.45,
     description:
-      "Remanente de la supernova histórica registrada por astrónomos en el año 1054. En su centro pulsa una estrella de neutrones girando 30 veces por segundo, inyectando viento relativista en los filamentos de gas en expansión.",
+      "Remanente de la supernova histórica del año 1054 d.C. En su núcleo reside un púlsar que rota 30 veces por segundo, energizando una nebulosa de viento relativista y filamentos de helio e hidrógeno en expansión.",
+    spectralFeatures: [
+      "Espectro de continuo de radiación sincrotrón no térmica (radio hasta rayos gamma)",
+      "Pulsaciones periódicas a 33 milisegundos en todas las longitudes de onda",
+      "Filamentos de gas fotoionizado ricos en helio, oxígeno [O III] y azufre [S II]",
+      "Viento de pares electrón-positrón magnetizados",
+    ],
     astrophysicalDetails: {
       spectralSignature: "Radiación synchrotron continua (óptico a rayos X) y filamentos de emisión",
       dominantElements: ["Helio", "Hidrógeno", "Oxígeno [O III]", "Azufre ionizado", "Electrones relativistas"],
@@ -140,31 +193,7 @@ export const CELESTIAL_CATALOG: CatalogTarget[] = [
 ];
 
 /**
- * Calcula la distancia angular en la esfera celeste mediante la fórmula del semiverseno (Haversine).
- * Retorna la distancia en grados decimales.
- */
-export function calculateAngularSeparation(
-  ra1Deg: number,
-  dec1Deg: number,
-  ra2Deg: number,
-  dec2Deg: number
-): number {
-  const toRad = Math.PI / 180;
-  const dRa = (ra2Deg - ra1Deg) * toRad;
-  const dDec = (dec2Deg - dec1Deg) * toRad;
-  const dec1 = dec1Deg * toRad;
-  const dec2 = dec2Deg * toRad;
-
-  const a =
-    Math.sin(dDec / 2) * Math.sin(dDec / 2) +
-    Math.cos(dec1) * Math.cos(dec2) * Math.sin(dRa / 2) * Math.sin(dRa / 2);
-
-  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-  return (c * 180) / Math.PI;
-}
-
-/**
- * Realiza el cross-match entre coordenadas capturadas y el catálogo celeste.
+ * Realiza el cross-match entre coordenadas y el catálogo curado local.
  */
 export function crossMatchCelestialTarget(raDeg: number, decDeg: number): {
   matched: boolean;

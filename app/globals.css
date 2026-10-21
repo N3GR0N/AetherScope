@@ -38,23 +38,25 @@
 
 /* ─── Apple Pro / macOS Liquid Glass Surfaces ─── */
 .liquid-glass {
-  background-color: rgba(10, 13, 20, 0.82);
+  background-color: rgba(10, 13, 20, 0.85);
   backdrop-filter: blur(28px) saturate(180%);
   -webkit-backdrop-filter: blur(28px) saturate(180%);
   border: 1px solid rgba(255, 255, 255, 0.10);
+  border-top-color: rgba(255, 255, 255, 0.20);
   box-shadow: 0 20px 50px rgba(0, 0, 0, 0.7), inset 0 1px 0 0 rgba(255, 255, 255, 0.15);
 }
 
 .liquid-glass-subtle {
-  background-color: rgba(10, 13, 20, 0.72);
+  background-color: rgba(10, 13, 20, 0.65);
   backdrop-filter: blur(20px) saturate(180%);
   -webkit-backdrop-filter: blur(20px) saturate(180%);
-  border: 1px solid rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.10);
   box-shadow: 0 15px 35px rgba(0, 0, 0, 0.6), inset 0 1px 0 0 rgba(255, 255, 255, 0.12);
 }
 
 /* ─── Aladin Lite v3 WebGL Canvas Styling Overrides ─── */
 #aladin-lite-div,
+#aladin-analyze-div,
 #aetherscope-canvas-container {
   position: absolute;
   inset: 0;
@@ -64,6 +66,7 @@
 }
 
 #aladin-lite-div canvas,
+#aladin-analyze-div canvas,
 #aetherscope-canvas-container canvas {
   width: 100% !important;
   height: 100% !important;

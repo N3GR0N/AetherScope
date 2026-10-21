@@ -56,25 +56,49 @@ declare global {
 }
 
 export default function SpaceCanvas(props: SpaceCanvasProps = {}) {
-  const space = useSpace();
+  // Contexto opcional/degradable
+  let spaceContext: ReturnType<typeof useSpace> | null = null;
+  try {
+    // eslint-disable-next-line react-hooks/rules-of-hooks
+    spaceContext = useSpace();
+  } catch {
+    spaceContext = null;
+  }
+
   const containerId = props.containerId || "aladin-lite-div";
-  const primarySurvey = props.primarySurvey ?? space.primarySurvey;
-  const secondarySurvey = props.secondarySurvey ?? space.secondarySurvey;
-  const blendOpacity = props.blendOpacity ?? space.blendOpacity;
-  const activeTarget = props.activeTarget ?? space.selectedTarget;
-  const showGrid = props.showGrid ?? space.showGrid;
-  const onCoordinatesChange = props.onCoordinatesChange ?? space.updateCoordinates;
-  const onFovChange = props.onFovChange ?? space.updateFov;
-  const registerAladinInstance = space.registerAladinInstance;
+  const primarySurvey = props.primarySurvey ?? spaceContext?.primarySurvey ?? {
+    id: "dss2",
+    name: "Luz Visible (DSS2 Óptico)",
+    shortLabel: "DSS2 Óptico",
+    telescope: "Digitized Sky Survey",
+    agency: "CDS",
+    hipsId: "CDS/P/DSS2/color",
+    hipsUrl: "https://alasky.cds.unistra.fr/DSS/DSSColor",
+    wavelengthBand: "Óptico",
+    spectralRange: "400 - 750 nm",
+    frequency: "Visible",
+    accentColor: "#38bdf8",
+    tagColor: "text-white",
+    description: "Capa base óptica DSS2",
+    astrophysicalFocus: "Continuo visible",
+    keyEmissions: [],
+  };
+  const secondarySurvey = props.secondarySurvey ?? spaceContext?.secondarySurvey;
+  const blendOpacity = props.blendOpacity ?? spaceContext?.blendOpacity ?? 0;
+  const activeTarget = props.activeTarget ?? spaceContext?.selectedTarget;
+  const showGrid = props.showGrid ?? spaceContext?.showGrid ?? false;
+  const onCoordinatesChange = props.onCoordinatesChange ?? spaceContext?.updateCoordinates;
+  const onFovChange = props.onFovChange ?? spaceContext?.updateFov;
+  const registerAladinInstance = spaceContext?.registerAladinInstance;
   const onAladinReady = props.onAladinReady;
 
   const aladinInstanceRef = useRef<AladinInstance | null>(null);
   const [loadingState, setLoadingState] = useState<"loading" | "ready" | "fallback">("loading");
   const [statusMessage, setStatusMessage] = useState("Iniciando lienzo WebGL2...");
   const [retryCount, setRetryCount] = useState(0);
-  const currentTargetIdRef = useRef<string>(activeTarget.id);
+  const currentTargetIdRef = useRef<string | undefined>(activeTarget?.id);
 
-  // Stable callback refs so listeners don't require re-subscribing or re-initializing
+  // Stable callback refs
   const onCoordsRef = useRef(onCoordinatesChange);
   const onFovRef = useRef(onFovChange);
   const registerRef = useRef(registerAladinInstance);
@@ -123,7 +147,7 @@ export default function SpaceCanvas(props: SpaceCanvasProps = {}) {
     };
   }, []);
 
-  // Strict Client-Only Mount: load Aladin Lite and initialize canvas ONCE
+  // Strict Client-Only Mount: load Aladin Lite v3 from official CDN
   useEffect(() => {
     if (typeof window === "undefined") return;
 
@@ -131,7 +155,6 @@ export default function SpaceCanvas(props: SpaceCanvasProps = {}) {
 
     const initAladin = async () => {
       try {
-        // 1. Ensure external script is loaded
         if (!window.A) {
           setStatusMessage("Cargando motor astronómico CDS Aladin Lite...");
           await new Promise<void>((resolve, reject) => {
@@ -141,11 +164,21 @@ export default function SpaceCanvas(props: SpaceCanvasProps = {}) {
             }
 
             const script = document.createElement("script");
-            script.src = "https://aladin.cds.unistra.fr/AladinLite/api/v3/latest/aladin.js";
+            script.src = "https://aladin.cds.unistra.fr/AladinLite/api/v3/3.9.2-beta/aladin.js";
+            script.crossOrigin = "anonymous";
             script.async = true;
             script.charset = "utf-8";
             script.onload = () => resolve();
-            script.onerror = () => reject(new Error("No se pudo cargar el script de Aladin Lite"));
+            script.onerror = () => {
+              // Fallback to latest CDN if beta version pin changes
+              const fallbackScript = document.createElement("script");
+              fallbackScript.src = "https://aladin.cds.unistra.fr/AladinLite/api/v3/latest/aladin.js";
+              fallbackScript.crossOrigin = "anonymous";
+              fallbackScript.async = true;
+              fallbackScript.onload = () => resolve();
+              fallbackScript.onerror = () => reject(new Error("No se pudo cargar el script de Aladin Lite"));
+              document.head.appendChild(fallbackScript);
+            };
             document.head.appendChild(script);
           });
         }
@@ -160,7 +193,6 @@ export default function SpaceCanvas(props: SpaceCanvasProps = {}) {
 
         if (cancelled) return;
 
-        // 2. Ensure container element exists
         const container = document.getElementById(containerId);
         if (!container) {
           console.warn(`[AetherScope] Contenedor #${containerId} no encontrado en DOM.`);
@@ -168,13 +200,11 @@ export default function SpaceCanvas(props: SpaceCanvasProps = {}) {
         }
 
         container.innerHTML = "";
-
         setStatusMessage("Montando lienzo celeste en espacio profundo...");
 
-        // 3. Determine starting coordinates: props > current context coordinates > default target
-        const startRa = props.initialRa ?? space.currentRa;
-        const startDec = props.initialDec ?? space.currentDec;
-        const startFov = props.initialFov ?? space.currentFov ?? 0.25;
+        const startRa = props.initialRa ?? spaceContext?.currentRa ?? 274.7;
+        const startDec = props.initialDec ?? spaceContext?.currentDec ?? -13.8;
+        const startFov = props.initialFov ?? spaceContext?.currentFov ?? 0.25;
         const baseSurveyUrl = primarySurvey.hipsUrl || "https://alasky.cds.unistra.fr/DSS/DSSColor";
 
         const aladin = window.A.aladin(`#${containerId}`, {
@@ -211,13 +241,15 @@ export default function SpaceCanvas(props: SpaceCanvasProps = {}) {
 
         if (cancelled) return;
         aladinInstanceRef.current = aladin;
-        registerRef.current(aladin);
+        if (registerRef.current) {
+          registerRef.current(aladin);
+        }
         if (onReadyRef.current) {
           onReadyRef.current(aladin);
         }
 
-        // 4. Initial overlay setup if specified
-        if (blendOpacity > 0.02 && secondarySurvey.hipsUrl) {
+        // Overlay inicial si existe
+        if (blendOpacity > 0.02 && secondarySurvey?.hipsUrl) {
           setTimeout(() => {
             try {
               aladin.setOverlayImageLayer(secondarySurvey.hipsUrl);
@@ -231,37 +263,39 @@ export default function SpaceCanvas(props: SpaceCanvasProps = {}) {
           }, 200);
         }
 
-        // 5. Connect telemetry event listeners
+        // Event listeners de telemetría
         aladin.on("positionChanged", (coords) => {
           if (Array.isArray(coords)) {
-            onCoordsRef.current(coords[0], coords[1]);
+            onCoordsRef.current?.(coords[0], coords[1]);
           } else if (coords && typeof coords === "object" && "ra" in coords && "dec" in coords) {
             const c = coords as { ra: number; dec: number };
-            onCoordsRef.current(c.ra, c.dec);
+            onCoordsRef.current?.(c.ra, c.dec);
           } else {
             const [ra, dec] = aladin.getRaDec();
-            onCoordsRef.current(ra, dec);
+            onCoordsRef.current?.(ra, dec);
           }
         });
 
         aladin.on("zoomChanged", (newFov) => {
           if (typeof newFov === "number") {
-            onFovRef.current(newFov);
+            onFovRef.current?.(newFov);
           } else if (Array.isArray(newFov)) {
-            onFovRef.current(newFov[0]);
+            onFovRef.current?.(newFov[0]);
           } else {
             const f = aladin.getFov();
-            onFovRef.current(Array.isArray(f) ? f[0] : f);
+            onFovRef.current?.(Array.isArray(f) ? f[0] : f);
           }
         });
 
-        // 6. Initial telemetry dispatch
+        // Telemetría inicial
         try {
           const [initRa, initDec] = aladin.getRaDec();
-          onCoordsRef.current(initRa, initDec);
+          onCoordsRef.current?.(initRa, initDec);
           const initF = aladin.getFov();
-          onFovRef.current(Array.isArray(initF) ? initF[0] : initF);
-        } catch {}
+          onFovRef.current?.(Array.isArray(initF) ? initF[0] : initF);
+        } catch (err) {
+          console.warn("[AetherScope] Error leyendo telemetría inicial de Aladin:", err);
+        }
 
         setLoadingState("ready");
       } catch (err) {
@@ -279,7 +313,9 @@ export default function SpaceCanvas(props: SpaceCanvasProps = {}) {
     return () => {
       cancelled = true;
       clearTimeout(timer);
-      registerRef.current(null);
+      if (registerRef.current) {
+        registerRef.current(null);
+      }
       aladinInstanceRef.current = null;
       const container = document.getElementById(containerId);
       if (container) {
@@ -288,16 +324,14 @@ export default function SpaceCanvas(props: SpaceCanvasProps = {}) {
     };
   }, [retryCount, containerId]);
 
-  // Synchronize primary survey changes dynamically and apply color LUT
+  // Synchronize primary survey changes dynamically
   useEffect(() => {
     const aladin = aladinInstanceRef.current;
     if (!aladin || loadingState !== "ready") return;
 
     try {
-      // Use direct HTTPS URL to avoid MOC query and mirror testing
       aladin.setImageSurvey(primarySurvey.hipsUrl || primarySurvey.hipsId);
 
-      // Apply false-color composite LUT for single-band infrared surveys
       setTimeout(() => {
         try {
           const layer = aladin.getBaseImageLayer() as {
@@ -318,7 +352,9 @@ export default function SpaceCanvas(props: SpaceCanvasProps = {}) {
       console.warn(`[AetherScope] Error cambiando capa base a ${primarySurvey.name}:`, err1);
       try {
         aladin.setImageSurvey("https://alasky.cds.unistra.fr/DSS/DSSColor");
-      } catch {}
+      } catch (fallbackErr) {
+        console.warn("[AetherScope] Error aplicando fallback a DSSColor:", fallbackErr);
+      }
     }
   }, [primarySurvey, loadingState]);
 
@@ -365,7 +401,7 @@ export default function SpaceCanvas(props: SpaceCanvasProps = {}) {
   // Handle cinematic target transitions
   useEffect(() => {
     const aladin = aladinInstanceRef.current;
-    if (!aladin || loadingState !== "ready") return;
+    if (!aladin || loadingState !== "ready" || !activeTarget) return;
 
     if (currentTargetIdRef.current !== activeTarget.id) {
       currentTargetIdRef.current = activeTarget.id;
@@ -379,7 +415,7 @@ export default function SpaceCanvas(props: SpaceCanvasProps = {}) {
     }
   }, [activeTarget, loadingState]);
 
-  // Handle celestial coordinate grid toggle and styling
+  // Handle celestial coordinate grid toggle
   useEffect(() => {
     const aladin = aladinInstanceRef.current;
     if (!aladin || loadingState !== "ready") return;

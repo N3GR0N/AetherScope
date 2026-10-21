@@ -2,7 +2,7 @@
 
 import dynamic from "next/dynamic";
 import type { SpectralSurvey } from "@/lib/astronomy/surveys";
-import type { CelestialTarget } from "@/lib/astronomy/targets";
+import type { CosmicTarget } from "@/lib/astronomy/targets";
 
 const DynamicSpaceCanvas = dynamic(
   () => import("./SpaceCanvas.client"),
@@ -17,7 +17,7 @@ interface SpaceCanvasWrapperProps {
   primarySurvey?: SpectralSurvey;
   secondarySurvey?: SpectralSurvey;
   blendOpacity?: number;
-  activeTarget?: CelestialTarget;
+  activeTarget?: CosmicTarget;
   showGrid?: boolean;
   onCoordinatesChange?: (ra: number, dec: number) => void;
   onFovChange?: (fov: number) => void;

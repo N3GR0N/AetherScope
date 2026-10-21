@@ -6,16 +6,43 @@ import { formatFov } from "@/lib/astronomy/coordinates";
 interface PrecisionCrosshairProps {
   visible?: boolean;
   fov?: number;
+  variant?: "full" | "compact";
+  label?: string;
 }
 
 export default function PrecisionCrosshair(props: PrecisionCrosshairProps = {}) {
   const space = useSpace();
   const visible = props.visible ?? space.showCrosshair;
   const fov = props.fov ?? space.currentFov;
+  const variant = props.variant ?? "full";
+  const label = props.label;
 
   if (!visible) return null;
 
   const fovInfo = formatFov(fov);
+
+  if (variant === "compact") {
+    return (
+      <div
+        aria-hidden="true"
+        className="absolute inset-0 pointer-events-none flex items-center justify-center select-none"
+      >
+        <div className="relative w-40 h-40 flex items-center justify-center">
+          <div className="absolute w-28 h-28 rounded-full border border-white/10" />
+          <div className="absolute w-12 h-12 rounded-full border border-white/20 flex items-center justify-center">
+            <div className="w-1.5 h-1.5 rounded-full bg-amber-400 shadow-[0_0_6px_rgba(245,158,11,0.8)]" />
+          </div>
+          <div className="absolute left-0 w-8 h-px bg-white/30" />
+          <div className="absolute right-0 w-8 h-px bg-white/30" />
+          <div className="absolute top-0 h-8 w-px bg-white/30" />
+          <div className="absolute bottom-0 h-8 w-px bg-white/30" />
+          <div className="absolute -bottom-6 px-2 py-0.5 rounded-full bg-[#0a0d14]/85 border border-white/10 text-[9px] font-mono text-white/50">
+            {label || "CENTRO DE CAPTURA"}
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div
@@ -23,7 +50,6 @@ export default function PrecisionCrosshair(props: PrecisionCrosshairProps = {}) 
       className="fixed inset-0 pointer-events-none z-20 flex items-center justify-center select-none"
     >
       <div className="relative w-64 h-64 flex items-center justify-center">
-        
         {/* Outer Circular Reticle Ring */}
         <div className="absolute w-44 h-44 rounded-full border border-white/10" />
 
@@ -60,9 +86,8 @@ export default function PrecisionCrosshair(props: PrecisionCrosshairProps = {}) 
           suppressHydrationWarning
           className="absolute -bottom-8 px-2.5 py-0.5 rounded-full bg-[#0a0d14]/85 border border-white/10 backdrop-blur-md text-[9px] font-mono text-white/60 tracking-wider tabular-nums shadow-sm"
         >
-          RETÍCULA Ø {fovInfo.rawText}
+          {label || `RETÍCULA Ø ${fovInfo.rawText}`}
         </div>
-
       </div>
     </div>
   );

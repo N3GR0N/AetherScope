@@ -1,5 +1,6 @@
 import type { CatalogTarget } from "./database";
 import type { AstronomicalObjectResult } from "./crossmatch";
+import type { SpectralSurvey } from "./surveys";
 
 export interface SpectralFilterOption {
   id: string;
@@ -65,6 +66,29 @@ export const LABORATORY_SPECTRAL_FILTERS: SpectralFilterOption[] = [
   },
 ];
 
+/**
+ * Mapper reutilizable para convertir una opción de filtro espectral a la especificación SpectralSurvey
+ */
+export function spectralFilterToSurvey(filter: SpectralFilterOption): SpectralSurvey {
+  return {
+    id: filter.id,
+    name: filter.name,
+    shortLabel: filter.shortLabel,
+    telescope: "Observatorio Espacial",
+    agency: "CDS / NASA / ESA",
+    hipsId: `CDS/P/${filter.id}`,
+    hipsUrl: filter.hipsUrl,
+    wavelengthBand: filter.wavelength,
+    spectralRange: filter.wavelength,
+    frequency: filter.band === "xray" ? "Alta Energía" : "Óptico / Infrarrojo",
+    accentColor: filter.colorHex,
+    tagColor: "text-white",
+    description: filter.description,
+    astrophysicalFocus: "Relevamiento astrofísico multiespectral",
+    keyEmissions: [],
+  };
+}
+
 export interface DetectedChemicalElement {
   formula: string;
   name: string;
@@ -88,11 +112,6 @@ export interface AstrophysicalAnalysisResult {
 /**
  * Algoritmo de inferencia espectral y detección química/física según los filtros activos
  * y las características del objeto astronómico identificado.
- *
- * Mapeo físico:
- * - Rayos X: gas a alta temperatura (>10⁶ K), acreción gravitacional, fuente compacta.
- * - Infrarrojo: polvo de silicatos, monóxido de carbono (CO), nubes moleculares (H₂).
- * - Óptico / Gaia: fotosferas estelares, población de secuencia principal.
  */
 export function runAstrophysicalAnalysis(
   activeFilterIds: string[],

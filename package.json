@@ -1,5 +1,5 @@
 {
-  "name": "flarefield",
+  "name": "aetherscope",
   "version": "0.1.0",
   "private": true,
   "scripts": {
@@ -9,29 +9,17 @@
     "lint": "eslint"
   },
   "dependencies": {
-    "@react-spring/web": "^10.1.0",
     "@usespaceui/squircle": "^0.1.2",
-    "aladin-lite": "^3.9.2-beta",
-    "framer-motion": "^12.42.2",
-    "gsap": "^3.15.0",
-    "leaflet": "^1.9.4",
     "lucide-react": "^1.16.0",
-    "maplibre-gl": "^2.4.0",
-    "material": "github:material-esm/material",
-    "motion": "^12.42.2",
     "next": "16.2.6",
     "react": "19.2.4",
-    "react-dom": "19.2.4",
-    "react-leaflet": "^5.0.0",
-    "three": "^0.186.1"
+    "react-dom": "19.2.4"
   },
   "devDependencies": {
     "@tailwindcss/postcss": "^4",
-    "@types/leaflet": "^1.9.21",
     "@types/node": "^20",
     "@types/react": "^19",
     "@types/react-dom": "^19",
-    "@types/three": "^0.186.0",
     "eslint": "^9",
     "eslint-config-next": "16.2.6",
     "tailwindcss": "^4",
