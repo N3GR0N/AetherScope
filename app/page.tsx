@@ -30,7 +30,7 @@ function AetherScopeMainContent() {
       initialDec={initialDec}
       initialFov={initialFov}
     >
-      <main className="relative w-screen h-screen overflow-hidden bg-black select-none">
+      <main className="relative w-screen h-screen overflow-hidden bg-[#101015] select-none">
         {/* 1. Infinite Deep Space Optical Canvas (Permanent DSS2 Color Clean Baseline) */}
         <SpaceCanvas
           initialRa={initialRa}
@@ -59,7 +59,7 @@ function AetherScopeMainContent() {
 
 export default function AetherScopePage() {
   return (
-    <Suspense fallback={<div className="w-screen h-screen bg-black" />}>
+    <Suspense fallback={<div className="w-screen h-screen bg-[#101015]" />}>
       <AetherScopeMainContent />
     </Suspense>
   );

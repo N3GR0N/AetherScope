@@ -56,8 +56,8 @@ export const NASA_COMPOSITE_SURVEY: SpectralSurvey = {
   wavelengthBand: 'Compuesto Multiespectral Difusión Pública',
   spectralRange: '0.4 µm – 4.4 µm (Hubble Óptico + JWST NIRCam)',
   frequency: '68 THz – 750 THz',
-  accentColor: '#F59E0B', // Golden Amber
-  tagColor: 'text-amber-300 border-amber-500/40 bg-amber-500/15',
+  accentColor: '#506385',
+  tagColor: 'text-[#F1F0E1] border-[#3A3A42] bg-[#17171C]',
   description: 'Fusión oficial de difusión pública de la NASA combinando el gas de emisión en color óptico de Hubble con la penetración estelar nítida en el infrarrojo de JWST.',
   astrophysicalFocus: 'Pilares de fotoevaporación, protoestrellas embebidas y chorros bipolares.',
   keyEmissions: ['Hubble ACS/WFC3', 'JWST NIRCam F090W/F187N', 'F200W', 'F444W'],
@@ -109,8 +109,8 @@ export const SPECTRAL_SURVEYS: SpectralSurvey[] = [
     wavelengthBand: 'Infrarrojo Cercano / Medio',
     spectralRange: '0.6 µm – 28.0 µm',
     frequency: '10.7 THz – 500 THz',
-    accentColor: '#F59E0B', // Beryllium-Gold
-    tagColor: 'text-amber-400 border-amber-500/30 bg-amber-500/10',
+    accentColor: '#506385',
+    tagColor: 'text-[#F1F0E1] border-[#3A3A42] bg-[#17171C]',
     description: 'Penetración de nubes moleculares densas y revelación de galaxias del universo primitivo.',
     astrophysicalFocus: 'Polvo circunestelar cálido, protoestrellas embebidas y emisión PAH.',
     keyEmissions: ['PAH (3.3µm, 7.7µm)', 'H₂ Puro (2.12µm)', 'CO Vapores'],

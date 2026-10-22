@@ -1,17 +1,39 @@
 @import "tailwindcss";
-@plugin "@usespaceui/squircle";
+
+@theme {
+  --color-bg: #101015;
+  --color-bar: #17171C;
+  --color-tile: #1A1A1F;
+  --color-line: #2B2B31;
+  --color-line-strong: #3A3A42;
+  --color-cream: #F1F0E1;
+  --color-muted: #9A9A92;
+  --color-accent: #506385;
+  --color-beige: #B7B6A8;
+  --color-ink: #101015;
+
+  --font-proto: 'Proto Mono', var(--font-proto-next, 'Share Tech Mono'), ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+}
+
+:root {
+  --bg: #101015;
+  --bar: #17171C;
+  --tile: #1A1A1F;
+  --line: #2B2B31;
+  --line-strong: #3A3A42;
+  --cream: #F1F0E1;
+  --muted: #9A9A92;
+  --accent: #506385;
+  --beige: #B7B6A8;
+  --ink: #101015;
+
+  --font-proto: 'Proto Mono', var(--font-proto-next, 'Share Tech Mono'), ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+}
 
 @layer base {
-  :root {
-    --font-ui: var(--font-sans), -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-    --font-mono-stat: var(--font-mono), ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
-
-    --spring-fluid: cubic-bezier(0.16, 1, 0.3, 1);
-    --spring-snappy: cubic-bezier(0.2, 0.9, 0.2, 1);
-  }
-
   * {
-    border-color: rgba(255, 255, 255, 0.1);
+    border-color: var(--line);
+    box-sizing: border-box;
   }
 
   html,
@@ -21,9 +43,9 @@
     margin: 0;
     padding: 0;
     overflow: hidden;
-    background-color: #000000;
-    color: #F8FAFC;
-    font-family: var(--font-ui);
+    background-color: var(--bg);
+    color: var(--cream);
+    font-family: var(--font-proto);
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
     user-select: none;
@@ -31,30 +53,16 @@
   }
 
   ::selection {
-    background: rgba(245, 158, 11, 0.3);
-    color: #FFFFFF;
+    background: var(--accent);
+    color: var(--cream);
+  }
+
+  button, input, textarea, select {
+    font-family: inherit;
   }
 }
 
-/* ─── Apple Pro / macOS Liquid Glass Surfaces ─── */
-.liquid-glass {
-  background-color: rgba(10, 13, 20, 0.85);
-  backdrop-filter: blur(28px) saturate(180%);
-  -webkit-backdrop-filter: blur(28px) saturate(180%);
-  border: 1px solid rgba(255, 255, 255, 0.10);
-  border-top-color: rgba(255, 255, 255, 0.20);
-  box-shadow: 0 20px 50px rgba(0, 0, 0, 0.7), inset 0 1px 0 0 rgba(255, 255, 255, 0.15);
-}
-
-.liquid-glass-subtle {
-  background-color: rgba(10, 13, 20, 0.65);
-  backdrop-filter: blur(20px) saturate(180%);
-  -webkit-backdrop-filter: blur(20px) saturate(180%);
-  border: 1px solid rgba(255, 255, 255, 0.10);
-  box-shadow: 0 15px 35px rgba(0, 0, 0, 0.6), inset 0 1px 0 0 rgba(255, 255, 255, 0.12);
-}
-
-/* ─── Aladin Lite v3 WebGL Canvas Styling Overrides ─── */
+/* ─── Aladin Lite WebGL Canvas Container ─── */
 #aladin-lite-div,
 #aladin-analyze-div,
 #aetherscope-canvas-container {
@@ -62,7 +70,7 @@
   inset: 0;
   width: 100vw;
   height: 100vh;
-  background-color: #000000;
+  background-color: var(--bg);
 }
 
 #aladin-lite-div canvas,
@@ -73,7 +81,7 @@
   display: block;
 }
 
-/* Clean up default Aladin UI chrome so macOS Pro controls take precedence */
+/* Clean up default Aladin UI chrome */
 .aladin-control,
 .aladin-reticle,
 .aladin-location-box,
@@ -96,20 +104,19 @@
   pointer-events: none !important;
 }
 
-/* Maintain required Aladin CDS logo badge at bottom right subtly */
 .aladin-logo {
-  bottom: 12px !important;
-  right: 16px !important;
-  opacity: 0.35 !important;
-  transition: opacity 200ms ease;
-  filter: grayscale(1) invert(1) drop-shadow(0 2px 4px rgba(0,0,0,0.8));
+  bottom: 8px !important;
+  right: 12px !important;
+  opacity: 0.25 !important;
+  transition: opacity 150ms ease;
+  filter: grayscale(1) invert(1);
 }
 
 .aladin-logo:hover {
-  opacity: 0.85 !important;
+  opacity: 0.7 !important;
 }
 
-/* Hide scrollbar utility */
+/* Scrollbar utilities */
 .scrollbar-none::-webkit-scrollbar {
   display: none;
 }

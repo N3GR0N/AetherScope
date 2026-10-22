@@ -1,17 +1,11 @@
 import type { Metadata, Viewport } from "next";
 import "./globals.css";
-import { Geist, Geist_Mono } from "next/font/google";
-import SquircleInitializer from "@/components/providers/SquircleInitializer";
+import { Share_Tech_Mono } from "next/font/google";
 
-const geistSans = Geist({
+const shareTechMono = Share_Tech_Mono({
+  weight: "400",
   subsets: ["latin"],
-  variable: "--font-sans",
-  display: "swap",
-});
-
-const geistMono = Geist_Mono({
-  subsets: ["latin"],
-  variable: "--font-mono",
+  variable: "--font-proto-next",
   display: "swap",
 });
 
@@ -37,7 +31,7 @@ export const viewport: Viewport = {
   initialScale: 1.0,
   maximumScale: 1.0,
   userScalable: false,
-  themeColor: "#000000",
+  themeColor: "#101015",
 };
 
 export default function RootLayout({
@@ -48,10 +42,9 @@ export default function RootLayout({
   return (
     <html
       lang="es"
-      className={`dark h-full w-full overflow-hidden select-none bg-black ${geistSans.variable} ${geistMono.variable}`}
+      className={`dark h-full w-full overflow-hidden select-none bg-[#101015] ${shareTechMono.variable}`}
     >
-      <body className="h-full w-full overflow-hidden bg-black text-white antialiased">
-        <SquircleInitializer />
+      <body className="h-full w-full overflow-hidden bg-[#101015] text-[#F1F0E1] antialiased font-[family-name:var(--font-proto)]">
         {children}
       </body>
     </html>

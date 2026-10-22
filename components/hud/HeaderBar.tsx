@@ -1,13 +1,7 @@
 "use client";
 
 import { useSpace } from "@/context/SpaceContext";
-import {
-  Crosshair,
-  Grid,
-  Compass,
-  Maximize2,
-  Telescope,
-} from "lucide-react";
+import { ArrowUpRight } from "lucide-react";
 
 interface HeaderBarProps {
   showCrosshair?: boolean;
@@ -37,79 +31,86 @@ export default function HeaderBar(props: HeaderBarProps = {}) {
   };
 
   return (
-    <header className="fixed top-4 left-4 right-4 z-40 flex items-center justify-between pointer-events-none">
-      {/* Unified Apple Pro / Liquid Glass Navigation Bar */}
-      <div className="squircle w-full bg-[#0a0d14]/82 backdrop-blur-2xl backdrop-saturate-[180%] border border-white/10 border-t-white/20 rounded-2xl px-4 py-2 flex items-center justify-between gap-3 pointer-events-auto shadow-[0_20px_50px_rgba(0,0,0,0.7),inset_0_1px_0_0_rgba(255,255,255,0.15)]">
-        
-        {/* Left Section: Product Branding */}
-        <div className="flex items-center gap-2.5 shrink-0">
-          <div className="w-6 h-6 rounded-lg bg-amber-500/15 border border-amber-500/30 flex items-center justify-center text-amber-400">
-            <Telescope className="w-3.5 h-3.5" />
-          </div>
-          <div className="flex flex-col">
-            <span className="font-semibold text-white/95 tracking-wider text-xs font-sans leading-tight">
-              AETHERSCOPE
-            </span>
-            <span className="text-[9px] font-sans text-white/40 leading-none hidden sm:inline">
-              Deep Space Spectral Navigator
-            </span>
-          </div>
+    <header className="fixed top-0 left-0 right-0 h-14 bg-[#17171C] border-b border-[#2B2B31] px-4 md:px-6 flex items-center justify-between z-40 select-none">
+      {/* Left Section: 9-dots icon & Typography Branding */}
+      <div className="flex items-center gap-3">
+        {/* 9-dot grid icon */}
+        <div
+          aria-hidden="true"
+          className="grid grid-cols-3 gap-[3px] w-4 h-4 shrink-0"
+        >
+          <div className="w-[3px] h-[3px] bg-[#F1F0E1]" />
+          <div className="w-[3px] h-[3px] bg-[#F1F0E1]" />
+          <div className="w-[3px] h-[3px] bg-[#F1F0E1]" />
+          <div className="w-[3px] h-[3px] bg-[#F1F0E1]" />
+          <div className="w-[3px] h-[3px] bg-[#F1F0E1]" />
+          <div className="w-[3px] h-[3px] bg-[#F1F0E1]" />
+          <div className="w-[3px] h-[3px] bg-[#F1F0E1]" />
+          <div className="w-[3px] h-[3px] bg-[#F1F0E1]" />
+          <div className="w-[3px] h-[3px] bg-[#F1F0E1]" />
         </div>
 
-        {/* Right Section: Tactical Tools (Crosshair, Grid, Catalog, Fullscreen) */}
-        <div className="flex items-center gap-2 shrink-0">
+        <div className="flex flex-col">
+          <span className="text-[12px] md:text-[13px] font-semibold text-[#F1F0E1] tracking-[0.24em] leading-tight uppercase font-[family-name:var(--font-proto)]">
+            AETHERSCOPE
+          </span>
+          <span className="text-[9px] text-[#9A9A92] tracking-[0.16em] leading-none uppercase font-[family-name:var(--font-proto)]">
+            DEEP SPACE SPECTRAL NAVIGATOR
+          </span>
+        </div>
+      </div>
+
+      {/* Right Section: Tactical Tools Group & Action Button */}
+      <div className="flex items-center gap-2 sm:gap-3">
+        <div className="flex items-center gap-1.5 sm:gap-2">
           {/* Central Precision Crosshair Toggle */}
           <button
             onClick={onToggleCrosshair}
-            className={`px-3 py-1.5 rounded-xl text-xs font-sans font-medium transition-all duration-150 ease-out cursor-pointer flex items-center gap-1.5 border active:scale-[0.98] ${
+            className={`px-3 py-1.5 text-[11px] uppercase tracking-[0.12em] font-[family-name:var(--font-proto)] transition-colors cursor-pointer border ${
               showCrosshair
-                ? "bg-amber-500/20 text-amber-300 border-amber-500/40 shadow-xs"
-                : "bg-white/5 text-white/65 hover:text-white/95 hover:bg-white/10 border-white/10"
+                ? "bg-[#506385] text-[#F1F0E1] border-[#506385]"
+                : "bg-transparent text-[#F1F0E1] border-[#3A3A42] hover:bg-[#1A1A1F]"
             }`}
             title="Alternar retícula central de inspección"
           >
-            <Crosshair className="w-3.5 h-3.5" />
-            <span className="hidden md:inline">Retícula</span>
+            RETÍCULA
           </button>
 
           {/* Coordinate Grid Toggle */}
           <button
             onClick={onToggleGrid}
-            className={`px-3 py-1.5 rounded-xl text-xs font-sans font-medium transition-all duration-150 ease-out cursor-pointer flex items-center gap-1.5 border active:scale-[0.98] ${
+            className={`px-3 py-1.5 text-[11px] uppercase tracking-[0.12em] font-[family-name:var(--font-proto)] transition-colors cursor-pointer border ${
               showGrid
-                ? "bg-white/20 text-white/95 border-white/35 shadow-xs"
-                : "bg-white/5 text-white/65 hover:text-white/95 hover:bg-white/10 border-white/10"
+                ? "bg-[#506385] text-[#F1F0E1] border-[#506385]"
+                : "bg-transparent text-[#F1F0E1] border-[#3A3A42] hover:bg-[#1A1A1F]"
             }`}
             title="Alternar rejilla de coordenadas celestes"
           >
-            <Grid className="w-3.5 h-3.5" />
-            <span className="hidden md:inline">Rejilla</span>
+            REJILLA
           </button>
 
           {/* Target Catalog Gallery Toggle */}
           <button
             onClick={onToggleInspector}
-            className={`px-3 py-1.5 rounded-xl text-xs font-sans font-medium transition-all duration-150 ease-out cursor-pointer flex items-center gap-1.5 border active:scale-[0.98] ${
+            className={`px-3 py-1.5 text-[11px] uppercase tracking-[0.12em] font-[family-name:var(--font-proto)] transition-colors cursor-pointer border ${
               inspectorOpen
-                ? "bg-amber-500 text-black font-semibold border-amber-400 shadow-xs"
-                : "bg-amber-500/10 text-amber-300/90 hover:bg-amber-500/20 border-amber-500/30"
+                ? "bg-[#506385] text-[#F1F0E1] border-[#506385]"
+                : "bg-transparent text-[#F1F0E1] border-[#3A3A42] hover:bg-[#1A1A1F]"
             }`}
             title="Abrir catálogo curado de objetos astronómicos"
           >
-            <Compass className="w-3.5 h-3.5" />
-            <span>Catálogo</span>
-          </button>
-
-          {/* Fullscreen Button */}
-          <button
-            onClick={toggleFullscreen}
-            className="p-1.5 rounded-xl bg-white/5 text-white/65 hover:text-white/95 hover:bg-white/10 border border-white/10 transition-all duration-150 ease-out cursor-pointer active:scale-[0.98]"
-            title="Pantalla completa"
-          >
-            <Maximize2 className="w-4 h-4" />
+            CATÁLOGO
           </button>
         </div>
 
+        {/* Circular Action Button (Fullscreen / Expand) */}
+        <button
+          onClick={toggleFullscreen}
+          className="w-8 h-8 rounded-full bg-[#F1F0E1] text-[#101015] flex items-center justify-center hover:opacity-90 active:scale-95 transition-all cursor-pointer ml-1"
+          title="Pantalla completa"
+        >
+          <ArrowUpRight className="w-4 h-4 text-[#101015]" strokeWidth={2.5} />
+        </button>
       </div>
     </header>
   );

@@ -8,7 +8,7 @@ import {
   TARGET_ANALYSIS_ZOOM_FOV_DEG,
 } from "@/lib/astronomy/coordinates";
 import { matchLocalDossier } from "@/lib/astronomy/crossmatch";
-import { Target, Loader2, ZoomIn, Info } from "lucide-react";
+import { ArrowUpRight, Search, Loader2 } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
 
@@ -19,12 +19,7 @@ export default function CaptureZoneButton() {
   const [isScanning, setIsScanning] = useState(false);
   const [, startTransition] = useTransition();
 
-  // Evaluación de umbral de zoom para especificidad de análisis
-  // Cuanto menor es el FOV, más zoom tiene la cámara (más cercano al objeto)
   const isZoomSufficient = currentFov <= MAX_ANALYSIS_FOV_THRESHOLD_DEG;
-
-  // Cálculo de ratio relativo de zoom para feedback al usuario
-  // Ejemplo: si el usuario está en 8° y el umbral es 2°, está a 0.25x del zoom requerido.
   const currentFovFormatted = formatFov(currentFov);
   const thresholdFovFormatted = formatFov(MAX_ANALYSIS_FOV_THRESHOLD_DEG);
 
@@ -67,7 +62,6 @@ export default function CaptureZoneButton() {
       console.warn("[AetherScope] Error guardando sesión en CaptureZoneButton:", err);
     }
 
-    // Feedback táctil y transición sub-200ms
     startTransition(() => {
       router.push(
         `/analyze?ra=${finalRa.toFixed(5)}&dec=${finalDec.toFixed(5)}&fov=${finalFov.toFixed(4)}`
@@ -75,94 +69,91 @@ export default function CaptureZoneButton() {
     });
   };
 
-  // Zoom-in asistido al hacer clic cuando está fuera de rango
   const handleAssistiveZoom = () => {
     setFovPreset(TARGET_ANALYSIS_ZOOM_FOV_DEG);
   };
 
   return (
-    <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-30 pointer-events-auto">
-      <div className="flex flex-col items-center gap-2">
-        {/* Detected Target Badge if notable object is in local range */}
-        {localMatch && (
-          <div className="animate-in fade-in slide-in-from-bottom-2 duration-300 px-3.5 py-1 rounded-full bg-[#10B981]/15 border border-[#10B981]/30 backdrop-blur-xl flex items-center gap-2 text-[11px] font-sans text-emerald-300 shadow-md">
-            <span className="w-1.5 h-1.5 rounded-full bg-emerald-400" />
-            <span className="font-semibold text-white/95">{localMatch.name}</span>
-            <span className="text-white/40">•</span>
-            <span className="text-emerald-400/90 text-[10px] font-mono">{localMatch.objectType}</span>
-          </div>
-        )}
-
-        {/* Banner informativo si el campo es demasiado amplio (Zoom < umbral) */}
-        {!isZoomSufficient && (
-          <div
+    <aside
+      aria-label="Zona de Análisis Espectral"
+      className="fixed bottom-5 right-5 z-30 pointer-events-auto flex flex-col gap-2 w-[340px] sm:w-[420px] max-w-[calc(100vw-2.5rem)] font-[family-name:var(--font-proto)] select-none"
+    >
+      {/* ── CARD 1: CAMPO MUY AMPLIO (Aviso en --accent) ── */}
+      {!isZoomSufficient && (
+        <div className="bg-[#506385] border border-[#506385] px-3.5 py-2.5 flex items-center justify-between gap-2.5">
+          <span className="text-[10px] sm:text-[11px] uppercase tracking-[0.06em] text-[#F1F0E1] leading-tight flex-1">
+            CAMPO MUY AMPLIO ({currentFovFormatted.rawText}). ACERCÁ A ≤ {thresholdFovFormatted.rawText} PARA ANALIZAR
+          </span>
+          <button
             onClick={handleAssistiveZoom}
-            className="animate-in fade-in slide-in-from-bottom-1 duration-200 px-3 py-1 rounded-full bg-[#0a0d14]/90 border border-amber-500/30 backdrop-blur-xl flex items-center gap-2 text-[11px] font-sans text-amber-300/90 shadow-lg cursor-pointer hover:bg-amber-500/10 hover:border-amber-400 transition-all group"
-            title="Haz clic para aproximar la cámara automáticamente al sector específico"
+            className="bg-[#F1F0E1] text-[#101015] px-2.5 py-1 text-[10px] uppercase font-bold tracking-[0.1em] flex items-center gap-1.5 shrink-0 hover:opacity-90 active:scale-95 transition-all cursor-pointer"
+            title="Aproximar cámara automáticamente"
           >
-            <Info className="w-3.5 h-3.5 text-amber-400 shrink-0" />
-            <span>
-              Campo muy amplio ({currentFovFormatted.rawText}). Acercá a ≤ {thresholdFovFormatted.rawText} para analizar
-            </span>
-            <span className="hidden sm:inline-flex items-center gap-1 font-mono text-[10px] text-amber-400 bg-amber-500/20 px-2 py-0.5 rounded-md group-hover:bg-amber-500/30">
-              <ZoomIn className="w-3 h-3" />
-              <span>Aproximar</span>
-            </span>
-          </div>
-        )}
+            <Search className="w-3 h-3 text-[#101015]" strokeWidth={2.5} />
+            <span>APROXIMAR</span>
+          </button>
+        </div>
+      )}
 
-        {/* Target Scanner Button (Apple Pro Glass + Squircle) */}
-        <button
-          onClick={isZoomSufficient ? handleCapture : handleAssistiveZoom}
-          disabled={isScanning}
-          className={`squircle group flex items-center gap-3 px-5 py-2.5 rounded-full border backdrop-blur-2xl transition-all duration-200 ease-out ${
-            isZoomSufficient
-              ? "bg-[#0a0d14]/85 hover:bg-[#0a0d14]/98 text-white/95 border-white/10 border-t-white/20 shadow-[0_20px_50px_rgba(0,0,0,0.7),inset_0_1px_0_0_rgba(255,255,255,0.15)] cursor-pointer active:scale-[0.98]"
-              : "bg-white/[0.04] hover:bg-white/[0.07] text-white/40 border-white/10 cursor-pointer border-dashed"
-          }`}
-          title={
-            isZoomSufficient
-              ? "Analizar e investigar sector enfocado en el Laboratorio Astrofísico"
-              : "Sector demasiado amplio. Haz clic para hacer zoom automático hasta el nivel de análisis."
-          }
-        >
-          {/* Target Scanner Icon */}
-          <div
-            className={`flex items-center justify-center w-6 h-6 rounded-full border transition-transform duration-150 ${
-              isZoomSufficient
-                ? "bg-amber-500/15 border-amber-500/30 text-amber-400 group-hover:scale-105"
-                : "bg-white/5 border-white/15 text-white/40 group-hover:text-amber-400"
-            }`}
+      {/* ── CARD 2: CTA PRINCIPAL DE ANÁLISIS EN --BEIGE ── */}
+      <div
+        onClick={isZoomSufficient ? handleCapture : handleAssistiveZoom}
+        className={`bg-[#B7B6A8] text-[#101015] border border-[#B7B6A8] p-4 flex flex-col justify-between gap-3 transition-opacity cursor-pointer ${
+          isScanning ? "opacity-75 cursor-wait" : "hover:opacity-98"
+        }`}
+        title={
+          isZoomSufficient
+            ? "Analizar e investigar sector enfocado en el Laboratorio Astrofísico"
+            : "Haz clic para aproximar la cámara automáticamente al sector específico"
+        }
+      >
+        {/* Top telemetry row */}
+        <div className="flex items-center justify-between text-[9.5px] uppercase tracking-[0.12em] text-[#101015]/75">
+          <span className="font-semibold">ANÁLISIS ESPECTRAL</span>
+          <span>
+            {isZoomSufficient
+              ? localMatch
+                ? `${localMatch.name} · ENFOCADO`
+                : "SECTOR ENFOCADO"
+              : `BLOQUEADO · FOV > ${thresholdFovFormatted.rawText}`}
+          </span>
+        </div>
+
+        {/* Main CTA Title */}
+        <div className="flex items-baseline justify-between gap-2">
+          <h2 className="text-[20px] sm:text-[23px] font-bold text-[#101015] uppercase tracking-wide leading-none">
+            {isScanning ? (
+              <span className="flex items-center gap-2">
+                <Loader2 className="w-5 h-5 animate-spin text-[#101015]" />
+                <span>INICIANDO ANÁLISIS...</span>
+              </span>
+            ) : isZoomSufficient ? (
+              localMatch ? `ANALIZAR ${localMatch.name.toUpperCase()}` : "ANALIZAR SECTOR"
+            ) : (
+              "ACERCAR PARA ANALIZAR"
+            )}
+          </h2>
+        </div>
+
+        {/* Bottom coordinate readout & circular action button */}
+        <div className="flex items-center justify-between pt-1 border-t border-[#101015]/15">
+          <span className="text-[11px] text-[#101015]/85 tabular-nums font-medium tracking-tight">
+            {coords.raHms} · {coords.decDms}
+          </span>
+
+          <button
+            disabled={isScanning}
+            className="w-8 h-8 rounded-full bg-[#101015] text-[#F1F0E1] flex items-center justify-center hover:scale-105 active:scale-95 transition-all shrink-0 cursor-pointer"
+            title={isZoomSufficient ? "Entrar al laboratorio" : "Aproximar"}
           >
             {isScanning ? (
-              <Loader2 className="w-3.5 h-3.5 animate-spin text-amber-400" />
-            ) : isZoomSufficient ? (
-              <Target className="w-3.5 h-3.5 text-amber-400" />
+              <Loader2 className="w-4 h-4 animate-spin text-[#F1F0E1]" />
             ) : (
-              <ZoomIn className="w-3.5 h-3.5 text-white/50 group-hover:text-amber-400" />
+              <ArrowUpRight className="w-4 h-4 text-[#F1F0E1]" strokeWidth={2.5} />
             )}
-          </div>
-
-          {/* Action Label & Coordinates */}
-          <div className="flex items-center gap-2.5">
-            <span
-              className={`text-xs sm:text-sm font-sans tracking-wide font-semibold ${
-                isZoomSufficient ? "text-white/95" : "text-white/50 group-hover:text-white/80"
-              }`}
-            >
-              {isZoomSufficient ? "Analizar Sector" : "Acercar para Analizar"}
-            </span>
-            <span className="hidden sm:inline-block w-px h-3.5 bg-white/15" />
-            <span
-              className={`hidden sm:inline-block text-[11px] font-mono tabular-nums ${
-                isZoomSufficient ? "text-white/50" : "text-white/30"
-              }`}
-            >
-              {coords.raHms} • {coords.decDms}
-            </span>
-          </div>
-        </button>
+          </button>
+        </div>
       </div>
-    </div>
+    </aside>
   );
 }

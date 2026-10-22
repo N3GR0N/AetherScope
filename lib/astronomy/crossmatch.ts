@@ -147,8 +147,8 @@ export async function querySimbadCone(
       }
       return null;
     }
-  } catch (err) {
-    console.warn('[AetherScope] VizieR TAP no disponible o abortado por timeout:', err);
+  } catch {
+    // VizieR TAP no disponible en este momento o bloqueado por red/CORS/timeout; degradación silenciosa
   }
 
   // 2. Intento secundario: CDS SIMBAD TAP con timeout de 1.5s
@@ -194,8 +194,8 @@ export async function querySimbadCone(
         };
       }
     }
-  } catch (err) {
-    console.warn('[AetherScope] SIMBAD TAP no disponible o abortado por timeout:', err);
+  } catch {
+    // SIMBAD TAP no disponible o bloqueado por red/CORS/timeout; degradación silenciosa
   }
 
   return null;

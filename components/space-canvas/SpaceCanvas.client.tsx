@@ -449,34 +449,32 @@ export default function SpaceCanvas(props: SpaceCanvasProps = {}) {
 
       {/* Atmospheric Loading Indicator */}
       {loadingState === "loading" && (
-        <div className="absolute inset-0 z-30 flex flex-col items-center justify-center bg-black/85 backdrop-blur-md">
+        <div className="absolute inset-0 z-30 flex flex-col items-center justify-center bg-[#101015]/90 font-[family-name:var(--font-proto)] select-none">
           <div className="relative flex items-center justify-center mb-6">
-            <div className="w-20 h-20 rounded-full border border-sky-400/20 animate-ping absolute" />
-            <div className="w-16 h-16 rounded-full border border-amber-400/30 flex items-center justify-center bg-black/60 shadow-[0_0_30px_rgba(245,158,11,0.2)]">
-              <Loader2 className="w-7 h-7 text-amber-400 animate-spin" />
+            <div className="w-16 h-16 border-2 border-[#506385] border-t-[#F1F0E1] animate-spin flex items-center justify-center bg-[#17171C]">
+              <Loader2 className="w-6 h-6 text-[#F1F0E1] animate-spin" />
             </div>
           </div>
 
           <div className="text-center space-y-2">
-            <div className="flex items-center justify-center gap-2 text-white/90 font-medium tracking-wide text-sm">
-              <Sparkles className="w-4 h-4 text-amber-400 animate-pulse" />
+            <div className="flex items-center justify-center gap-2 text-[#F1F0E1] font-semibold tracking-[0.2em] uppercase text-xs">
               <span>AETHERSCOPE ENGINE V3</span>
             </div>
-            <p className="text-xs text-white/50 font-mono tracking-wider">{statusMessage}</p>
+            <p className="text-[10px] text-[#9A9A92] uppercase tracking-wider">{statusMessage}</p>
           </div>
         </div>
       )}
 
       {/* Fallback View if WebGL fails / Offline Mode */}
       {loadingState === "fallback" && (
-        <div className="absolute inset-0 z-20 flex flex-col items-center justify-center bg-gradient-to-b from-[#050811] via-[#090d1a] to-[#030408] p-8 text-center">
-          <div className="max-w-md p-6 rounded-2xl bg-black/60 border border-white/10 backdrop-blur-2xl shadow-2xl space-y-4">
-            <div className="w-12 h-12 rounded-xl bg-amber-500/10 border border-amber-500/20 mx-auto flex items-center justify-center text-amber-400">
-              <WifiOff className="w-6 h-6" />
+        <div className="absolute inset-0 z-20 flex flex-col items-center justify-center bg-[#101015] p-8 text-center font-[family-name:var(--font-proto)] select-none">
+          <div className="max-w-md p-6 bg-[#1A1A1F] border border-[#2B2B31] space-y-4">
+            <div className="w-10 h-10 bg-[#17171C] border border-[#2B2B31] mx-auto flex items-center justify-center text-[#F1F0E1]">
+              <WifiOff className="w-5 h-5" />
             </div>
             <div className="space-y-1">
-              <h3 className="text-white font-medium text-base">Modo Telemetría Espectral</h3>
-              <p className="text-xs text-white/60 leading-relaxed">
+              <h3 className="text-[#F1F0E1] font-bold text-sm uppercase tracking-wide">MODO TELEMETRÍA ESPECTRAL</h3>
+              <p className="text-[11px] text-[#9A9A92] leading-relaxed uppercase">
                 El enlace con los servidores de Estrasburgo demoró en responder. Mostrando telemetría y
                 coordenadas calculadas en memoria local.
               </p>
@@ -486,9 +484,9 @@ export default function SpaceCanvas(props: SpaceCanvasProps = {}) {
                 setLoadingState("loading");
                 setRetryCount((c) => c + 1);
               }}
-              className="px-4 py-2 rounded-xl bg-white/10 hover:bg-white/15 text-xs text-white font-medium border border-white/10 transition-all cursor-pointer"
+              className="px-4 py-2 bg-[#506385] text-[#F1F0E1] text-[11px] uppercase tracking-wider font-semibold transition-colors hover:opacity-90 cursor-pointer"
             >
-              Reintentar Conexión HiPS
+              REINTENTAR CONEXIÓN HIPS
             </button>
           </div>
         </div>

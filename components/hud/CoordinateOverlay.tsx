@@ -6,7 +6,6 @@ import {
   formatFov,
   getConstellation,
 } from "@/lib/astronomy/coordinates";
-import { Compass, Disc, Satellite } from "lucide-react";
 
 interface CoordinateOverlayProps {
   ra?: number;
@@ -25,89 +24,91 @@ export default function CoordinateOverlay(props: CoordinateOverlayProps = {}) {
   const fovInfo = formatFov(fov);
   const constellation = getConstellation(ra, dec);
 
+  // Extract clean numerical fov for hero readout
+  const fovNumber = fovInfo.value;
+  const fovUnit = fovInfo.unit.toUpperCase();
+
   return (
     <aside
       aria-label="Telemetría de Coordenadas Astronómicas y Órbita"
-      className="fixed bottom-5 left-5 z-30 w-[240px] max-w-[calc(100vw-2.5rem)] pointer-events-auto"
+      className="fixed bottom-5 left-5 z-30 w-[320px] sm:w-[350px] max-w-[calc(100vw-2.5rem)] pointer-events-auto flex flex-col gap-2 font-[family-name:var(--font-proto)] select-none"
     >
-      <div
-        suppressHydrationWarning
-        className="squircle bg-[#0a0d14]/82 backdrop-blur-2xl backdrop-saturate-[180%] border border-white/10 border-t-white/20 rounded-2xl p-3 shadow-[0_20px_50px_rgba(0,0,0,0.7),inset_0_1px_0_0_rgba(255,255,255,0.15)] flex flex-col gap-2"
-      >
-        
-        {/* Top Header Row: Sistema J2000 & Constellation */}
-        <div className="flex items-center justify-between text-[10px] tracking-wider text-white/40 border-b border-white/10 pb-1.5">
-          <div className="flex items-center gap-1.5 text-white/95 font-medium font-sans">
-            <span className="w-1.5 h-1.5 rounded-full bg-amber-400" />
-            <span className="text-[10px] font-mono tracking-wider text-amber-400/90 font-medium">SISTEMA J2000.0</span>
-          </div>
-          <div className="flex items-center gap-1 text-white/40 font-sans">
-            <Compass className="w-3 h-3 text-white/40" />
-            <span className="truncate max-w-[90px] text-[10px] text-white/65">{constellation}</span>
-          </div>
+      {/* ── CARD 1: SISTEMA J2000.0 Y COORDENADAS ── */}
+      <div className="bg-[#1A1A1F] border border-[#2B2B31] p-3.5 flex flex-col gap-2.5">
+        {/* Top Header: System & Constellation */}
+        <div className="flex items-center justify-between text-[10px] tracking-[0.16em] uppercase">
+          <span className="text-[#F1F0E1] font-semibold">SISTEMA J2000.0</span>
+          <span className="text-[#9A9A92] truncate max-w-[150px]">
+            {constellation}
+          </span>
         </div>
 
-        {/* Coordinate Rows: RA & Dec (Geist Mono + Tabular Nums) */}
-        <div className="grid grid-cols-2 gap-2 text-xs">
-          {/* Right Ascension (RA) */}
+        {/* 2-column Coordinates Grid */}
+        <div className="grid grid-cols-2 gap-3 pt-0.5">
+          {/* RA */}
           <div className="space-y-0.5">
-            <span className="text-[9px] font-sans uppercase tracking-wider text-white/40 block">
+            <span className="text-[9px] uppercase tracking-[0.14em] text-[#9A9A92] block">
               Ascensión Recta
             </span>
-            <div className="font-mono text-white/95 font-semibold text-xs tabular-nums">
+            <div className="text-[13px] text-[#F1F0E1] font-medium tabular-nums">
               {coords.raHms}
             </div>
-            <div className="text-[9px] font-mono text-white/40 tabular-nums">
+            <div className="text-[10px] text-[#9A9A92] tabular-nums">
               {coords.raDegrees}
             </div>
           </div>
 
-          {/* Declination (Dec) */}
+          {/* Dec */}
           <div className="space-y-0.5">
-            <span className="text-[9px] font-sans uppercase tracking-wider text-white/40 block">
+            <span className="text-[9px] uppercase tracking-[0.14em] text-[#9A9A92] block">
               Declinación
             </span>
-            <div className="font-mono text-white/95 font-semibold text-xs tabular-nums">
+            <div className="text-[13px] text-[#F1F0E1] font-medium tabular-nums">
               {coords.decDms}
             </div>
-            <div className="text-[9px] font-mono text-white/40 tabular-nums">
+            <div className="text-[10px] text-[#9A9A92] tabular-nums">
               {coords.decDegrees}
             </div>
           </div>
         </div>
+      </div>
 
-        {/* FOV and Angular Scale Row */}
-        <div className="flex items-center justify-between pt-1 border-t border-white/10 text-[10px] text-white/65">
-          <div className="flex items-center gap-1.5 font-sans">
-            <Disc className="w-3 h-3 text-white/40" />
-            <span>Escala (FOV):</span>
-          </div>
-          <div className="flex items-center gap-1 font-mono font-semibold text-white/95 tabular-nums">
-            <span>{fovInfo.rawText}</span>
-            <span className="text-[8px] text-white/40 uppercase">({fovInfo.unit})</span>
+      {/* ── CARD 2 & 3: ESCALA FOV & ESTADO ORBITAL ── */}
+      <div className="grid grid-cols-2 gap-2">
+        {/* Escala (FOV) Card in --accent */}
+        <div className="bg-[#506385] border border-[#506385] p-3.5 flex flex-col justify-between min-h-[90px]">
+          <span className="text-[9px] uppercase tracking-[0.16em] text-[#F1F0E1]/80 block">
+            ESCALA (FOV)
+          </span>
+          <div className="flex items-baseline gap-1.5 mt-2">
+            <span className="text-[34px] font-bold text-[#F1F0E1] leading-none tabular-nums">
+              {fovNumber}
+            </span>
+            <span className="text-[10px] text-[#F1F0E1]/80 uppercase tracking-wider font-medium">
+              / {fovUnit}
+            </span>
           </div>
         </div>
 
-        {/* Active Space Telescope Orbital Status */}
-        <div className="pt-1.5 border-t border-white/10 space-y-1 text-[9px]">
-          <div className="flex items-center justify-between text-white/65">
-            <div className="flex items-center gap-1 font-sans">
-              <Satellite className="w-2.5 h-2.5 text-amber-400" />
-              <span className="truncate max-w-[130px] font-medium text-white/95">
-                {activeTelescope.name}
-              </span>
+        {/* Space Telescope Orbital Status */}
+        <div className="bg-[#1A1A1F] border border-[#2B2B31] p-3.5 flex flex-col justify-between min-h-[90px]">
+          <div className="flex items-center justify-between">
+            <span className="text-[9px] uppercase tracking-[0.14em] text-[#F1F0E1] font-semibold truncate max-w-[110px]">
+              {activeTelescope.name}
+            </span>
+            <div className="w-1.5 h-1.5 bg-[#F1F0E1] shrink-0" />
+          </div>
+
+          <div className="space-y-0.5 my-1">
+            <div className="text-[8.5px] text-[#9A9A92] uppercase leading-tight line-clamp-1">
+              {activeTelescope.orbitType}
             </div>
-            <span
-              className="w-1.5 h-1.5 rounded-full bg-amber-400/80"
-            />
           </div>
 
-          <div className="flex items-center justify-between text-white/40 text-[8.5px] font-mono tabular-nums">
-            <span className="truncate max-w-[140px] font-sans text-white/40">{activeTelescope.orbitType}</span>
-            <span className="text-white/40">{activeTelescope.altitudeInfo.split(" ")[0]}</span>
+          <div className="text-[12px] text-[#F1F0E1] font-medium tabular-nums truncate">
+            {activeTelescope.altitudeInfo.split(" ")[0]} <span className="text-[9px] text-[#9A9A92]">KM</span>
           </div>
         </div>
-
       </div>
     </aside>
   );
