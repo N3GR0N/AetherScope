@@ -400,18 +400,6 @@ function LaboratoryContent() {
           {/* Reticle */}
           <PrecisionCrosshair visible={true} fov={fovParam} variant="compact" label="CENTRO DE CAPTURA" />
 
-          {/* Reopen Floating Button if panel is collapsed */}
-          {!isSidebarOpen && (
-            <button
-              onClick={toggleSidebar}
-              className="absolute right-4 top-4 z-30 px-3 py-2 bg-[#17171C] border border-[#3A3A42] text-[#F1F0E1] text-[11px] uppercase tracking-wider flex items-center gap-2 hover:bg-[#1A1A1F] transition-colors cursor-pointer"
-              title="Mostrar panel de análisis"
-            >
-              <span>MOSTRAR PANEL</span>
-              <ArrowUpRight className="w-3.5 h-3.5" />
-            </button>
-          )}
-
           {/* Bottom Floating Spectral Filters & Mixing Dock */}
           <div className="absolute bottom-4 left-4 right-4 z-30 pointer-events-none flex justify-center">
             <div className="w-full max-w-4xl bg-[#101015]/95 border border-[#2B2B31] p-3 pointer-events-auto flex flex-col gap-2.5 font-[family-name:var(--font-proto)] select-none">

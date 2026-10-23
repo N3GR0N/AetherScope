@@ -58,6 +58,7 @@ export default function CaptureZoneButton() {
         JSON.stringify({ ra: finalRa, dec: finalDec })
       );
       sessionStorage.setItem("aetherscope_active_fov", JSON.stringify(finalFov));
+      sessionStorage.setItem("aetherscope_lab_panel_open", JSON.stringify(true));
     } catch (err) {
       console.warn("[AetherScope] Error guardando sesión en CaptureZoneButton:", err);
     }
