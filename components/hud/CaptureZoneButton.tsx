@@ -7,7 +7,7 @@ import {
   MAX_ANALYSIS_FOV_THRESHOLD_DEG,
   TARGET_ANALYSIS_ZOOM_FOV_DEG,
 } from "@/lib/astronomy/coordinates";
-import { matchLocalDossier } from "@/lib/astronomy/crossmatch";
+import { matchLocalDossierCapture } from "@/lib/astronomy/crossmatch";
 import { ArrowUpRight, Search, Loader2 } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
@@ -23,8 +23,16 @@ export default function CaptureZoneButton() {
   const currentFovFormatted = formatFov(currentFov);
   const thresholdFovFormatted = formatFov(MAX_ANALYSIS_FOV_THRESHOLD_DEG);
 
-  // Quick cross-match preview using Layer 1 local cache for instant HUD feedback
-  const localMatch = isZoomSufficient ? matchLocalDossier(currentRa, currentDec, 0.4) : null;
+  // Quick cross-match preview using Layer 1 local footprint classification
+  const localMatchResult = isZoomSufficient
+    ? matchLocalDossierCapture({
+        raDeg: currentRa,
+        decDeg: currentDec,
+        radiusDeg: currentFov / 2,
+      })
+    : null;
+  const localMatch = localMatchResult?.object ?? null;
+  const matchState = localMatchResult?.state ?? 'none';
   const coords = formatCoordinates(currentRa, currentDec);
 
   const handleCapture = () => {
@@ -113,8 +121,10 @@ export default function CaptureZoneButton() {
           <span className="font-semibold">ANÁLISIS ESPECTRAL</span>
           <span>
             {isZoomSufficient
-              ? localMatch
+              ? matchState === 'inside' && localMatch
                 ? `${localMatch.name} · ENFOCADO`
+                : matchState === 'edge' && localMatch
+                ? `BORDE DE ${localMatch.name}`
                 : "SECTOR ENFOCADO"
               : `BLOQUEADO · FOV > ${thresholdFovFormatted.rawText}`}
           </span>

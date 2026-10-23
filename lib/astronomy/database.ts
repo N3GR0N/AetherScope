@@ -17,6 +17,15 @@ export interface CatalogTarget {
   raDeg: number;
   decDeg: number;
   toleranceDeg: number; // Radio de búsqueda angular (por defecto 0.4° - 0.6°)
+  /**
+   * DIÁMETROS angulares completos en minutos de arco (arcmin), NO semiejes.
+   * positionAngleDeg: Ángulo de posición del semieje mayor en grados (0-180), de Norte hacia Este.
+   * sizeSource: Origen de los datos astrométricos de tamaño.
+   */
+  majorDiameterArcmin?: number;
+  minorDiameterArcmin?: number;
+  positionAngleDeg?: number;
+  sizeSource?: 'simbad' | 'ned' | 'estimate';
   description: string;
   spectralFeatures: string[];
   astrophysicalDetails: {
@@ -67,6 +76,10 @@ export const CELESTIAL_CATALOG: CatalogTarget[] = [
     raDeg: 274.7,
     decDeg: -13.806,
     toleranceDeg: 0.45,
+    majorDiameterArcmin: 80.0,
+    minorDiameterArcmin: 80.0,
+    positionAngleDeg: 0,
+    sizeSource: 'simbad',
     description:
       "Colosales columnas de gas molecular frío y polvo de silicatos esculpidas por vientos estelares y radiación ultravioleta extrema procedente de estrellas masivas jóvenes del cúmulo NGC 6611.",
     spectralFeatures: [
@@ -148,6 +161,10 @@ export const CELESTIAL_CATALOG: CatalogTarget[] = [
     raDeg: 189.9975,
     decDeg: -11.6231,
     toleranceDeg: 0.45,
+    majorDiameterArcmin: 8.51,
+    minorDiameterArcmin: 5.01,
+    positionAngleDeg: 90,
+    sizeSource: 'simbad',
     description:
       "Galaxia espiral icónica distinguida por un gigantesco bulbo central y una densa banda simétrica de polvo interestelar oscuro en su plano ecuatorial. Aloja un agujero negro central de mil millones de masas solares.",
     spectralFeatures: [
@@ -175,6 +192,9 @@ export const CELESTIAL_CATALOG: CatalogTarget[] = [
     raDeg: 83.6331,
     decDeg: 22.0145,
     toleranceDeg: 0.45,
+    majorDiameterArcmin: 7.0,
+    minorDiameterArcmin: 5.0,
+    sizeSource: 'simbad',
     description:
       "Remanente de la supernova histórica del año 1054 d.C. En su núcleo reside un púlsar que rota 30 veces por segundo, energizando una nebulosa de viento relativista y filamentos de helio e hidrógeno en expansión.",
     spectralFeatures: [

@@ -20,6 +20,15 @@ export interface CosmicTarget {
   };
   primarySurveyId?: string;
   overlaySurveyId?: string;
+  /**
+   * DIÁMETROS angulares completos en minutos de arco (arcmin), NO semiejes.
+   * positionAngleDeg: Ángulo de posición del semieje mayor en grados (0-180), de Norte hacia Este.
+   * sizeSource: Origen de los datos astrométricos de tamaño ('simbad' | 'ned' | 'estimate').
+   */
+  majorDiameterArcmin?: number;
+  minorDiameterArcmin?: number;
+  positionAngleDeg?: number;
+  sizeSource?: 'simbad' | 'ned' | 'estimate';
 }
 
 // Backwards-compatibility type alias
@@ -71,6 +80,10 @@ export const COSMIC_TARGETS: CosmicTarget[] = [
     },
     primarySurveyId: 'nasa-composite',
     overlaySurveyId: 'optical',
+    majorDiameterArcmin: 80.0,
+    minorDiameterArcmin: 80.0,
+    positionAngleDeg: 0,
+    sizeSource: 'simbad',
   },
   {
     id: 'smacs0723',
@@ -107,6 +120,10 @@ export const COSMIC_TARGETS: CosmicTarget[] = [
     },
     primarySurveyId: 'optical',
     overlaySurveyId: 'xray',
+    majorDiameterArcmin: 8.51,
+    minorDiameterArcmin: 5.01,
+    positionAngleDeg: 90,
+    sizeSource: 'simbad',
   },
   {
     id: 'carina',

@@ -20,6 +20,14 @@ node_modules/
 # testing
 /coverage
 coverage/
+.vitest/
+
+# supabase local state
+supabase/.temp/
+supabase/.branches/
+
+# user export files
+aetherscope-bitacora*.json
 
 # next.js
 /.next/

@@ -1,16 +1,41 @@
 /**
- * AetherScope - Hybrid Celestial Cross-Match Engine
+ * AetherScope - Hybrid Celestial Cross-Match Engine with Angular Footprint Classification
  * 
- * Layer 1: Local high-precision dossier cache from unified CELESTIAL_CATALOG (angular distance <= tolerance).
- * Layer 2: Real-time public CDS VizieR / SIMBAD TAP fallback using parameterized ADQL cone search.
- * Layer 3: Unregistered deep field sector fallback.
+ * Capa 1: Búsqueda local en CELESTIAL_CATALOG evaluada por classifyCapture().
+ * Capa 2: Fallback en tiempo real a CDS SIMBAD TAP con búsqueda de cono y extracción de diámetros.
+ * Capa 3: Sector sin objeto catalogado con hasta 5 candidatos cercanos.
  */
 
 import { getConstellation, calculateAngularSeparation } from './coordinates';
-import { CELESTIAL_CATALOG, type CatalogTarget } from './database';
+import { CELESTIAL_CATALOG } from './database';
+import {
+  classifyCapture,
+  type Capture,
+  type CaptureMatchState,
+  type FootprintTarget,
+} from './footprint';
 
-export interface AstronomicalObjectResult {
-  source: 'local_dossier' | 'simbad_api' | 'unregistered';
+export interface Candidate {
+  id?: string;
+  name: string;
+  designation?: string;
+  objectType: string;
+  raDeg: number;
+  decDeg: number;
+  separationDeg: number;
+  state: CaptureMatchState;
+  normalizedRadius: number;
+  angularAreaArcmin2: number;
+  majorDiameterArcmin?: number;
+  minorDiameterArcmin?: number;
+  positionAngleDeg?: number;
+  sizeSource?: 'simbad' | 'ned' | 'estimate';
+  source: 'dossier' | 'simbad';
+  description?: string;
+}
+
+export interface MatchedCelestialObject {
+  id?: string;
   name: string;
   designation?: string;
   objectType: string;
@@ -20,230 +45,467 @@ export interface AstronomicalObjectResult {
   constellation?: string;
   description: string;
   spectralFeatures: string[];
+  majorDiameterArcmin?: number;
+  minorDiameterArcmin?: number;
+  positionAngleDeg?: number;
+  sizeSource?: 'simbad' | 'ned' | 'estimate';
+  source: 'local_dossier' | 'simbad_api' | 'unregistered';
+}
+
+// Backwards-compatibility type alias
+export type AstronomicalObjectResult = MatchedCelestialObject;
+
+export interface CaptureMatch {
+  state: CaptureMatchState;
+  object?: MatchedCelestialObject;
+  separationDeg: number;
+  normalizedRadius: number;
+  partial: boolean;
+  candidates: Candidate[];
+  source: 'dossier' | 'simbad' | 'none';
+  simbadUnavailable?: boolean;
 }
 
 export { calculateAngularSeparation, calculateAngularSeparation as calculateOrthodromicDistance };
 
+// Caché en memoria para evitar consultas duplicadas
+const crossMatchCache = new Map<string, CaptureMatch>();
+
 /**
- * Capa 1: Búsqueda en catálogo curado local con tolerancia angular
+ * Capa 1: Búsqueda en catálogo curado local evaluando la huella angular elíptica.
+ * Selección del mejor candidato:
+ * 1. Primero los 'inside', ordenados por menor área angular (el más específico).
+ * 2. Si no hay 'inside', el mejor 'edge' con partial: true.
+ * 3. Si no hay ninguno, 'none'.
+ */
+export function matchLocalDossierCapture(capture: Capture): CaptureMatch {
+  const candidates: Candidate[] = [];
+
+  for (const item of CELESTIAL_CATALOG) {
+    const target: FootprintTarget = {
+      raDeg: item.raDeg,
+      decDeg: item.decDeg,
+      majorDiameterArcmin: item.majorDiameterArcmin,
+      minorDiameterArcmin: item.minorDiameterArcmin,
+      positionAngleDeg: item.positionAngleDeg,
+      sizeSource: item.sizeSource,
+      objectType: item.objectType,
+      nature: item.nature,
+    };
+
+    const classification = classifyCapture(capture, target);
+
+    if (classification.state !== 'none') {
+      candidates.push({
+        id: item.id,
+        name: item.name,
+        designation: item.designation,
+        objectType: item.objectType,
+        raDeg: item.raDeg,
+        decDeg: item.decDeg,
+        separationDeg: classification.separationDeg,
+        state: classification.state,
+        normalizedRadius: classification.normalizedRadius,
+        angularAreaArcmin2: classification.angularAreaArcmin2,
+        majorDiameterArcmin: classification.effectiveMajorDiameterArcmin,
+        minorDiameterArcmin: classification.effectiveMinorDiameterArcmin,
+        positionAngleDeg: classification.effectivePositionAngleDeg,
+        sizeSource: classification.sizeSource,
+        source: 'dossier',
+        description: item.description,
+      });
+    }
+  }
+
+  // Ordenar: primero 'inside' por menor área angular (más específico); luego 'edge' por normalizedRadius
+  const insideCandidates = candidates
+    .filter((c) => c.state === 'inside')
+    .sort((a, b) => a.angularAreaArcmin2 - b.angularAreaArcmin2);
+
+  const edgeCandidates = candidates
+    .filter((c) => c.state === 'edge')
+    .sort((a, b) => a.normalizedRadius - b.normalizedRadius);
+
+  const sortedCandidates = [...insideCandidates, ...edgeCandidates];
+
+  if (insideCandidates.length > 0) {
+    const best = insideCandidates[0];
+    const catalogItem = CELESTIAL_CATALOG.find((c) => c.id === best.id);
+
+    return {
+      state: 'inside',
+      object: {
+        id: best.id,
+        name: best.name,
+        designation: best.designation,
+        objectType: best.objectType,
+        ra: best.raDeg,
+        dec: best.decDeg,
+        distanceLy: catalogItem?.distanceLy,
+        constellation: catalogItem?.constellation,
+        description: catalogItem?.description || '',
+        spectralFeatures: catalogItem?.spectralFeatures || [],
+        majorDiameterArcmin: best.majorDiameterArcmin,
+        minorDiameterArcmin: best.minorDiameterArcmin,
+        positionAngleDeg: best.positionAngleDeg,
+        sizeSource: best.sizeSource,
+        source: 'local_dossier',
+      },
+      separationDeg: best.separationDeg,
+      normalizedRadius: best.normalizedRadius,
+      partial: false,
+      candidates: sortedCandidates,
+      source: 'dossier',
+    };
+  }
+
+  if (edgeCandidates.length > 0) {
+    const best = edgeCandidates[0];
+    const catalogItem = CELESTIAL_CATALOG.find((c) => c.id === best.id);
+
+    return {
+      state: 'edge',
+      object: {
+        id: best.id,
+        name: best.name,
+        designation: best.designation,
+        objectType: best.objectType,
+        ra: best.raDeg,
+        dec: best.decDeg,
+        distanceLy: catalogItem?.distanceLy,
+        constellation: catalogItem?.constellation,
+        description: catalogItem?.description || '',
+        spectralFeatures: catalogItem?.spectralFeatures || [],
+        majorDiameterArcmin: best.majorDiameterArcmin,
+        minorDiameterArcmin: best.minorDiameterArcmin,
+        positionAngleDeg: best.positionAngleDeg,
+        sizeSource: best.sizeSource,
+        source: 'local_dossier',
+      },
+      separationDeg: best.separationDeg,
+      normalizedRadius: best.normalizedRadius,
+      partial: true,
+      candidates: sortedCandidates,
+      source: 'dossier',
+    };
+  }
+
+  return {
+    state: 'none',
+    separationDeg: Infinity,
+    normalizedRadius: Infinity,
+    partial: false,
+    candidates: [],
+    source: 'none',
+  };
+}
+
+/**
+ * Función puente compatible hacia atrás para componentes que llaman matchLocalDossier(ra, dec, tolerance)
  */
 export function matchLocalDossier(
   ra: number,
   dec: number,
   toleranceDegrees = 0.4
-): AstronomicalObjectResult | null {
-  if (isNaN(ra) || isNaN(dec)) return null;
+): MatchedCelestialObject | null {
+  const capture: Capture = {
+    raDeg: ra,
+    decDeg: dec,
+    radiusDeg: toleranceDegrees,
+  };
+  const match = matchLocalDossierCapture(capture);
+  return match.object ?? null;
+}
 
-  let closest: CatalogTarget | null = null;
-  let minDistance = Infinity;
+/**
+ * Capa 2: Consulta tipo cono a SIMBAD TAP con TOP 30 ordenada por distancia,
+ * solicitando columnas verificadas de extensión angular (galdim_majaxis, galdim_minaxis, galdim_angle).
+ */
+export async function querySimbadConeCapture(
+  capture: Capture,
+  timeoutMs = 2500
+): Promise<{ candidates: Candidate[]; bestMatch: CaptureMatch | null; unavailable?: boolean }> {
+  const { raDeg, decDeg, radiusDeg } = capture;
 
-  for (const obj of CELESTIAL_CATALOG) {
-    const dist = calculateAngularSeparation(ra, dec, obj.raDeg, obj.decDeg);
-    if (dist < minDistance) {
-      minDistance = dist;
-      closest = obj;
-    }
+  if (isNaN(raDeg) || isNaN(decDeg) || isNaN(radiusDeg) || !isFinite(raDeg) || !isFinite(decDeg)) {
+    return { candidates: [], bestMatch: null };
   }
 
-  const effectiveTolerance = closest ? Math.max(toleranceDegrees, closest.toleranceDeg) : toleranceDegrees;
+  const cleanRa = Number(raDeg.toFixed(6));
+  const cleanDec = Number(decDeg.toFixed(6));
+  const cleanRadius = Number(Math.min(Math.max(radiusDeg, 0.01), 2.5).toFixed(4));
 
-  if (closest && minDistance <= effectiveTolerance) {
+  // ADQL validada contra SIMBAD TAP_SCHEMA.columns (galdim_majaxis y galdim_minaxis son diámetros en arcmin)
+  const adql = `
+    SELECT TOP 30
+      basic.main_id,
+      otypedef.otype_longname,
+      basic.ra,
+      basic.dec,
+      basic.galdim_majaxis,
+      basic.galdim_minaxis,
+      basic.galdim_angle,
+      DISTANCE(POINT('ICRS', basic.ra, basic.dec), POINT('ICRS', ${cleanRa}, ${cleanDec})) AS dist
+    FROM basic
+    LEFT JOIN otypedef ON basic.otype = otypedef.otype
+    WHERE CONTAINS(POINT('ICRS', basic.ra, basic.dec), CIRCLE('ICRS', ${cleanRa}, ${cleanDec}, ${cleanRadius})) = 1
+    ORDER BY dist ASC
+  `.trim().replace(/\s+/g, ' ');
+
+  const endpoint = `https://simbad.cds.unistra.fr/simbad/sim-tap/sync?request=doQuery&lang=adql&format=json&query=${encodeURIComponent(
+    adql
+  )}`;
+
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), timeoutMs);
+
+  try {
+    const res = await fetch(endpoint, {
+      signal: controller.signal,
+      cache: 'force-cache',
+    });
+    clearTimeout(timer);
+
+    if (!res.ok) {
+      return { candidates: [], bestMatch: null, unavailable: true };
+    }
+
+    const data = await res.json();
+    if (!data?.data || !Array.isArray(data.data) || data.data.length === 0) {
+      return { candidates: [], bestMatch: null };
+    }
+
+    const candidates: Candidate[] = [];
+
+    for (const row of data.data) {
+      const [mainId, otypeLongname, objRa, objDec, galdimMaj, galdimMin, galdimAngle] = row;
+      const parsedRa = typeof objRa === 'number' ? objRa : parseFloat(objRa);
+      const parsedDec = typeof objDec === 'number' ? objDec : parseFloat(objDec);
+
+      if (isNaN(parsedRa) || isNaN(parsedDec)) continue;
+
+      const majAxis = typeof galdimMaj === 'number' && galdimMaj > 0 ? galdimMaj : undefined;
+      const minAxis = typeof galdimMin === 'number' && galdimMin > 0 ? galdimMin : majAxis;
+      const pa = typeof galdimAngle === 'number' && galdimAngle >= 0 && galdimAngle <= 180 ? galdimAngle : 0;
+
+      const target: FootprintTarget = {
+        raDeg: parsedRa,
+        decDeg: parsedDec,
+        majorDiameterArcmin: majAxis,
+        minorDiameterArcmin: minAxis,
+        positionAngleDeg: pa,
+        sizeSource: majAxis ? 'simbad' : 'estimate',
+        objectType: otypeLongname ? String(otypeLongname).trim() : 'Objeto astronómico SIMBAD',
+      };
+
+      const classification = classifyCapture(capture, target);
+
+      candidates.push({
+        id: String(mainId).trim(),
+        name: String(mainId).trim(),
+        designation: `SIMBAD ${String(mainId).trim()}`,
+        objectType: target.objectType || 'Objeto astronómico',
+        raDeg: parsedRa,
+        decDeg: parsedDec,
+        separationDeg: classification.separationDeg,
+        state: classification.state,
+        normalizedRadius: classification.normalizedRadius,
+        angularAreaArcmin2: classification.angularAreaArcmin2,
+        majorDiameterArcmin: classification.effectiveMajorDiameterArcmin,
+        minorDiameterArcmin: classification.effectiveMinorDiameterArcmin,
+        positionAngleDeg: classification.effectivePositionAngleDeg,
+        sizeSource: classification.sizeSource,
+        source: 'simbad',
+        description: `Objeto registrado en CDS SIMBAD. Clasificación: ${target.objectType}.`,
+      });
+    }
+
+    const insideCandidates = candidates
+      .filter((c) => c.state === 'inside')
+      .sort((a, b) => a.angularAreaArcmin2 - b.angularAreaArcmin2);
+
+    const edgeCandidates = candidates
+      .filter((c) => c.state === 'edge')
+      .sort((a, b) => a.normalizedRadius - b.normalizedRadius);
+
+    const allSorted = [...insideCandidates, ...edgeCandidates, ...candidates.filter((c) => c.state === 'none')];
+
+    if (insideCandidates.length > 0) {
+      const best = insideCandidates[0];
+      return {
+        candidates: allSorted,
+        bestMatch: {
+          state: 'inside',
+          object: {
+            id: best.id,
+            name: best.name,
+            designation: best.designation,
+            objectType: best.objectType,
+            ra: best.raDeg,
+            dec: best.decDeg,
+            constellation: getConstellation(best.raDeg, best.decDeg),
+            description: best.description || '',
+            spectralFeatures: [
+              'Registro astrométrico ICRS validado por CDS SIMBAD',
+              'Flujo estelar y coordenadas catalogadas',
+              'Cruzamiento multiespectral internacional',
+            ],
+            majorDiameterArcmin: best.majorDiameterArcmin,
+            minorDiameterArcmin: best.minorDiameterArcmin,
+            positionAngleDeg: best.positionAngleDeg,
+            sizeSource: best.sizeSource,
+            source: 'simbad_api',
+          },
+          separationDeg: best.separationDeg,
+          normalizedRadius: best.normalizedRadius,
+          partial: false,
+          candidates: allSorted,
+          source: 'simbad',
+        },
+      };
+    }
+
+    if (edgeCandidates.length > 0) {
+      const best = edgeCandidates[0];
+      return {
+        candidates: allSorted,
+        bestMatch: {
+          state: 'edge',
+          object: {
+            id: best.id,
+            name: best.name,
+            designation: best.designation,
+            objectType: best.objectType,
+            ra: best.raDeg,
+            dec: best.decDeg,
+            constellation: getConstellation(best.raDeg, best.decDeg),
+            description: best.description || '',
+            spectralFeatures: [
+              'Registro en zona periférica de objeto SIMBAD',
+              'Transición astrométrica de borde',
+            ],
+            majorDiameterArcmin: best.majorDiameterArcmin,
+            minorDiameterArcmin: best.minorDiameterArcmin,
+            positionAngleDeg: best.positionAngleDeg,
+            sizeSource: best.sizeSource,
+            source: 'simbad_api',
+          },
+          separationDeg: best.separationDeg,
+          normalizedRadius: best.normalizedRadius,
+          partial: true,
+          candidates: allSorted,
+          source: 'simbad',
+        },
+      };
+    }
+
     return {
-      source: 'local_dossier',
-      name: closest.name,
-      designation: closest.designation,
-      objectType: closest.objectType,
-      ra: closest.raDeg,
-      dec: closest.decDeg,
-      distanceLy: closest.distanceLy,
-      constellation: closest.constellation,
-      description: closest.description,
-      spectralFeatures: closest.spectralFeatures,
+      candidates: allSorted,
+      bestMatch: null,
     };
+  } catch {
+    clearTimeout(timer);
+    return { candidates: [], bestMatch: null, unavailable: true };
   }
-
-  return null;
 }
 
 /**
- * Capa 2: Fallback a API CDS TAP (VizieR / SIMBAD) en tiempo real mediante ADQL.
- * Sanitiza parámetros numéricos para prevenir inyecciones o queries malformadas.
+ * Orquestador principal de identificación híbrida por huella angular (CaptureMatch).
+ * Memoiza por coordenadas redondeadas (4 decimales) y radio de captura.
  */
-export async function querySimbadCone(
-  ra: number,
-  dec: number,
-  radiusDegrees = 0.5
-): Promise<AstronomicalObjectResult | null> {
-  // Validación estricta y formateo de flotantes seguros
-  if (isNaN(ra) || isNaN(dec) || isNaN(radiusDegrees) || !isFinite(ra) || !isFinite(dec)) {
-    return null;
+export async function identifyCelestialCapture(
+  capture: Capture
+): Promise<CaptureMatch> {
+  const cacheKey = `${capture.raDeg.toFixed(4)},${capture.decDeg.toFixed(4)},${capture.radiusDeg.toFixed(4)}`;
+  if (crossMatchCache.has(cacheKey)) {
+    return crossMatchCache.get(cacheKey)!;
   }
 
-  const cleanRa = Number(ra.toFixed(6));
-  const cleanDec = Number(dec.toFixed(6));
-  const cleanRadius = Number(Math.min(Math.max(radiusDegrees, 0.01), 2.0).toFixed(4));
-
-  // 1. Intento primario: CDS VizieR TAP (rápido, soporta CORS, catálogo NGC/IC/Messier)
-  try {
-    const vizierAdql = `
-      SELECT TOP 1 "Name", "Type", "Const", "Desc", "RAB2000", "DEB2000"
-      FROM "VII/118/ngc2000"
-      WHERE 1=CONTAINS(POINT('ICRS', "RAB2000", "DEB2000"), CIRCLE('ICRS', ${cleanRa}, ${cleanDec}, ${cleanRadius}))
-    `.trim().replace(/\s+/g, ' ');
-
-    const vizierEndpoint = `https://tapvizier.cds.unistra.fr/TAPVizieR/tap/sync?REQUEST=doQuery&LANG=ADQL&FORMAT=json&QUERY=${encodeURIComponent(
-      vizierAdql
-    )}`;
-
-    const controller = new AbortController();
-    const timer = setTimeout(() => controller.abort(), 2000);
-
-    const res = await fetch(vizierEndpoint, {
-      signal: controller.signal,
-      cache: 'force-cache',
-    });
-    clearTimeout(timer);
-
-    if (res.ok) {
-      const data = await res.json();
-      if (data?.data && Array.isArray(data.data) && data.data.length > 0) {
-        const [rawName, rawType, rawConst, rawDesc, objRa, objDec] = data.data[0];
-        const cleanName = String(rawName || '').trim();
-        const cleanType = String(rawType || '').trim();
-        const cleanConst = String(rawConst || '').trim();
-        const cleanDesc = String(rawDesc || '').trim();
-
-        const typeMap: Record<string, string> = {
-          Gx: 'Galaxia',
-          OC: 'Cúmulo estelar abierto',
-          Gb: 'Cúmulo globular',
-          Nb: 'Nebulosa difusa de emisión',
-          Pl: 'Nebulosa planetaria',
-          'C+N': 'Cúmulo estelar con nebulosa asociada',
-          Ast: 'Asterismo estelar',
-          Kt: 'Nudo estelar en galaxia externa',
-        };
-
-        const resolvedType = typeMap[cleanType] || 'Objeto celeste catalogado';
-        const formattedName = cleanName.startsWith('I')
-          ? `IC ${cleanName.slice(1)}`
-          : `NGC ${cleanName}`;
-
-        return {
-          source: 'simbad_api',
-          name: formattedName,
-          designation: `${formattedName} (${cleanConst || getConstellation(cleanRa, cleanDec)})`,
-          objectType: resolvedType,
-          ra: typeof objRa === 'number' ? objRa : parseFloat(objRa),
-          dec: typeof objDec === 'number' ? objDec : parseFloat(objDec),
-          constellation: cleanConst || getConstellation(cleanRa, cleanDec),
-          description: `Objeto astronómico indexado en la base de datos astrofísica CDS/VizieR. Registro de catálogo: ${cleanDesc || 'Objeto de cielo profundo confirmado'}.`,
-          spectralFeatures: [
-            'Registro astrométrico ICRS validado por CDS',
-            'Emisión óptica y espectroscópica en catálogo internacional',
-            'Cruzamiento de fuentes astrofísicas espaciales',
-          ],
-        };
-      }
-      return null;
-    }
-  } catch {
-    // VizieR TAP no disponible en este momento o bloqueado por red/CORS/timeout; degradación silenciosa
-  }
-
-  // 2. Intento secundario: CDS SIMBAD TAP con timeout de 1.5s
-  try {
-    const simbadAdql = `
-      SELECT TOP 1 basic.main_id, otypedef.otype_longname, basic.ra, basic.dec
-      FROM basic
-      LEFT JOIN otypedef ON basic.otype = otypedef.otype
-      WHERE CONTAINS(POINT('ICRS', basic.ra, basic.dec), CIRCLE('ICRS', ${cleanRa}, ${cleanDec}, ${cleanRadius})) = 1
-    `.trim().replace(/\s+/g, ' ');
-
-    const simbadEndpoint = `https://simbad.cds.unistra.fr/simbad/sim-tap/sync?request=doQuery&lang=adql&format=json&query=${encodeURIComponent(
-      simbadAdql
-    )}`;
-
-    const controller = new AbortController();
-    const timer = setTimeout(() => controller.abort(), 1500);
-
-    const res = await fetch(simbadEndpoint, {
-      signal: controller.signal,
-      cache: 'force-cache',
-    });
-    clearTimeout(timer);
-
-    if (res.ok) {
-      const data = await res.json();
-      if (data?.data && Array.isArray(data.data) && data.data.length > 0) {
-        const [mainId, otype, objRa, objDec] = data.data[0];
-        return {
-          source: 'simbad_api',
-          name: String(mainId || 'Objeto SIMBAD').trim(),
-          designation: `SIMBAD ${String(mainId || '').trim()}`,
-          objectType: otype ? String(otype).trim() : 'Cuerpo celeste registrado',
-          ra: typeof objRa === 'number' ? objRa : parseFloat(objRa),
-          dec: typeof objDec === 'number' ? objDec : parseFloat(objDec),
-          constellation: getConstellation(cleanRa, cleanDec),
-          description: `Objeto astronómico indexado en la base de datos SIMBAD del Centre de Données astronomiques de Strasbourg (CDS). Clasificado astrofísicamente como ${otype || 'cuerpo registrado'}.`,
-          spectralFeatures: [
-            'Emisión estelar de continuo',
-            'Coordenadas astrométricas ICRS validadas por CDS',
-            'Datos fotométricos cruzados con catálogos internacionales',
-          ],
-        };
-      }
-    }
-  } catch {
-    // SIMBAD TAP no disponible o bloqueado por red/CORS/timeout; degradación silenciosa
-  }
-
-  return null;
-}
-
-/**
- * Orquestador del motor de identificación híbrido.
- * 1. Evalúa catálogo curado unificado (0ms).
- * 2. Si no coincide, consulta CDS TAP en tiempo real con límite de 2.5s.
- * 3. Si no hay registros o ante cualquier fallo/timeout de red, retorna sector "unregistered".
- */
-export async function identifyCelestialTarget(
-  ra: number,
-  dec: number
-): Promise<AstronomicalObjectResult> {
-  // Capa 1: Caché local (0ms)
-  const localMatch = matchLocalDossier(ra, dec, 0.4);
-  if (localMatch) {
+  // 1. Capa 1: Catálogo local
+  const localMatch = matchLocalDossierCapture(capture);
+  if (localMatch.state === 'inside') {
+    crossMatchCache.set(cacheKey, localMatch);
     return localMatch;
   }
 
-  // Capa 2: Fallback a CDS TAP con salvaguarda máxima de 2.5 segundos
-  try {
-    const tapPromise = querySimbadCone(ra, dec, 0.5);
-    const timeoutPromise = new Promise<null>((resolve) => setTimeout(() => resolve(null), 2500));
-    const liveMatch = await Promise.race([tapPromise, timeoutPromise]);
-    if (liveMatch) {
-      return liveMatch;
-    }
-  } catch (err) {
-    console.warn('[AetherScope] Error consultando CDS TAP en identifyCelestialTarget:', err);
+  // 2. Capa 2: Fallback SIMBAD TAP con búsqueda de cono
+  const simbadResult = await querySimbadConeCapture(capture, 2500);
+
+  if (simbadResult.unavailable) {
+    // Si SIMBAD falla, devolvemos el resultado local con simbadUnavailable: true
+    const fallbackMatch: CaptureMatch = {
+      ...localMatch,
+      simbadUnavailable: true,
+    };
+    crossMatchCache.set(cacheKey, fallbackMatch);
+    return fallbackMatch;
   }
 
-  // Capa 3: Sector no catalogado (garantizado)
+  if (simbadResult.bestMatch) {
+    // Si encontramos una mejor coincidencia en SIMBAD (ej. inside), la preferimos sobre un edge local
+    if (simbadResult.bestMatch.state === 'inside' || localMatch.state === 'none') {
+      crossMatchCache.set(cacheKey, simbadResult.bestMatch);
+      return simbadResult.bestMatch;
+    }
+  }
+
+  // Si lo local era 'edge' y SIMBAD no tuvo 'inside', conservamos el 'edge' local
+  if (localMatch.state === 'edge') {
+    const combinedCandidates = [...localMatch.candidates, ...simbadResult.candidates].slice(0, 10);
+    const combinedMatch: CaptureMatch = {
+      ...localMatch,
+      candidates: combinedCandidates,
+    };
+    crossMatchCache.set(cacheKey, combinedMatch);
+    return combinedMatch;
+  }
+
+  // 3. Capa 3: 'none' (CAMPO SIN OBJETO CATALOGADO) con hasta 5 candidatos cercanos
+  const topCandidates = simbadResult.candidates.slice(0, 5);
+
+  const noneMatch: CaptureMatch = {
+    state: 'none',
+    separationDeg: Infinity,
+    normalizedRadius: Infinity,
+    partial: false,
+    candidates: topCandidates,
+    source: 'none',
+  };
+
+  crossMatchCache.set(cacheKey, noneMatch);
+  return noneMatch;
+}
+
+/**
+ * Wrapper de compatibilidad directa para consumidores que esperan identifyCelestialTarget(ra, dec, radiusDeg)
+ */
+export async function identifyCelestialTarget(
+  ra: number,
+  dec: number,
+  radiusDeg = 0.25
+): Promise<MatchedCelestialObject> {
+  const capture: Capture = {
+    raDeg: ra,
+    decDeg: dec,
+    radiusDeg,
+  };
+
+  const match = await identifyCelestialCapture(capture);
+
+  if (match.object) {
+    return match.object;
+  }
+
   return {
     source: 'unregistered',
     name: 'Sector de Cielo Profundo',
     designation: 'Área no catalogada',
-    objectType: 'Sector de cielo profundo en exploración / estrellas de fondo no catalogadas',
+    objectType: 'Sector cósmico no catalogado',
     ra,
     dec,
     constellation: getConstellation(ra, dec),
     description:
-      'Sector de cielo profundo sin registro de objetos singulares en los catálogos principales. El campo visual corresponde a radiación de fondo cósmica y estrellas de secuencia principal de campo abierto.',
-    spectralFeatures: [
-      'Radiación óptica difusa de fondo estelar',
-      'Ausencia de fuentes de alta energía compactas detectadas',
-      'Flujo fotométrico de secuencia principal',
-    ],
+      'Sector astronómico sin singularidad indexada en bases de datos maestras dentro de su extensión angular.',
+    spectralFeatures: ['Emisión difusa de continuo estelar de campo'],
   };
 }

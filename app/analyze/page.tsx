@@ -1,15 +1,18 @@
 "use client";
 
-import { Suspense, useState, useMemo, useEffect, useTransition } from "react";
+import { Suspense, useState, useMemo, useEffect, useTransition, useRef } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 import SpaceCanvas from "@/components/space-canvas/SpaceCanvas.client";
 import { SpaceProvider } from "@/context/SpaceContext";
 import PrecisionCrosshair from "@/components/hud/PrecisionCrosshair";
 import {
-  identifyCelestialTarget,
-  matchLocalDossier,
-  type AstronomicalObjectResult,
+  identifyCelestialCapture,
+  matchLocalDossierCapture,
+  type CaptureMatch,
+  type Candidate,
+  type MatchedCelestialObject,
 } from "@/lib/astronomy/crossmatch";
+import type { Capture } from "@/lib/astronomy/footprint";
 import {
   LABORATORY_SPECTRAL_FILTERS,
   spectralFilterToSurvey,
@@ -17,6 +20,7 @@ import {
   type SpectralFilterOption,
 } from "@/lib/astronomy/analysis";
 import { formatCoordinates, formatFov, getConstellation } from "@/lib/astronomy/coordinates";
+import { getNotesRepository, type MissionNote } from "@/lib/notes";
 import {
   ArrowLeft,
   ArrowUpRight,
@@ -24,11 +28,16 @@ import {
   Loader2,
   ChevronDown,
   ChevronUp,
+  Download,
+  Upload,
+  Trash2,
+  AlertTriangle,
 } from "lucide-react";
 
 function LaboratoryContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   // Read angular coordinates and field of view with high precision
   const rawRa = searchParams.get("ra");
@@ -42,28 +51,37 @@ function LaboratoryContent() {
   // Clave única del objeto/sector observado
   const currentCoordKey = `${raParam.toFixed(5)},${decParam.toFixed(5)}`;
 
-  // Estado persistente del panel lateral (con hidratación segura sin mismatch SSR)
-  const [isSidebarOpen, setIsSidebarOpen] = useState<boolean>(true);
+  // Captura geométrica actual
+  const currentCapture: Capture = useMemo(
+    () => ({
+      raDeg: raParam,
+      decDeg: decParam,
+      radiusDeg: fovParam / 2,
+    }),
+    [raParam, decParam, fovParam]
+  );
 
-  // Estado persistente por objeto del detalle químico
-  const [showFullChemistry, setShowFullChemistry] = useState<boolean>(false);
-
-  // Sincronizar desde sessionStorage una vez montado en el cliente para evitar mismatch de hidratación SSR
-  useEffect(() => {
+  // Estado persistente del panel lateral
+  const [isSidebarOpen, setIsSidebarOpen] = useState<boolean>(() => {
+    if (typeof window === "undefined") return true;
     try {
       const savedPanel = sessionStorage.getItem("aetherscope_lab_panel_open");
-      if (savedPanel !== null) {
-        setIsSidebarOpen(JSON.parse(savedPanel));
-      }
-    } catch {}
+      return savedPanel !== null ? JSON.parse(savedPanel) : true;
+    } catch {
+      return true;
+    }
+  });
 
+  // Estado persistente por objeto del detalle químico
+  const [showFullChemistry, setShowFullChemistry] = useState<boolean>(() => {
+    if (typeof window === "undefined") return false;
     try {
       const savedChem = sessionStorage.getItem(`aetherscope_chem_open_${currentCoordKey}`);
-      if (savedChem !== null) {
-        setShowFullChemistry(JSON.parse(savedChem));
-      }
-    } catch {}
-  }, [currentCoordKey]);
+      return savedChem !== null ? JSON.parse(savedChem) : false;
+    } catch {
+      return false;
+    }
+  });
 
   const toggleSidebar = () => {
     setIsSidebarOpen((prev) => {
@@ -106,41 +124,51 @@ function LaboratoryContent() {
   const [processingFilterId, setProcessingFilterId] = useState<string | null>(null);
   const [isProcessingFilter, setIsProcessingFilter] = useState<boolean>(false);
 
-  // Target identification state (Hybrid: Local -> CDS TAP -> Unregistered)
-  const [targetState, setTargetState] = useState<{
-    target: AstronomicalObjectResult | null;
+  // Target identification state mediante motor de Footprint (A3 / A4)
+  const [matchState, setMatchState] = useState<{
+    match: CaptureMatch | null;
     loading: boolean;
     queryKey: string;
   }>(() => {
-    const local = matchLocalDossier(raParam, decParam, 0.4);
-    if (local) {
+    const local = matchLocalDossierCapture({
+      raDeg: raParam,
+      decDeg: decParam,
+      radiusDeg: fovParam / 2,
+    });
+    if (local.state !== "none") {
       return {
-        target: local,
+        match: local,
         loading: false,
         queryKey: currentCoordKey,
       };
     }
     return {
-      target: null,
+      match: null,
       loading: true,
       queryKey: currentCoordKey,
     };
   });
 
-  // User observation notes
-  const [userObservationNote, setUserObservationNote] = useState<string>("");
-  const [noteSaved, setNoteSaved] = useState<boolean>(false);
+  // Selección manual de candidato desde el cono cuando state es 'none'
+  const [selectedCandidate, setSelectedCandidate] = useState<Candidate | null>(null);
+  const [prevCoordKey, setPrevCoordKey] = useState(currentCoordKey);
 
-  // Execute hybrid cross-match
+  // Resetear candidato manual si cambian las coordenadas (patrón oficial de React sin efecto)
+  if (prevCoordKey !== currentCoordKey) {
+    setPrevCoordKey(currentCoordKey);
+    setSelectedCandidate(null);
+  }
+
+  // Ejecutar cross-match híbrido con clasificación por extensión angular
   useEffect(() => {
     let cancelled = false;
 
     const runCrossMatch = async () => {
       try {
-        const result = await identifyCelestialTarget(raParam, decParam);
+        const result = await identifyCelestialCapture(currentCapture);
         if (!cancelled) {
-          setTargetState({
-            target: result,
+          setMatchState({
+            match: result,
             loading: false,
             queryKey: currentCoordKey,
           });
@@ -148,16 +176,14 @@ function LaboratoryContent() {
       } catch (err) {
         console.warn("[AetherScope] Error en cross-match híbrido:", err);
         if (!cancelled) {
-          setTargetState({
-            target: {
-              source: "unregistered",
-              name: "Sector de Cielo Profundo",
-              objectType: "Sector cósmico no catalogado",
-              ra: raParam,
-              dec: decParam,
-              constellation: getConstellation(raParam, decParam),
-              description: "Sector astronómico sin singularidad indexada en bases de datos maestras.",
-              spectralFeatures: ["Emisión difusa de continuo"],
+          setMatchState({
+            match: {
+              state: "none",
+              separationDeg: Infinity,
+              normalizedRadius: Infinity,
+              partial: false,
+              candidates: [],
+              source: "none",
             },
             loading: false,
             queryKey: currentCoordKey,
@@ -171,10 +197,45 @@ function LaboratoryContent() {
     return () => {
       cancelled = true;
     };
-  }, [raParam, decParam, currentCoordKey]);
+  }, [currentCapture, currentCoordKey]);
 
-  const isIdentifying = targetState.loading || targetState.queryKey !== currentCoordKey;
-  const identifiedTarget = targetState.target;
+  const isIdentifying = matchState.loading || matchState.queryKey !== currentCoordKey;
+  const currentMatch = matchState.match;
+
+  // Estado activo de correspondencia espacial ('inside' | 'edge' | 'none')
+  const activeState = selectedCandidate ? "inside" : (currentMatch?.state ?? "none");
+  const isPartial = activeState === "edge" || (currentMatch?.partial ?? false);
+
+  // Objeto resuelto
+  const identifiedTarget: MatchedCelestialObject | null = useMemo(() => {
+    if (selectedCandidate) {
+      return {
+        id: selectedCandidate.id,
+        name: selectedCandidate.name,
+        designation: selectedCandidate.designation,
+        objectType: selectedCandidate.objectType,
+        ra: selectedCandidate.raDeg,
+        dec: selectedCandidate.decDeg,
+        constellation: getConstellation(selectedCandidate.raDeg, selectedCandidate.decDeg),
+        description:
+          selectedCandidate.description ||
+          "Objeto seleccionado manualmente desde los candidatos del cono de búsqueda.",
+        spectralFeatures: ["Selección manual de candidato en cono", "Astrometría ICRS"],
+        majorDiameterArcmin: selectedCandidate.majorDiameterArcmin,
+        minorDiameterArcmin: selectedCandidate.minorDiameterArcmin,
+        positionAngleDeg: selectedCandidate.positionAngleDeg,
+        sizeSource: selectedCandidate.sizeSource,
+        source: selectedCandidate.source === "dossier" ? "local_dossier" : "simbad_api",
+      };
+    }
+    if (currentMatch?.object && (currentMatch.state === "inside" || currentMatch.state === "edge")) {
+      return currentMatch.object;
+    }
+    return null;
+  }, [selectedCandidate, currentMatch]);
+
+  // Si state es 'none', NO ejecutar la inferencia atribuida a un objeto (pasa null)
+  const targetForAnalysis = activeState === "none" ? null : identifiedTarget;
 
   // Run dynamic chemical/physical analysis based on active filters & identified target
   const activeFilterIds = useMemo(() => {
@@ -186,8 +247,8 @@ function LaboratoryContent() {
   }, [activePrimaryFilter, activeOverlayFilter, blendOpacity]);
 
   const analysis = useMemo(
-    () => runAstrophysicalAnalysis(activeFilterIds, identifiedTarget, blendOpacity),
-    [activeFilterIds, identifiedTarget, blendOpacity]
+    () => runAstrophysicalAnalysis(activeFilterIds, targetForAnalysis, blendOpacity),
+    [activeFilterIds, targetForAnalysis, blendOpacity]
   );
 
   const coords = formatCoordinates(raParam, decParam);
@@ -197,30 +258,6 @@ function LaboratoryContent() {
   // Return to free explorer preserving exact coordinates
   const handleReturnToExplorer = () => {
     router.push(`/?ra=${raParam.toFixed(5)}&dec=${decParam.toFixed(5)}&fov=${fovParam.toFixed(4)}`);
-  };
-
-  const handleSaveObservation = () => {
-    if (!userObservationNote.trim()) return;
-    try {
-      const rawStored = localStorage.getItem("aetherscope_observations");
-      const parsed = rawStored ? JSON.parse(rawStored) : [];
-      const records = Array.isArray(parsed) ? parsed : [];
-
-      records.push({
-        ra: raParam,
-        dec: decParam,
-        fov: fovParam,
-        target: identifiedTarget?.name || "Sector Sin Catalogar",
-        source: identifiedTarget?.source || "unregistered",
-        note: userObservationNote,
-        date: new Date().toISOString(),
-      });
-      localStorage.setItem("aetherscope_observations", JSON.stringify(records));
-      setNoteSaved(true);
-      setTimeout(() => setNoteSaved(false), 3000);
-    } catch (err) {
-      console.warn("[AetherScope] Error guardando bitácora de observación:", err);
-    }
   };
 
   const handleApplyFilter = (filter: SpectralFilterOption) => {
@@ -261,8 +298,110 @@ function LaboratoryContent() {
     [activeOverlayFilter]
   );
 
-  const isRegistered =
-    identifiedTarget?.source === "local_dossier" || identifiedTarget?.source === "simbad_api";
+  // ─── PARTE B: BITÁCORA DE MISIÓN DESACOPLADA ───
+  const notesRepo = useMemo(() => getNotesRepository(), []);
+  const [missionNotes, setMissionNotes] = useState<MissionNote[]>([]);
+  const [notesRefreshKey, setNotesRefreshKey] = useState(0);
+  const [newNoteBody, setNewNoteBody] = useState<string>("");
+  const [noteSaved, setNoteSaved] = useState<boolean>(false);
+  const [notesError, setNotesError] = useState<string | null>(null);
+
+  // Carga reactiva de notas para la captura actual
+  useEffect(() => {
+    let active = true;
+    if (!currentMatch) return;
+
+    notesRepo
+      .listForCapture(currentCapture, currentMatch)
+      .then((list) => {
+        if (active) {
+          setMissionNotes(list);
+        }
+      })
+      .catch((err: unknown) => {
+        console.warn("[AetherScope] Error cargando notas de bitácora:", err);
+      });
+
+    // Sincronización entre pestañas en tiempo real mediante evento "storage"
+    const handleStorageChange = (e: StorageEvent) => {
+      if (e.key === "aetherscope:notes:v1") {
+        setNotesRefreshKey((k) => k + 1);
+      }
+    };
+
+    window.addEventListener("storage", handleStorageChange);
+    return () => {
+      active = false;
+      window.removeEventListener("storage", handleStorageChange);
+    };
+  }, [notesRepo, currentCapture, currentMatch, notesRefreshKey]);
+
+  const handleSaveNote = async () => {
+    if (!newNoteBody.trim()) return;
+    setNotesError(null);
+
+    try {
+      await notesRepo.create({
+        objectId: identifiedTarget?.id || null,
+        objectName:
+          identifiedTarget?.name || (activeState === "none" ? "Sector de Cielo Profundo" : null),
+        raDeg: raParam,
+        decDeg: decParam,
+        radiusDeg: fovParam / 2,
+        body: newNoteBody,
+      });
+
+      setNewNoteBody("");
+      setNoteSaved(true);
+      setTimeout(() => setNoteSaved(false), 2500);
+      setNotesRefreshKey((k) => k + 1);
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : "Error guardando observación";
+      setNotesError(message);
+    }
+  };
+
+  const handleDeleteNote = async (id: string) => {
+    try {
+      await notesRepo.remove(id);
+      setNotesRefreshKey((k) => k + 1);
+    } catch (err: unknown) {
+      console.warn("[AetherScope] Error eliminando nota:", err);
+    }
+  };
+
+  const handleExportNotes = async () => {
+    try {
+      const json = await notesRepo.exportAll();
+      const blob = new Blob([json], { type: "application/json" });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `aetherscope-bitacora-${new Date().toISOString().split("T")[0]}.json`;
+      a.click();
+      URL.revokeObjectURL(url);
+    } catch (err) {
+      console.warn("[AetherScope] Error exportando bitácora:", err);
+    }
+  };
+
+  const handleImportFile = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setNotesError(null);
+
+    try {
+      const text = await file.text();
+      const result = await notesRepo.importAll(text);
+      setNotesRefreshKey((k) => k + 1);
+      alert(`Importación completada: ${result.importedCount} notas importadas, ${result.skippedCount} omitidas/existentes.`);
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : "Error importando notas";
+      setNotesError(message);
+    } finally {
+      if (fileInputRef.current) fileInputRef.current.value = "";
+    }
+  };
 
   // Temperature extraction
   const tempNumbers = analysis.estimatedTemperature.match(/\d+[\.,]?\d*/g) || ["3.000", "8.500"];
@@ -276,7 +415,7 @@ function LaboratoryContent() {
   );
 
   // Distance extraction
-  const rawDist = identifiedTarget?.distanceLy || "7.000 AL";
+  const rawDist = identifiedTarget?.distanceLy || "Fondo cósmico";
   const distanceNumber = rawDist.replace(/[^0-9\.\,]/g, "") || "7.000";
 
   return (
@@ -316,8 +455,10 @@ function LaboratoryContent() {
           <div className="hidden md:flex items-center gap-4 lg:gap-6 text-[10px] tracking-wider uppercase">
             <div>
               <span className="text-[#9A9A92] block text-[8.5px] leading-tight">OBJETO</span>
-              <span className="text-[#F1F0E1] font-semibold text-[11px] block truncate max-w-[120px]">
-                {isIdentifying ? "..." : identifiedTarget?.name || "M16"}
+              <span className="text-[#F1F0E1] font-semibold text-[11px] block truncate max-w-[130px]">
+                {isIdentifying
+                  ? "..."
+                  : identifiedTarget?.name || (activeState === "none" ? "CAMPO NO CATALOGADO" : "SECTOR")}
               </span>
             </div>
             <div>
@@ -341,28 +482,36 @@ function LaboratoryContent() {
             <div>
               <span className="text-[#9A9A92] block text-[8.5px] leading-tight">DISTANCIA</span>
               <span className="text-[#F1F0E1] font-semibold text-[11px] block tabular-nums">
-                {distanceNumber} AL
+                {identifiedTarget?.distanceLy || "FONDO"}
               </span>
             </div>
           </div>
         </div>
 
-        {/* Right Section: Registration Chip + Toggle Panel Button */}
+        {/* Right Section: Registration / Edge Chip + Toggle Panel Button */}
         <div className="flex items-center gap-2.5">
           {!isIdentifying && (
             <div
               className={`px-3 py-1.5 text-[10px] font-bold uppercase tracking-[0.14em] flex items-center gap-1.5 border ${
-                isRegistered
+                activeState === "inside"
+                  ? "bg-[#506385] text-[#F1F0E1] border-[#506385]"
+                  : activeState === "edge"
                   ? "bg-[#506385] text-[#F1F0E1] border-[#506385]"
                   : "bg-[#1A1A1F] text-[#9A9A92] border-[#3A3A42]"
               }`}
             >
               <div className="w-1.5 h-1.5 bg-[#F1F0E1]" />
-              <span>{isRegistered ? "REGISTRADO" : "NO REGISTRADO"}</span>
+              <span>
+                {activeState === "inside"
+                  ? "REGISTRADO"
+                  : activeState === "edge"
+                  ? `BORDE DE ${identifiedTarget?.name.toUpperCase() || "OBJETO"}`
+                  : "CAMPO SIN OBJETO"}
+              </span>
             </div>
           )}
 
-          {/* Toggle Panel Button (Header) */}
+          {/* Toggle Panel Button (Header) - Control único */}
           <button
             onClick={toggleSidebar}
             aria-expanded={isSidebarOpen}
@@ -371,7 +520,11 @@ function LaboratoryContent() {
             title={isSidebarOpen ? "Ocultar panel" : "Mostrar panel"}
           >
             <div className="w-3.5 h-3.5 border border-[#F1F0E1] flex items-center justify-center p-[1px]">
-              <div className={`w-1.5 h-2.5 bg-[#F1F0E1] ml-auto ${isSidebarOpen ? "opacity-100" : "opacity-30"}`} />
+              <div
+                className={`w-1.5 h-2.5 bg-[#F1F0E1] ml-auto ${
+                  isSidebarOpen ? "opacity-100" : "opacity-30"
+                }`}
+              />
             </div>
             <span className="hidden sm:inline">
               {isSidebarOpen ? "OCULTAR PANEL" : "MOSTRAR PANEL"}
@@ -486,26 +639,80 @@ function LaboratoryContent() {
               <div className="flex items-center justify-between text-[9.5px] uppercase tracking-[0.16em]">
                 <span className="text-[#9A9A92]">IDENTIFICACIÓN CELESTE</span>
                 <span className="text-[#F1F0E1]/80 truncate max-w-[200px]">
-                  {identifiedTarget?.designation || "M16 / NGC 6611"}
+                  {identifiedTarget?.designation || (activeState === "none" ? "ICRS FIELD" : "SECTOR")}
                 </span>
               </div>
 
               {isIdentifying ? (
                 <div className="py-4 flex items-center gap-2 text-xs text-[#9A9A92]">
                   <Loader2 className="w-4 h-4 animate-spin text-[#F1F0E1]" />
-                  <span>IDENTIFICANDO SECTOR...</span>
+                  <span>CLASIFICANDO EXTENSIÓN ANGULAR...</span>
                 </div>
               ) : (
                 <>
                   <h2 className="text-[22px] sm:text-[26px] font-bold text-[#F1F0E1] uppercase tracking-wide leading-tight truncate">
-                    {identifiedTarget?.name || "SECTOR CÓSMICO"}
+                    {activeState === "none"
+                      ? "CAMPO SIN OBJETO CATALOGADO"
+                      : identifiedTarget?.name || "SECTOR CÓSMICO"}
                   </h2>
 
-                  <div>
-                    <span className="inline-block border border-[#3A3A42] bg-[#101015]/60 px-2 py-0.5 text-[10px] uppercase tracking-wider text-[#F1F0E1]">
-                      {identifiedTarget?.objectType?.toUpperCase() || "NEBULOSA / REGIÓN H II"}
-                    </span>
+                  <div className="flex items-center gap-2 flex-wrap">
+                    {activeState === "edge" && identifiedTarget ? (
+                      <span className="inline-block border border-[#506385] bg-[#506385]/20 px-2 py-0.5 text-[10px] uppercase tracking-wider text-[#F1F0E1]">
+                        BORDE DE {identifiedTarget.name.toUpperCase()} · PARCIAL
+                      </span>
+                    ) : activeState === "inside" && identifiedTarget ? (
+                      <span className="inline-block border border-[#3A3A42] bg-[#101015]/60 px-2 py-0.5 text-[10px] uppercase tracking-wider text-[#F1F0E1]">
+                        {identifiedTarget.objectType.toUpperCase()}
+                      </span>
+                    ) : (
+                      <span className="inline-block border border-[#3A3A42] bg-[#101015]/60 px-2 py-0.5 text-[10px] uppercase tracking-wider text-[#9A9A92]">
+                        SIN OBJETO EN HUELLA ANGULAR
+                      </span>
+                    )}
+
+                    {identifiedTarget?.sizeSource && (
+                      <span className="text-[9px] uppercase font-mono px-1.5 py-0.5 bg-[#101015] border border-[#2B2B31] text-[#9A9A92]">
+                        TAMAÑO: {identifiedTarget.sizeSource.toUpperCase()}
+                      </span>
+                    )}
                   </div>
+
+                  {/* Detalle para 'none': Selección manual de candidatos en el cono */}
+                  {activeState === "none" && currentMatch?.candidates && currentMatch.candidates.length > 0 && (
+                    <div className="pt-2 border-t border-[#2B2B31] space-y-1.5">
+                      <span className="text-[9px] uppercase tracking-[0.14em] text-[#9A9A92] block">
+                        CANDIDATOS CERCANOS EN EL CONO (HASTA 5) — SELECCIONAR:
+                      </span>
+                      <div className="space-y-1">
+                        {currentMatch.candidates.slice(0, 5).map((cand) => (
+                          <button
+                            key={cand.id || cand.name}
+                            onClick={() => setSelectedCandidate(cand)}
+                            className="w-full p-2 bg-[#101015] border border-[#2B2B31] hover:border-[#506385] text-left flex items-center justify-between text-[11px] uppercase transition-colors cursor-pointer"
+                          >
+                            <div>
+                              <span className="text-[#F1F0E1] font-medium block">{cand.name}</span>
+                              <span className="text-[#9A9A92] text-[9.5px] block">{cand.objectType}</span>
+                            </div>
+                            <span className="text-[#9A9A92] text-[10px] tabular-nums font-mono">
+                              {(cand.separationDeg * 60).toFixed(1)}&apos;
+                            </span>
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Reset si se seleccionó manualmente */}
+                  {selectedCandidate && (
+                    <button
+                      onClick={() => setSelectedCandidate(null)}
+                      className="text-[9.5px] uppercase tracking-wider text-[#9A9A92] hover:text-[#F1F0E1] underline cursor-pointer pt-1"
+                    >
+                      Restablecer a detección automática
+                    </button>
+                  )}
 
                   {/* Astrometric details toggle bar with circular button */}
                   <div className="pt-2 border-t border-[#2B2B31] flex items-center justify-between">
@@ -534,6 +741,17 @@ function LaboratoryContent() {
                           <span className="text-[#F1F0E1] tabular-nums font-medium">{coords.decDms}</span>
                         </div>
                       </div>
+
+                      {identifiedTarget?.majorDiameterArcmin && (
+                        <div className="p-2 border border-[#2B2B31] bg-[#101015] space-y-0.5">
+                          <span className="text-[#9A9A92] block text-[8.5px]">DIMENSIONES ANGULARES (DIÁMETROS)</span>
+                          <div className="text-[#F1F0E1] text-[10px] tabular-nums">
+                            {identifiedTarget.majorDiameterArcmin.toFixed(1)}&apos; ×{" "}
+                            {(identifiedTarget.minorDiameterArcmin ?? identifiedTarget.majorDiameterArcmin).toFixed(1)}&apos;
+                            {identifiedTarget.positionAngleDeg ? ` (PA ${identifiedTarget.positionAngleDeg}°)` : ""}
+                          </div>
+                        </div>
+                      )}
 
                       {identifiedTarget?.spectralFeatures && identifiedTarget.spectralFeatures.length > 0 && (
                         <div className="p-2 border border-[#2B2B31] bg-[#101015] space-y-1">
@@ -571,10 +789,10 @@ function LaboratoryContent() {
                   CONSTELACIÓN
                 </span>
                 <div className="text-[22px] sm:text-[25px] font-bold uppercase text-[#F1F0E1] leading-tight my-1 truncate">
-                  {constellation.split(" ")[0] || "SERPENS"}
+                  {constellation.split(" ")[0] || "CAMPO"}
                 </div>
                 <div className="text-[9.5px] uppercase text-[#9A9A92]">
-                  ({constellation.includes(" ") ? constellation.toUpperCase() : "SERPIENTE"})
+                  ({constellation.includes(" ") ? constellation.toUpperCase() : "SECTOR"})
                 </div>
               </div>
 
@@ -585,7 +803,7 @@ function LaboratoryContent() {
                     ? "DOSSIER LOCAL"
                     : identifiedTarget?.source === "simbad_api"
                     ? "SIMBAD (CDS)"
-                    : "DEEP SKY"}
+                    : "CAMPO ABIERTO"}
                 </span>
               </div>
             </div>
@@ -613,16 +831,28 @@ function LaboratoryContent() {
               </span>
               <p className="text-[11px] sm:text-[11.5px] uppercase tracking-wide text-[#F1F0E1] leading-relaxed relative z-10 max-w-[92%]">
                 {identifiedTarget?.description?.toUpperCase() ||
-                  "COLOSALES COLUMNAS DE GAS MOLECULAR FRÍO Y POLVO DE SILICATOS ESCULPIDAS POR VIENTOS ESTELARES Y RADIACIÓN ULTRAVIOLETA EXTREMA PROCEDENTE DE ESTRELLAS MASIVAS JÓVENES."}
+                  "SECTOR DE CIELO PROFUNDO SIN SINGULARIDAD CATALOGADA DENTRO DE SU EXTENSIÓN ANGULAR. EL CAMPO CORRESPONDE A RADIACIÓN DIFUSA Y ESTRELLAS DE CAMPO NO RESUELTAS."}
               </p>
             </div>
 
             {/* ── CARD 5: COMPOSICIÓN Y RÉGIMEN FÍSICO (Full Width) ── */}
             <div className="col-span-2 bg-[#1A1A1F] border border-[#2B2B31] p-3.5 sm:p-4 space-y-3">
               <div className="flex items-center justify-between text-[9.5px] uppercase tracking-[0.16em]">
-                <span className="text-[#9A9A92]">COMPOSICIÓN Y RÉGIMEN FÍSICO</span>
+                <span className="text-[#9A9A92]">
+                  {activeState === "none"
+                    ? "COMPOSICIÓN Y RÉGIMEN FÍSICO (CAMPO DIFUSO)"
+                    : "COMPOSICIÓN Y RÉGIMEN FÍSICO"}
+                </span>
                 <span className="text-[#9A9A92]">{analysis.detectedElements.length} FIRMAS ACTIVAS</span>
               </div>
+
+              {/* Indicador de análisis parcial si es 'edge' */}
+              {isPartial && (
+                <div className="px-2.5 py-1 bg-[#506385]/20 border border-[#506385] text-[9.5px] uppercase tracking-wider text-[#F1F0E1] flex items-center gap-1.5">
+                  <span className="w-1.5 h-1.5 bg-[#F1F0E1]" />
+                  <span>ANÁLISIS PARCIAL · PERIFERIA DE HUELLA ANGULAR (NO ATRIBUIDO AL 100%)</span>
+                </div>
+              )}
 
               {/* Top half: Hero metric + 3-bar vertical histogram */}
               <div className="flex items-end justify-between gap-4 pt-1">
@@ -864,31 +1094,121 @@ function LaboratoryContent() {
               </div>
             </div>
 
-            {/* ── CARD 11: BITÁCORA DE MISIÓN (Full Width) ── */}
-            <div className="col-span-2 bg-[#1A1A1F] border border-[#2B2B31] p-3.5 sm:p-4 space-y-2.5">
-              <div className="flex items-center justify-between text-[9.5px] uppercase tracking-[0.16em]">
-                <span className="text-[#9A9A92]">BITÁCORA DE MISIÓN</span>
-                {noteSaved && (
-                  <span className="text-[#F1F0E1] font-bold animate-pulse">
-                    ¡REGISTRO GUARDADO!
+            {/* ── CARD 11: BITÁCORA DE MISIÓN DESACOPLADA (Full Width - Parte B) ── */}
+            <div className="col-span-2 bg-[#1A1A1F] border border-[#2B2B31] p-3.5 sm:p-4 space-y-3">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <span className="text-[9.5px] uppercase tracking-[0.16em] text-[#9A9A92] font-semibold">
+                    BITÁCORA DE MISIÓN
                   </span>
+                  {noteSaved && (
+                    <span className="text-[#F1F0E1] font-bold text-[10px] animate-pulse">
+                      ¡REGISTRO GUARDADO!
+                    </span>
+                  )}
+                </div>
+
+                {/* Botones de Exportar e Importar JSON */}
+                <div className="flex items-center gap-1.5">
+                  <button
+                    onClick={handleExportNotes}
+                    className="border border-[#3A3A42] bg-transparent text-[#F1F0E1] hover:bg-[#101015] text-[9.5px] uppercase tracking-wider px-2 py-1 flex items-center gap-1 transition-colors cursor-pointer"
+                    title="Exportar todas las notas en formato JSON"
+                  >
+                    <Download className="w-3 h-3 text-[#9A9A92]" />
+                    <span>EXPORTAR</span>
+                  </button>
+
+                  <button
+                    onClick={() => fileInputRef.current?.click()}
+                    className="border border-[#3A3A42] bg-transparent text-[#F1F0E1] hover:bg-[#101015] text-[9.5px] uppercase tracking-wider px-2 py-1 flex items-center gap-1 transition-colors cursor-pointer"
+                    title="Importar notas desde un archivo JSON"
+                  >
+                    <Upload className="w-3 h-3 text-[#9A9A92]" />
+                    <span>IMPORTAR</span>
+                  </button>
+
+                  <input
+                    type="file"
+                    ref={fileInputRef}
+                    onChange={handleImportFile}
+                    accept=".json"
+                    className="hidden"
+                  />
+                </div>
+              </div>
+
+              {/* Línea de estado requerida (B5): MODO LOCAL */}
+              <div className="text-[9px] uppercase tracking-[0.16em] text-[#9A9A92] border-b border-[#2B2B31] pb-2">
+                MODO LOCAL · las notas viven solo en este navegador
+              </div>
+
+              {/* Mensaje de error de almacenamiento / cuota si ocurre */}
+              {notesError && (
+                <div className="p-2 bg-[#506385]/20 border border-[#506385] text-[#F1F0E1] text-[10px] uppercase flex items-center gap-2">
+                  <AlertTriangle className="w-3.5 h-3.5 text-[#F1F0E1] shrink-0" />
+                  <span>{notesError}</span>
+                </div>
+              )}
+
+              {/* Lista de notas para esta captura actual (B6) */}
+              <div className="space-y-1.5 max-h-48 overflow-y-auto pr-1 scrollbar-none">
+                {missionNotes.length === 0 ? (
+                  <div className="text-[10px] uppercase text-[#9A9A92] py-2 italic text-center">
+                    No hay observaciones registradas para este sector.
+                  </div>
+                ) : (
+                  missionNotes.map((note) => (
+                    <div
+                      key={note.id}
+                      className="p-2 border border-[#2B2B31] bg-[#101015] flex items-start justify-between gap-3 text-xs"
+                    >
+                      <div className="flex-1 space-y-1 min-w-0">
+                        <div className="flex items-center gap-2 text-[9px] font-mono text-[#9A9A92] uppercase">
+                          <span>{new Date(note.createdAt).toLocaleDateString()}</span>
+                          <span>•</span>
+                          <span>{new Date(note.createdAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}</span>
+                          {note.objectName && (
+                            <>
+                              <span>•</span>
+                              <span className="text-[#F1F0E1] truncate">{note.objectName}</span>
+                            </>
+                          )}
+                        </div>
+                        <p className="text-[11px] text-[#F1F0E1] uppercase tracking-wide leading-relaxed break-words">
+                          {note.body}
+                        </p>
+                      </div>
+
+                      <button
+                        onClick={() => handleDeleteNote(note.id)}
+                        className="w-6 h-6 rounded-full bg-[#1A1A1F] border border-[#3A3A42] hover:border-[#F1F0E1] text-[#9A9A92] hover:text-[#F1F0E1] flex items-center justify-center shrink-0 transition-colors cursor-pointer"
+                        title="Eliminar observación"
+                      >
+                        <Trash2 className="w-3 h-3" />
+                      </button>
+                    </div>
+                  ))
                 )}
               </div>
 
-              <textarea
-                value={userObservationNote}
-                onChange={(e) => setUserObservationNote(e.target.value)}
-                placeholder="ANOTAR HIPÓTESIS U OBSERVACIONES ESPECTRALES..."
-                className="w-full h-16 bg-[#101015] border border-[#2B2B31] p-2 text-xs uppercase text-[#F1F0E1] placeholder-[#9A9A92]/50 focus:outline-hidden focus:border-[#506385] resize-none"
-              />
+              {/* Formulario de registro de nota */}
+              <div className="space-y-2 pt-1 border-t border-[#2B2B31]">
+                <textarea
+                  value={newNoteBody}
+                  onChange={(e) => setNewNoteBody(e.target.value)}
+                  placeholder="ANOTAR HIPÓTESIS U OBSERVACIONES ESPECTRALES..."
+                  className="w-full h-16 bg-[#101015] border border-[#2B2B31] p-2 text-xs uppercase text-[#F1F0E1] placeholder-[#9A9A92]/50 focus:outline-hidden focus:border-[#506385] resize-none"
+                />
 
-              <button
-                onClick={handleSaveObservation}
-                className="w-full py-2 bg-[#506385] text-[#F1F0E1] text-[11px] uppercase tracking-[0.14em] font-semibold transition-colors flex items-center justify-center gap-2 hover:opacity-95 cursor-pointer"
-              >
-                <Bookmark className="w-3.5 h-3.5 text-[#F1F0E1]" />
-                <span>REGISTRAR OBSERVACIÓN</span>
-              </button>
+                <button
+                  onClick={handleSaveNote}
+                  className="w-full py-2 bg-[#506385] text-[#F1F0E1] text-[11px] uppercase tracking-[0.14em] font-semibold transition-colors flex items-center justify-center gap-2 hover:opacity-95 cursor-pointer"
+                >
+                  <Bookmark className="w-3.5 h-3.5 text-[#F1F0E1]" />
+                  <span>REGISTRAR OBSERVACIÓN</span>
+                </button>
+              </div>
             </div>
           </div>
         </aside>
