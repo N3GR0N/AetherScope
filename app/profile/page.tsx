@@ -96,22 +96,25 @@ export default function ProfilePage() {
   const [updatingPassword, setUpdatingPassword] = useState(false);
   const [updateMsg, setUpdateMsg] = useState<{ type: "success" | "error"; text: string } | null>(null);
 
+  // Si se ingresó a /profile con tokens o código de recuperación (ej. enlaces de correos anteriores),
+  // redirigir inmediatamente a la interfaz dedicada /reset-password preservando parámetros
   useEffect(() => {
-    const supabase = getSupabaseClient();
-    if (!supabase) return;
+    if (typeof window === "undefined") return;
+    const search = window.location.search;
+    const hash = window.location.hash;
+    const hasRecovery =
+      search.includes("code=") ||
+      search.includes("recovery=true") ||
+      search.includes("mode=recovery") ||
+      hash.includes("type=recovery") ||
+      hash.includes("access_token=");
 
-    const {
-      data: { subscription },
-    } = supabase.auth.onAuthStateChange((event) => {
-      if (event === "PASSWORD_RECOVERY") {
-        setIsRecoveryMode(true);
-      }
-    });
+    if (hasRecovery) {
+      router.replace(`/reset-password${search}${hash}`);
+    }
+  }, [router]);
 
-    return () => {
-      subscription.unsubscribe();
-    };
-  }, []);
+
 
   // 5. Estado de confirmación para modal estilizado de eliminación
   const [deleteModalState, setDeleteModalState] = useState<{
@@ -282,7 +285,7 @@ export default function ProfilePage() {
       }
 
       const { error } = await supabase.auth.resetPasswordForEmail(user.email, {
-        redirectTo: `${window.location.origin}/profile`,
+        redirectTo: `${window.location.origin}/reset-password`,
       });
 
       if (error) {

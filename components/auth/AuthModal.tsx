@@ -386,6 +386,18 @@ export default function AuthModal({ isOpen, onClose }: AuthModalProps) {
                   />
                 </div>
 
+                {mode === "signin" && (
+                  <div className="flex justify-end -mt-1.5">
+                    <Link
+                      href="/reset-password"
+                      onClick={onClose}
+                      className="text-[10px] uppercase text-[#9A9A92] hover:text-[#F1F0E1] tracking-wider transition-colors cursor-pointer"
+                    >
+                      ¿Olvidaste tu contraseña?
+                    </Link>
+                  </div>
+                )}
+
                 {/* Checklist visual de requisitos de contraseña */}
                 <div className="p-2.5 bg-[#101015] border border-[#2B2B31] flex flex-col gap-1.5">
                   <span className="text-[9.5px] uppercase tracking-wider text-[#9A9A92]">
