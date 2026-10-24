@@ -228,7 +228,10 @@ function ResetPasswordContent() {
         text: `Enlace de restablecimiento enviado a ${requestEmail.trim()}. Revisa tu bandeja de entrada o spam.`,
       });
     } catch (err) {
-      const msg = err instanceof Error ? err.message : "Error al enviar correo de recuperación.";
+      let msg = err instanceof Error ? err.message : "Error al enviar correo de recuperación.";
+      if (msg.toLowerCase().includes("rate limit") || msg.toLowerCase().includes("rate_limit")) {
+        msg = "Límite de envíos alcanzado en el servidor de correo (protección anti-spam de Supabase). Por favor, aguarda unos minutos antes de solicitar otro email.";
+      }
       setStatusMessage({ type: "error", text: msg });
     } finally {
       setIsSendingEmail(false);
