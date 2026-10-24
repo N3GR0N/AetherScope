@@ -47,25 +47,25 @@ export default function DossierDrawer() {
     <>
       {/* ─── 1. Full Targets Catalog Modal / Gallery Drawer ─── */}
       {isCatalogOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/75 backdrop-blur-xs select-none font-[family-name:var(--font-proto)]">
-          <div className="bg-[#1A1A1F] border border-[#2B2B31] w-full max-w-4xl max-h-[85vh] flex flex-col overflow-hidden shadow-2xl">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-2.5 sm:p-4 bg-black/80 backdrop-blur-xs select-none font-[family-name:var(--font-proto)]">
+          <div className="bg-[#1A1A1F] border border-[#2B2B31] w-full max-w-4xl max-h-[90vh] sm:max-h-[85vh] flex flex-col overflow-hidden shadow-2xl">
             {/* Modal Header */}
-            <div className="p-4 bg-[#17171C] border-b border-[#2B2B31] flex items-center justify-between">
-              <div className="flex items-center gap-3">
+            <div className="p-3 sm:p-4 bg-[#17171C] border-b border-[#2B2B31] flex items-center justify-between">
+              <div className="flex items-center gap-2.5 sm:gap-3">
                 {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img
                   src="/favicon.ico"
                   alt="AetherScope"
-                  className="w-5 h-5 shrink-0 object-contain"
+                  className="w-4.5 h-4.5 sm:w-5 sm:h-5 shrink-0 object-contain"
                 />
                 <div>
-                  <h2 className="text-[#F1F0E1] font-semibold text-sm tracking-[0.14em] uppercase flex items-center gap-2">
+                  <h2 className="text-[#F1F0E1] font-semibold text-xs sm:text-sm tracking-[0.14em] uppercase flex items-center gap-2">
                     <span>CATÁLOGO CIENTÍFICO DEEP SPACE</span>
-                    <span className="text-[10px] font-normal px-2 py-0.5 bg-[#101015] border border-[#2B2B31] text-[#9A9A92]">
+                    <span className="text-[9px] sm:text-[10px] font-normal px-1.5 sm:px-2 py-0.5 bg-[#101015] border border-[#2B2B31] text-[#9A9A92]">
                       {COSMIC_TARGETS.length} OBJETOS
                     </span>
                   </h2>
-                  <p className="text-[10px] text-[#9A9A92] uppercase tracking-wider">
+                  <p className="hidden xs:block text-[9.5px] sm:text-[10px] text-[#9A9A92] uppercase tracking-wider">
                     Selecciona un objetivo cósmico para navegación y análisis espectral
                   </p>
                 </div>
@@ -73,14 +73,14 @@ export default function DossierDrawer() {
 
               <button
                 onClick={() => setCatalogOpen(false)}
-                className="w-8 h-8 bg-transparent hover:bg-[#101015] text-[#9A9A92] hover:text-[#F1F0E1] flex items-center justify-center transition-colors cursor-pointer border border-[#2B2B31]"
+                className="w-7 h-7 sm:w-8 sm:h-8 bg-transparent hover:bg-[#101015] text-[#9A9A92] hover:text-[#F1F0E1] flex items-center justify-center transition-colors cursor-pointer border border-[#2B2B31]"
               >
                 <X className="w-4 h-4" />
               </button>
             </div>
 
             {/* Catalog Grid Cards */}
-            <div className="flex-1 overflow-y-auto p-4 grid grid-cols-1 md:grid-cols-2 gap-3 bg-[#101015]">
+            <div className="flex-1 overflow-y-auto p-3 sm:p-4 grid grid-cols-1 md:grid-cols-2 gap-2.5 sm:gap-3 bg-[#101015]">
               {COSMIC_TARGETS.map((target) => {
                 const isSelected = selectedTarget?.id === target.id;
                 const cat = CATEGORY_LABELS[target.category];
@@ -88,7 +88,7 @@ export default function DossierDrawer() {
                 return (
                   <div
                     key={target.id}
-                    className={`p-4 border transition-colors flex flex-col justify-between gap-3 ${
+                    className={`p-3.5 sm:p-4 border transition-colors flex flex-col justify-between gap-3 ${
                       isSelected
                         ? "bg-[#506385] border-[#506385] text-[#F1F0E1]"
                         : "bg-[#1A1A1F] border-[#2B2B31] hover:border-[#3A3A42]"
@@ -96,19 +96,19 @@ export default function DossierDrawer() {
                   >
                     <div className="space-y-2">
                       <div className="flex items-start justify-between gap-2">
-                        <span className={`text-[9.5px] uppercase tracking-wider px-2 py-0.5 border ${cat.badge}`}>
+                        <span className={`text-[9px] sm:text-[9.5px] uppercase tracking-wider px-2 py-0.5 border ${cat.badge}`}>
                           {cat.label}
                         </span>
-                        <span className="text-[10px] uppercase tracking-wider text-[#9A9A92]">
+                        <span className="text-[9.5px] sm:text-[10px] uppercase tracking-wider text-[#9A9A92]">
                           {target.constellation}
                         </span>
                       </div>
 
-                      <h3 className="text-[#F1F0E1] font-bold text-base uppercase tracking-wide">
+                      <h3 className="text-[#F1F0E1] font-bold text-sm sm:text-base uppercase tracking-wide">
                         {target.name}
                       </h3>
 
-                      <p className="text-[11px] text-[#F1F0E1]/75 leading-relaxed line-clamp-2 uppercase">
+                      <p className="text-[10.5px] sm:text-[11px] text-[#F1F0E1]/75 leading-relaxed line-clamp-2 uppercase">
                         {target.description}
                       </p>
 
@@ -117,7 +117,7 @@ export default function DossierDrawer() {
                         {target.spectroscopy.detectedElements.slice(0, 4).map((elem) => (
                           <span
                             key={elem}
-                            className="text-[9px] px-1.5 py-0.5 bg-[#101015] text-[#F1F0E1]/80 border border-[#2B2B31]"
+                            className="text-[8.5px] sm:text-[9px] px-1.5 py-0.5 bg-[#101015] text-[#F1F0E1]/80 border border-[#2B2B31]"
                           >
                             {elem}
                           </span>
@@ -126,7 +126,7 @@ export default function DossierDrawer() {
                     </div>
 
                     <div className="pt-2 border-t border-[#2B2B31] flex items-center justify-between text-xs">
-                      <span className="text-[11px] text-[#9A9A92] tabular-nums uppercase">
+                      <span className="text-[10.5px] sm:text-[11px] text-[#9A9A92] tabular-nums uppercase">
                         {target.distance}
                       </span>
                       <button
@@ -134,7 +134,7 @@ export default function DossierDrawer() {
                           navigateToTarget(target);
                           setCatalogOpen(false);
                         }}
-                        className={`px-3 py-1.5 text-[10px] uppercase font-bold tracking-[0.1em] transition-colors flex items-center gap-1.5 cursor-pointer border ${
+                        className={`px-2.5 sm:px-3 py-1.5 text-[9.5px] sm:text-[10px] uppercase font-bold tracking-[0.1em] transition-colors flex items-center gap-1.5 cursor-pointer border ${
                           isSelected
                             ? "bg-[#F1F0E1] text-[#101015] border-[#F1F0E1]"
                             : "bg-[#506385] text-[#F1F0E1] border-[#506385] hover:opacity-90"
@@ -150,11 +150,11 @@ export default function DossierDrawer() {
             </div>
 
             {/* Modal Footer */}
-            <div className="p-3 bg-[#17171C] border-t border-[#2B2B31] flex items-center justify-between text-[10px] uppercase tracking-[0.14em] text-[#9A9A92]">
-              <span>ALADIN LITE V3 • MOTOR CINEMÁTICO ORBITAL</span>
+            <div className="p-3 bg-[#17171C] border-t border-[#2B2B31] flex items-center justify-between text-[9.5px] sm:text-[10px] uppercase tracking-[0.14em] text-[#9A9A92]">
+              <span className="truncate max-w-[200px] xs:max-w-none">ALADIN LITE V3 • MOTOR CINEMÁTICO</span>
               <button
                 onClick={() => setCatalogOpen(false)}
-                className="text-[#F1F0E1] hover:underline transition-colors cursor-pointer"
+                className="text-[#F1F0E1] hover:underline transition-colors cursor-pointer shrink-0"
               >
                 CERRAR GALERÍA
               </button>
@@ -167,15 +167,15 @@ export default function DossierDrawer() {
       {currentMode === "dossier" && selectedTarget && !isCatalogOpen && (
         <aside
           aria-label="Laboratorio de Análisis Astrofísico"
-          className="fixed top-20 right-4 z-40 w-[360px] max-w-[calc(100vw-2rem)] bg-[#1A1A1F] border border-[#2B2B31] flex flex-col overflow-hidden font-[family-name:var(--font-proto)] select-none"
+          className="fixed top-16 left-2.5 right-2.5 sm:left-auto sm:right-4 sm:top-20 z-40 w-auto sm:w-[360px] max-w-[calc(100vw-1.25rem)] bg-[#1A1A1F] border border-[#2B2B31] flex flex-col overflow-hidden font-[family-name:var(--font-proto)] select-none shadow-2xl"
         >
           {/* Card Header */}
-          <div className="p-3.5 bg-[#17171C] border-b border-[#2B2B31] flex items-center justify-between">
+          <div className="p-3 sm:p-3.5 bg-[#17171C] border-b border-[#2B2B31] flex items-center justify-between">
             <div>
-              <span className="text-[9px] tracking-[0.16em] text-[#9A9A92] uppercase font-medium block">
+              <span className="text-[8.5px] sm:text-[9px] tracking-[0.16em] text-[#9A9A92] uppercase font-medium block">
                 DOSSIER DE OBJETIVO CÓSMICO
               </span>
-              <h3 className="text-[#F1F0E1] text-xs font-bold uppercase tracking-wide truncate max-w-[240px]">
+              <h3 className="text-[#F1F0E1] text-xs font-bold uppercase tracking-wide truncate max-w-[220px] sm:max-w-[240px]">
                 {selectedTarget.name}
               </h3>
             </div>
@@ -190,13 +190,13 @@ export default function DossierDrawer() {
           </div>
 
           {/* Dossier Content */}
-          <div className="p-3.5 space-y-3 max-h-[calc(100vh-240px)] overflow-y-auto">
+          <div className="p-3 sm:p-3.5 space-y-3 max-h-[calc(100vh-140px)] overflow-y-auto">
             {/* Category and Constellation Badges */}
             <div className="flex items-center justify-between">
-              <span className={`text-[9.5px] uppercase tracking-wider px-2 py-0.5 border ${CATEGORY_LABELS[selectedTarget.category].badge}`}>
+              <span className={`text-[9px] sm:text-[9.5px] uppercase tracking-wider px-2 py-0.5 border ${CATEGORY_LABELS[selectedTarget.category].badge}`}>
                 {CATEGORY_LABELS[selectedTarget.category].label}
               </span>
-              <span className="text-[10px] uppercase tracking-wider text-[#9A9A92]">
+              <span className="text-[9.5px] sm:text-[10px] uppercase tracking-wider text-[#9A9A92]">
                 {selectedTarget.constellation}
               </span>
             </div>
@@ -234,7 +234,7 @@ export default function DossierDrawer() {
               <span className="text-[8.5px] text-[#9A9A92] uppercase tracking-[0.14em] block">
                 Dossier Científico
               </span>
-              <p className="text-[11px] text-[#F1F0E1]/80 leading-relaxed p-2.5 border border-[#2B2B31] bg-[#101015] uppercase">
+              <p className="text-[10.5px] sm:text-[11px] text-[#F1F0E1]/80 leading-relaxed p-2 sm:p-2.5 border border-[#2B2B31] bg-[#101015] uppercase">
                 {selectedTarget.description}
               </p>
             </div>
@@ -249,7 +249,7 @@ export default function DossierDrawer() {
                 {selectedTarget.spectroscopy.detectedElements.map((elem) => (
                   <span
                     key={elem}
-                    className="px-2 py-0.5 text-[9.5px] bg-[#101015] text-[#F1F0E1] border border-[#2B2B31]"
+                    className="px-2 py-0.5 text-[9px] sm:text-[9.5px] bg-[#101015] text-[#F1F0E1] border border-[#2B2B31]"
                   >
                     {elem}
                   </span>
@@ -261,7 +261,7 @@ export default function DossierDrawer() {
             <div className="pt-2 flex flex-col gap-1.5 border-t border-[#2B2B31]">
               <button
                 onClick={() => setCatalogOpen(true)}
-                className="w-full py-2 px-3 bg-[#506385] text-[#F1F0E1] text-[11px] uppercase tracking-[0.12em] font-medium transition-colors flex items-center justify-center gap-1.5 cursor-pointer"
+                className="w-full py-2 px-3 bg-[#506385] text-[#F1F0E1] text-[10.5px] sm:text-[11px] uppercase tracking-[0.12em] font-medium transition-colors flex items-center justify-center gap-1.5 cursor-pointer"
               >
                 <Compass className="w-3.5 h-3.5" />
                 <span>Explorar Otros Objetos</span>
@@ -269,7 +269,7 @@ export default function DossierDrawer() {
 
               <button
                 onClick={returnToFreeFlight}
-                className="w-full py-1.5 px-3 bg-transparent hover:bg-[#101015] text-[#9A9A92] hover:text-[#F1F0E1] text-[10px] uppercase tracking-[0.12em] border border-[#2B2B31] transition-colors flex items-center justify-center gap-1 cursor-pointer"
+                className="w-full py-1.5 px-3 bg-transparent hover:bg-[#101015] text-[#9A9A92] hover:text-[#F1F0E1] text-[9.5px] sm:text-[10px] uppercase tracking-[0.12em] border border-[#2B2B31] transition-colors flex items-center justify-center gap-1 cursor-pointer"
               >
                 <span>Volver a Observatorio 360°</span>
                 <ArrowRight className="w-3 h-3" />

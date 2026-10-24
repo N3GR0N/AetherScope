@@ -477,27 +477,27 @@ function LaboratoryContent() {
   return (
     <div className="relative w-screen h-screen overflow-hidden bg-[#101015] text-[#F1F0E1] select-none flex flex-col font-[family-name:var(--font-proto)]">
       {/* ─── 1. TOP UNIFIED TECHNICAL HEADER ─── */}
-      <header className="h-14 shrink-0 px-4 md:px-6 flex items-center justify-between bg-[#17171C] border-b border-[#2B2B31] z-40 select-none">
+      <header className="h-14 shrink-0 px-2.5 sm:px-4 md:px-6 flex items-center justify-between bg-[#17171C] border-b border-[#2B2B31] z-40 select-none">
         {/* Left Section: Favicon + Volver + Telemetry strip */}
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-2 sm:gap-3 shrink-0">
           {/* Favicon icon */}
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img
             src="/favicon.ico"
             alt="AetherScope"
-            className="w-5 h-5 shrink-0 object-contain"
+            className="w-4.5 h-4.5 sm:w-5 sm:h-5 shrink-0 object-contain"
           />
 
           <button
             onClick={handleReturnToExplorer}
-            className="border border-[#3A3A42] bg-transparent text-[#F1F0E1] text-[11px] uppercase tracking-[0.12em] px-3 py-1.5 hover:bg-[#1A1A1F] transition-colors flex items-center gap-1.5 cursor-pointer"
+            className="border border-[#3A3A42] bg-transparent text-[#F1F0E1] text-[10.5px] sm:text-[11px] uppercase tracking-[0.12em] px-2 sm:px-3 py-1.5 hover:bg-[#1A1A1F] transition-colors flex items-center gap-1.5 cursor-pointer shrink-0"
             title="Volver al lienzo de exploración libre preservando las coordenadas"
           >
             <ArrowLeft className="w-3.5 h-3.5 text-[#F1F0E1]" />
-            <span>VOLVER</span>
+            <span className="hidden xs:inline">VOLVER</span>
           </button>
 
-          <div className="w-px h-6 bg-[#2B2B31] mx-1 hidden sm:block" />
+          <div className="w-px h-6 bg-[#2B2B31] mx-1 hidden md:block" />
 
           {/* Telemetry Strip */}
           <div className="hidden md:flex items-center gap-4 lg:gap-6 text-[10px] tracking-wider uppercase">
@@ -537,10 +537,10 @@ function LaboratoryContent() {
         </div>
 
         {/* Right Section: Registration / Edge Chip + Toggle Panel Button */}
-        <div className="flex items-center gap-2.5">
+        <div className="flex items-center gap-1.5 sm:gap-2.5">
           {!isIdentifying && (
             <div
-              className={`px-3 py-1.5 text-[10px] font-bold uppercase tracking-[0.14em] flex items-center gap-1.5 border ${
+              className={`hidden sm:flex px-2.5 sm:px-3 py-1.5 text-[9.5px] sm:text-[10px] font-bold uppercase tracking-[0.14em] items-center gap-1.5 border shrink-0 ${
                 activeState === "inside"
                   ? "bg-[#506385] text-[#F1F0E1] border-[#506385]"
                   : activeState === "edge"
@@ -549,7 +549,7 @@ function LaboratoryContent() {
               }`}
             >
               <div className="w-1.5 h-1.5 bg-[#F1F0E1]" />
-              <span>
+              <span className="truncate max-w-[120px] lg:max-w-none">
                 {activeState === "inside"
                   ? "REGISTRADO"
                   : activeState === "edge"
@@ -564,10 +564,10 @@ function LaboratoryContent() {
             onClick={toggleSidebar}
             aria-expanded={isSidebarOpen}
             aria-controls="laboratory-analysis-panel"
-            className="border border-[#3A3A42] bg-transparent text-[#F1F0E1] text-[11px] uppercase tracking-[0.12em] px-3 py-1.5 hover:bg-[#1A1A1F] transition-colors flex items-center gap-2 cursor-pointer"
+            className="border border-[#3A3A42] bg-transparent text-[#F1F0E1] text-[10.5px] sm:text-[11px] uppercase tracking-[0.12em] px-2.5 sm:px-3 py-1.5 hover:bg-[#1A1A1F] transition-colors flex items-center gap-1.5 sm:gap-2 cursor-pointer shrink-0"
             title={isSidebarOpen ? "Ocultar panel" : "Mostrar panel"}
           >
-            <div className="w-3.5 h-3.5 border border-[#F1F0E1] flex items-center justify-center p-[1px]">
+            <div className="w-3.5 h-3.5 border border-[#F1F0E1] flex items-center justify-center p-[1px] shrink-0">
               <div
                 className={`w-1.5 h-2.5 bg-[#F1F0E1] ml-auto ${
                   isSidebarOpen ? "opacity-100" : "opacity-30"
@@ -577,13 +577,16 @@ function LaboratoryContent() {
             <span className="hidden sm:inline">
               {isSidebarOpen ? "OCULTAR PANEL" : "MOSTRAR PANEL"}
             </span>
+            <span className="sm:hidden font-semibold">
+              {isSidebarOpen ? "VISOR" : "PANEL"}
+            </span>
           </button>
 
           {/* Profile Navigation Button (if authenticated and mounted) */}
           {isMounted && user ? (
             <Link
               href="/profile"
-              className="border border-[#3A3A42] bg-[#1A1A1F] hover:bg-[#506385] hover:border-[#506385] text-[#F1F0E1] text-[11px] uppercase tracking-[0.12em] px-3 py-1.5 transition-colors flex items-center gap-1.5 cursor-pointer"
+              className="border border-[#3A3A42] bg-[#1A1A1F] hover:bg-[#506385] hover:border-[#506385] text-[#F1F0E1] text-[10.5px] sm:text-[11px] uppercase tracking-[0.12em] p-1.5 sm:px-3 sm:py-1.5 transition-colors flex items-center justify-center gap-1.5 cursor-pointer shrink-0"
               title="Ir a Mi Perfil y Bitácora Personal"
             >
               <User className="w-3.5 h-3.5 text-[#506385]" />
@@ -594,7 +597,7 @@ function LaboratoryContent() {
           {/* Operator Auth Status / Access Button */}
           <button
             onClick={() => setAuthModalOpen(true)}
-            className={`px-3 py-1.5 text-[11px] uppercase tracking-[0.12em] font-[family-name:var(--font-proto)] transition-colors cursor-pointer border flex items-center gap-1.5 ${
+            className={`px-2 sm:px-3 py-1.5 text-[10.5px] sm:text-[11px] uppercase tracking-[0.12em] font-[family-name:var(--font-proto)] transition-colors cursor-pointer border flex items-center gap-1.5 shrink-0 ${
               isMounted && user
                 ? "bg-[#16222F] text-[#F1F0E1] border-[#506385] hover:bg-[#1E2E3E]"
                 : "bg-transparent text-[#F1F0E1] border-[#3A3A42] hover:bg-[#1A1A1F]"
@@ -602,11 +605,11 @@ function LaboratoryContent() {
             title={isMounted && user ? `Operador: ${user.email} (Haz clic para gestionar sesión)` : "Iniciar sesión o registrarse"}
           >
             <span
-              className={`w-1.5 h-1.5 rounded-full ${
+              className={`w-1.5 h-1.5 rounded-full shrink-0 ${
                 isMounted && user ? "bg-[#506385] animate-pulse" : "bg-[#9A9A92]"
               }`}
             />
-            <span className="truncate max-w-[80px] sm:max-w-[110px]">
+            <span className="truncate max-w-[65px] xs:max-w-[80px] sm:max-w-[110px]">
               {isMounted && user ? user.email.split("@")[0].toUpperCase() : "ACCESO"}
             </span>
           </button>
@@ -634,15 +637,15 @@ function LaboratoryContent() {
           <PrecisionCrosshair visible={true} fov={fovParam} variant="compact" label="CENTRO DE CAPTURA" />
 
           {/* Bottom Floating Spectral Filters & Mixing Dock */}
-          <div className="absolute bottom-4 left-4 right-4 z-30 pointer-events-none flex justify-center">
-            <div className="w-full max-w-4xl bg-[#101015]/95 border border-[#2B2B31] p-3 pointer-events-auto flex flex-col gap-2.5 font-[family-name:var(--font-proto)] select-none">
+          <div className="absolute bottom-2 left-2 right-2 sm:bottom-4 sm:left-4 sm:right-4 z-30 pointer-events-none flex justify-center">
+            <div className="w-full max-w-4xl bg-[#101015]/95 border border-[#2B2B31] p-2.5 sm:p-3 pointer-events-auto flex flex-col gap-2 sm:gap-2.5 font-[family-name:var(--font-proto)] select-none shadow-2xl">
               {/* Filter Row: 5 Spectral Surveys */}
-              <div className="flex items-center justify-between text-[10px] uppercase tracking-[0.14em]">
+              <div className="flex items-center justify-between text-[9px] sm:text-[10px] uppercase tracking-[0.14em]">
                 <span className="text-[#F1F0E1] font-semibold">CAPAS ESPECTRALES</span>
                 <span className="text-[#9A9A92]">05 CAPAS</span>
               </div>
 
-              <div className="flex flex-wrap items-center gap-2">
+              <div className="flex flex-wrap items-center gap-1.5 sm:gap-2">
                 {LABORATORY_SPECTRAL_FILTERS.map((filter) => {
                   const isPrimary = activePrimaryFilter.id === filter.id;
                   const isOverlay = activeOverlayFilter?.id === filter.id;
@@ -653,7 +656,7 @@ function LaboratoryContent() {
                       key={filter.id}
                       disabled={isProcessingFilter}
                       onClick={() => handleApplyFilter(filter)}
-                      className={`px-3 py-1.5 text-[11px] uppercase tracking-wider font-medium flex items-center gap-2 border transition-colors cursor-pointer ${
+                      className={`px-2 py-1 sm:px-3 sm:py-1.5 text-[10px] sm:text-[11px] uppercase tracking-wider font-medium flex items-center gap-1.5 sm:gap-2 border transition-colors cursor-pointer ${
                         isBeingProcessed
                           ? "bg-[#506385]/50 border-[#506385] text-[#F1F0E1]"
                           : isPrimary
@@ -665,11 +668,11 @@ function LaboratoryContent() {
                     >
                       <span>{filter.shortLabel}</span>
                       {isPrimary ? (
-                        <span className="px-1 py-0.2 bg-[#101015] text-[#F1F0E1] text-[9px] font-bold">
+                        <span className="px-1 py-0.2 bg-[#101015] text-[#F1F0E1] text-[8.5px] sm:text-[9px] font-bold">
                           BASE
                         </span>
                       ) : isOverlay ? (
-                        <span className="px-1 py-0.2 bg-[#F1F0E1] text-[#101015] text-[9px] font-bold">
+                        <span className="px-1 py-0.2 bg-[#F1F0E1] text-[#101015] text-[8.5px] sm:text-[9px] font-bold">
                           CAPA
                         </span>
                       ) : null}
@@ -679,12 +682,12 @@ function LaboratoryContent() {
               </div>
 
               {/* Spectral Blend Opacity Slider */}
-              <div className="flex items-center justify-between gap-4 pt-2 border-t border-[#2B2B31]">
-                <span className="text-[10px] uppercase tracking-wider text-[#F1F0E1]">
+              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-1.5 sm:gap-4 pt-2 border-t border-[#2B2B31]">
+                <span className="text-[9.5px] sm:text-[10px] uppercase tracking-wider text-[#F1F0E1]">
                   MEZCLA MULTIESPECTRAL ({activeOverlayFilter ? activeOverlayFilter.shortLabel : "SIN CAPA"})
                 </span>
 
-                <div className="flex items-center gap-3 flex-1 max-w-sm">
+                <div className="flex items-center gap-2.5 sm:gap-3 w-full sm:flex-1 sm:max-w-sm">
                   <input
                     type="range"
                     min="0"
@@ -694,7 +697,7 @@ function LaboratoryContent() {
                     onChange={(e) => setBlendOpacity(parseFloat(e.target.value))}
                     className="w-full accent-[#F1F0E1] cursor-pointer h-1.5 bg-[#2B2B31]"
                   />
-                  <span className="text-[20px] font-bold text-[#F1F0E1] tabular-nums w-12 text-right">
+                  <span className="text-[18px] sm:text-[20px] font-bold text-[#F1F0E1] tabular-nums w-12 text-right">
                     {Math.round(blendOpacity * 100)}%
                   </span>
                 </div>
@@ -707,12 +710,26 @@ function LaboratoryContent() {
         <aside
           id="laboratory-analysis-panel"
           aria-hidden={!isSidebarOpen}
-          className={`shrink-0 h-full border-l border-[#2B2B31] bg-[#101015] overflow-y-auto p-2.5 z-20 transition-all duration-200 ease-in-out font-[family-name:var(--font-proto)] ${
+          className={`h-full border-l border-[#2B2B31] bg-[#101015] overflow-y-auto p-2.5 sm:p-3 transition-all duration-200 ease-in-out font-[family-name:var(--font-proto)] ${
             isSidebarOpen
-              ? "w-[480px] lg:w-[540px] opacity-100 translate-x-0"
-              : "w-0 p-0 border-l-0 opacity-0 pointer-events-none translate-x-full overflow-hidden"
+              ? "fixed inset-x-0 top-14 bottom-0 z-40 w-full md:relative md:inset-auto md:top-auto md:bottom-auto md:z-20 md:w-[480px] lg:w-[540px] md:shrink-0 opacity-100 translate-x-0"
+              : "w-0 p-0 border-l-0 opacity-0 pointer-events-none translate-x-full overflow-hidden hidden md:block"
           }`}
         >
+          {/* Mobile Return to Visor bar (only visible on < md) */}
+          <div className="md:hidden flex items-center justify-between p-2.5 mb-2.5 bg-[#17171C] border border-[#2B2B31]">
+            <div className="flex items-center gap-2 text-xs uppercase tracking-wider text-[#F1F0E1] font-semibold">
+              <div className="w-2 h-2 bg-[#506385]" />
+              <span>PANEL DE ANÁLISIS</span>
+            </div>
+            <button
+              onClick={() => setIsSidebarOpen(false)}
+              className="px-2.5 py-1 text-[10px] uppercase tracking-wider bg-[#506385] text-[#F1F0E1] font-semibold flex items-center gap-1 cursor-pointer"
+            >
+              <ArrowLeft className="w-3 h-3" />
+              <span>VOLVER AL VISOR</span>
+            </button>
+          </div>
           <div className="grid grid-cols-2 gap-2 pb-8">
             {/* ── CARD 1: IDENTIFICACIÓN CELESTE (Full Width) ── */}
             <div className="col-span-2 bg-[#1A1A1F] border border-[#2B2B31] p-3.5 sm:p-4 space-y-2">
@@ -1189,7 +1206,7 @@ function LaboratoryContent() {
                 </div>
 
                 {/* Botones de Exportar e Importar JSON */}
-                <div className="flex items-center gap-1.5">
+                <div className="flex flex-wrap items-center gap-1.5">
                   <button
                     onClick={handleExportNotes}
                     className="border border-[#3A3A42] bg-transparent text-[#F1F0E1] hover:bg-[#101015] text-[9.5px] uppercase tracking-wider px-2 py-1 flex items-center gap-1 transition-colors cursor-pointer"

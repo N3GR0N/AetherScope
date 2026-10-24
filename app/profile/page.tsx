@@ -436,13 +436,13 @@ export default function ProfilePage() {
   }
 
   return (
-    <div className="min-h-screen bg-[#101015] text-[#F1F0E1] select-none font-[family-name:var(--font-proto)] flex flex-col">
+    <div className="h-full w-full bg-[#101015] text-[#F1F0E1] select-none font-[family-name:var(--font-proto)] flex flex-col overflow-hidden">
       {/* ─── 1. Header de Navegación ─── */}
-      <header className="h-14 bg-[#17171C] border-b border-[#2B2B31] px-4 md:px-6 flex items-center justify-between z-20 shrink-0">
-        <div className="flex items-center gap-4">
+      <header className="h-14 bg-[#17171C] border-b border-[#2B2B31] px-3 sm:px-4 md:px-6 flex items-center justify-between z-20 shrink-0">
+        <div className="flex items-center gap-2.5 sm:gap-4">
           <Link
             href="/"
-            className="px-3 py-1.5 border border-[#3A3A42] bg-transparent hover:bg-[#1A1A1F] text-[#F1F0E1] text-[11px] uppercase tracking-wider flex items-center gap-2 transition-colors cursor-pointer"
+            className="px-2.5 sm:px-3 py-1.5 border border-[#3A3A42] bg-transparent hover:bg-[#1A1A1F] text-[#F1F0E1] text-[10.5px] sm:text-[11px] uppercase tracking-wider flex items-center gap-1.5 sm:gap-2 transition-colors cursor-pointer"
             title="Regresar a la visualización celeste libre"
           >
             <ArrowLeft className="w-3.5 h-3.5 text-[#506385]" />
@@ -462,19 +462,19 @@ export default function ProfilePage() {
           </div>
         </div>
 
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-2 sm:gap-3">
           <button
             onClick={() => signOut()}
-            className="px-3 py-1.5 border border-[#3A3A42] hover:border-[#506385] bg-transparent hover:bg-[#1A1A1F] text-[#9A9A92] hover:text-[#F1F0E1] text-[11px] uppercase tracking-wider flex items-center gap-1.5 transition-colors cursor-pointer"
+            className="px-2.5 sm:px-3 py-1.5 border border-[#3A3A42] hover:border-[#506385] bg-transparent hover:bg-[#1A1A1F] text-[#9A9A92] hover:text-[#F1F0E1] text-[10.5px] sm:text-[11px] uppercase tracking-wider flex items-center gap-1.5 transition-colors cursor-pointer"
           >
             <LogOut className="w-3.5 h-3.5 text-[#506385]" />
-            <span>CERRAR SESIÓN</span>
+            <span className="hidden sm:inline">CERRAR SESIÓN</span>
           </button>
         </div>
       </header>
 
       {/* ─── 2. Contenido Principal del Perfil ─── */}
-      <main className="flex-1 p-4 md:p-6 max-w-7xl w-full mx-auto grid grid-cols-1 lg:grid-cols-12 gap-6 overflow-y-auto">
+      <main className="flex-1 p-3 sm:p-4 md:p-6 max-w-7xl w-full mx-auto grid grid-cols-1 lg:grid-cols-12 gap-5 sm:gap-6 overflow-y-auto">
         {/* COLUMNA IZQUIERDA: Tarjeta de Operador y Seguridad (4 cols) */}
         <section className="lg:col-span-4 flex flex-col gap-5">
           {/* Tarjeta de Avatar y Credenciales */}
@@ -691,7 +691,7 @@ export default function ProfilePage() {
             ) : (
               <div className="grid grid-cols-1 md:grid-cols-12 gap-5 flex-1">
                 {/* Lista de Objetos (5 cols) */}
-                <div className="md:col-span-5 space-y-2 max-h-[580px] overflow-y-auto pr-1">
+                <div className="md:col-span-5 space-y-2 max-h-[260px] md:max-h-[580px] overflow-y-auto pr-1">
                   {observedObjects.map((obj) => {
                     const isSelected = obj.id === activeSelectedId;
                     return (

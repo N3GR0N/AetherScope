@@ -45,7 +45,7 @@ export default function ConfirmDeleteModal({
     <div
       role="dialog"
       aria-modal="true"
-      className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-xs select-none font-[family-name:var(--font-proto)]"
+      className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-black/80 backdrop-blur-xs select-none font-[family-name:var(--font-proto)]"
       onClick={(e) => {
         if (e.target === e.currentTarget && !isProcessing) {
           onClose();
@@ -54,7 +54,7 @@ export default function ConfirmDeleteModal({
     >
       <div className="bg-[#17171C] border border-[#3A3A42] w-full max-w-md flex flex-col overflow-hidden shadow-2xl animate-in fade-in zoom-in-95 duration-150">
         {/* Cabecera Técnica del Modal */}
-        <div className="p-4 bg-[#1A1A1F] border-b border-[#2B2B31] flex items-center justify-between">
+        <div className="p-3.5 sm:p-4 bg-[#1A1A1F] border-b border-[#2B2B31] flex items-center justify-between">
           <div className="flex items-center gap-2.5">
             <div className="w-6 h-6 rounded-xs bg-[#251515] border border-[#5C2B2B] flex items-center justify-center">
               <AlertTriangle className="w-3.5 h-3.5 text-[#EF4444]" />
@@ -80,13 +80,13 @@ export default function ConfirmDeleteModal({
         </div>
 
         {/* Cuerpo del Modal */}
-        <div className="p-5 space-y-3.5 bg-[#17171C]">
-          <p className="text-[11.5px] text-[#9A9A92] leading-relaxed uppercase tracking-wide">
+        <div className="p-4 sm:p-5 space-y-3.5 bg-[#17171C]">
+          <p className="text-[11px] sm:text-[11.5px] text-[#9A9A92] leading-relaxed uppercase tracking-wide">
             {description}
           </p>
 
           {targetName && (
-            <div className="p-3 bg-[#101015] border border-[#2B2B31] flex items-center gap-2">
+            <div className="p-2.5 sm:p-3 bg-[#101015] border border-[#2B2B31] flex items-center gap-2">
               <div className="w-1.5 h-1.5 bg-[#EF4444] rounded-full shrink-0" />
               <span className="text-xs font-mono text-[#F1F0E1] break-all uppercase truncate">
                 {targetName}
@@ -103,12 +103,12 @@ export default function ConfirmDeleteModal({
         </div>
 
         {/* Barra de Acciones */}
-        <div className="p-3.5 bg-[#1A1A1F] border-t border-[#2B2B31] flex items-center justify-end gap-2.5">
+        <div className="p-3 sm:p-3.5 bg-[#1A1A1F] border-t border-[#2B2B31] flex flex-col-reverse sm:flex-row items-stretch sm:items-center justify-end gap-2 sm:gap-2.5">
           <button
             type="button"
             onClick={onClose}
             disabled={isProcessing}
-            className="px-3.5 py-1.5 border border-[#3A3A42] hover:border-[#506385] bg-transparent text-[#9A9A92] hover:text-[#F1F0E1] text-[10.5px] uppercase tracking-wider transition-colors cursor-pointer disabled:opacity-40 font-medium"
+            className="px-3.5 py-2 sm:py-1.5 border border-[#3A3A42] hover:border-[#506385] bg-transparent text-[#9A9A92] hover:text-[#F1F0E1] text-[10.5px] uppercase tracking-wider transition-colors cursor-pointer disabled:opacity-40 font-medium flex items-center justify-center"
           >
             {cancelLabel}
           </button>
@@ -117,7 +117,7 @@ export default function ConfirmDeleteModal({
             type="button"
             onClick={onConfirm}
             disabled={isProcessing}
-            className="px-4 py-1.5 bg-[#251515] hover:bg-[#381A1A] text-[#F1F0E1] border border-[#EF4444] hover:border-[#F87171] text-[10.5px] uppercase tracking-[0.14em] font-semibold transition-colors flex items-center gap-1.5 cursor-pointer shadow-xs disabled:opacity-40"
+            className="px-4 py-2 sm:py-1.5 bg-[#251515] hover:bg-[#381A1A] text-[#F1F0E1] border border-[#EF4444] hover:border-[#F87171] text-[10.5px] uppercase tracking-[0.14em] font-semibold transition-colors flex items-center justify-center gap-1.5 cursor-pointer shadow-xs disabled:opacity-40"
           >
             {isProcessing ? (
               <>
