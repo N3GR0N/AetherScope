@@ -32,6 +32,7 @@ export interface Candidate {
   sizeSource?: 'simbad' | 'ned' | 'estimate';
   source: 'dossier' | 'simbad';
   description?: string;
+  distanceLy?: string;
 }
 
 export interface MatchedCelestialObject {
@@ -112,6 +113,7 @@ export function matchLocalDossierCapture(capture: Capture): CaptureMatch {
         positionAngleDeg: classification.effectivePositionAngleDeg,
         sizeSource: classification.sizeSource,
         source: 'dossier',
+        distanceLy: item.distanceLy,
         description: item.description,
       });
     }
@@ -245,6 +247,7 @@ export async function querySimbadConeCapture(
       basic.galdim_majaxis,
       basic.galdim_minaxis,
       basic.galdim_angle,
+      basic.plx_value,
       DISTANCE(POINT('ICRS', basic.ra, basic.dec), POINT('ICRS', ${cleanRa}, ${cleanDec})) AS dist
     FROM basic
     LEFT JOIN otypedef ON basic.otype = otypedef.otype
@@ -278,11 +281,24 @@ export async function querySimbadConeCapture(
     const candidates: Candidate[] = [];
 
     for (const row of data.data) {
-      const [mainId, otypeLongname, objRa, objDec, galdimMaj, galdimMin, galdimAngle] = row;
+      const [mainId, otypeLongname, objRa, objDec, galdimMaj, galdimMin, galdimAngle, plxValue] = row;
       const parsedRa = typeof objRa === 'number' ? objRa : parseFloat(objRa);
       const parsedDec = typeof objDec === 'number' ? objDec : parseFloat(objDec);
+      const parsedPlx = typeof plxValue === 'number' ? plxValue : (plxValue !== null && plxValue !== undefined ? parseFloat(plxValue) : NaN);
 
       if (isNaN(parsedRa) || isNaN(parsedDec)) continue;
+
+      let computedDistanceLy: string | undefined = undefined;
+      if (!isNaN(parsedPlx) && parsedPlx > 0.001) {
+        const distLy = 3261.5638 / parsedPlx;
+        if (distLy >= 1000000) {
+          computedDistanceLy = `${(distLy / 1000000).toLocaleString('es-AR', { maximumFractionDigits: 1 })} millones de años luz`;
+        } else if (distLy >= 1000) {
+          computedDistanceLy = `${Math.round(distLy).toLocaleString('es-AR')} años luz`;
+        } else {
+          computedDistanceLy = `${distLy < 10 ? distLy.toFixed(1) : Math.round(distLy)} años luz`;
+        }
+      }
 
       const majAxis = typeof galdimMaj === 'number' && galdimMaj > 0 ? galdimMaj : undefined;
       const minAxis = typeof galdimMin === 'number' && galdimMin > 0 ? galdimMin : majAxis;
@@ -316,7 +332,8 @@ export async function querySimbadConeCapture(
         positionAngleDeg: classification.effectivePositionAngleDeg,
         sizeSource: classification.sizeSource,
         source: 'simbad',
-        description: `Objeto registrado en CDS SIMBAD. Clasificación: ${target.objectType}.`,
+        distanceLy: computedDistanceLy,
+        description: `Objeto registrado en CDS SIMBAD. Clasificación: ${target.objectType}.${computedDistanceLy ? ` Distancia estelar estimada por paralaje: ${computedDistanceLy}.` : ''}`,
       });
     }
 
@@ -343,6 +360,7 @@ export async function querySimbadConeCapture(
             objectType: best.objectType,
             ra: best.raDeg,
             dec: best.decDeg,
+            distanceLy: best.distanceLy,
             constellation: getConstellation(best.raDeg, best.decDeg),
             description: best.description || '',
             spectralFeatures: [
@@ -378,6 +396,7 @@ export async function querySimbadConeCapture(
             objectType: best.objectType,
             ra: best.raDeg,
             dec: best.decDeg,
+            distanceLy: best.distanceLy,
             constellation: getConstellation(best.raDeg, best.decDeg),
             description: best.description || '',
             spectralFeatures: [
