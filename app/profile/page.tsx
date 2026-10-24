@@ -46,6 +46,12 @@ interface ObservedObjectSummary {
   notes: MissionNote[];
 }
 
+function formatCooldown(totalSeconds: number): string {
+  const m = Math.floor(totalSeconds / 60);
+  const s = totalSeconds % 60;
+  return `${m}:${s.toString().padStart(2, "0")}`;
+}
+
 export default function ProfilePage() {
   const router = useRouter();
   const { user, signOut, loading: authLoading } = useAuth();
@@ -70,21 +76,32 @@ export default function ProfilePage() {
     }
   });
 
-  // 3. Estado de cambio de contraseña
+  // 3. Estado de cambio de contraseña con intervalo de 5 minutos por usuario
   const [passwordMsg, setPasswordMsg] = useState<{ type: "success" | "error"; text: string } | null>(null);
   const [passwordLoading, setPasswordLoading] = useState(false);
-  const [daysUntilNextChange, setDaysUntilNextChange] = useState<number>(() => {
-    if (typeof window === "undefined" || !user) return 0;
+  const [currentTime, setCurrentTime] = useState<number>(() => Date.now());
+
+  // Reloj de actualización cada segundo para derivar el temporizador sin desincronizaciones
+  useEffect(() => {
+    const timer = setInterval(() => {
+      setCurrentTime(Date.now());
+    }, 1000);
+    return () => clearInterval(timer);
+  }, []);
+
+  // Cálculo derivado puro del tiempo de espera para el usuario activo (evita bloqueos cruzados)
+  const cooldownSeconds = useMemo(() => {
+    if (typeof window === "undefined" || !user?.id) return 0;
     try {
       const raw = window.localStorage.getItem(`aetherscope:pwd_change:${user.id}`);
       if (!raw) return 0;
-      const diffMs = new Date().getTime() - parseInt(raw, 10);
-      const diffDays = diffMs / (1000 * 60 * 60 * 24);
-      return diffDays < 30 ? Math.ceil(30 - diffDays) : 0;
+      const elapsedMs = currentTime - parseInt(raw, 10);
+      const remainingMs = 5 * 60 * 1000 - elapsedMs; // 5 minutos exactos
+      return remainingMs > 0 ? Math.ceil(remainingMs / 1000) : 0;
     } catch {
       return 0;
     }
-  });
+  }, [user, currentTime]);
 
   // 4. Estado para definir nueva contraseña en modo recuperación / confirmación
   const [isRecoveryMode, setIsRecoveryMode] = useState<boolean>(() => {
@@ -263,14 +280,14 @@ export default function ProfilePage() {
     }
   };
 
-  // Solicitar cambio de contraseña por correo con restricción de 30 días
+  // Solicitar cambio de contraseña por correo con intervalo de 5 minutos
   const handleRequestPasswordReset = async () => {
-    if (!user?.email) return;
+    if (!user?.email || !user?.id) return;
 
-    if (daysUntilNextChange > 0) {
+    if (cooldownSeconds > 0) {
       setPasswordMsg({
         type: "error",
-        text: `Restricción de seguridad activa: Podrás solicitar otro cambio de contraseña en ${daysUntilNextChange} días.`,
+        text: `Restricción de seguridad activa: Podrás solicitar otro correo en ${formatCooldown(cooldownSeconds)}.`,
       });
       return;
     }
@@ -298,7 +315,7 @@ export default function ProfilePage() {
       } catch {
         // Best-effort
       }
-      setDaysUntilNextChange(30);
+      setCurrentTime(now);
 
       setPasswordMsg({
         type: "success",
@@ -600,21 +617,21 @@ export default function ProfilePage() {
               <>
                 <p className="text-[11px] text-[#9A9A92] leading-relaxed">
                   Por protocolo de seguridad criptográfica, las solicitudes de restablecimiento de
-                  contraseña están restringidas a un intervalo mínimo de 30 días.
+                  contraseña tienen un intervalo de espera de 5 minutos entre intentos.
                 </p>
 
-                {/* Advertencia de días restantes si aplica */}
-                {daysUntilNextChange > 0 ? (
+                {/* Advertencia de tiempo restante si aplica */}
+                {cooldownSeconds > 0 ? (
                   <div className="p-3 bg-[#101015] border border-[#3A3A42] flex items-start gap-2.5 text-[11px] text-[#9A9A92]">
                     <Lock className="w-4 h-4 text-[#506385] shrink-0 mt-0.5" />
                     <div className="space-y-0.5">
                       <div className="text-[#F1F0E1] font-semibold uppercase tracking-wider text-[10px]">
-                        INTERVALO DE SEGURIDAD ACTIVO
+                        INTERVALO DE SEGURIDAD ACTIVO (5 MIN)
                       </div>
                       <div>
                         Próxima solicitud de cambio habilitada en{" "}
                         <span className="text-[#F1F0E1] font-mono font-bold">
-                          {daysUntilNextChange} {daysUntilNextChange === 1 ? "día" : "días"}
+                          {formatCooldown(cooldownSeconds)}
                         </span>.
                       </div>
                     </div>
@@ -641,13 +658,13 @@ export default function ProfilePage() {
 
                 <button
                   onClick={handleRequestPasswordReset}
-                  disabled={passwordLoading || daysUntilNextChange > 0}
+                  disabled={passwordLoading || cooldownSeconds > 0}
                   className="w-full py-2.5 px-3 bg-[#506385] hover:bg-[#5E749C] disabled:bg-[#1A1A1F] disabled:border-[#3A3A42] disabled:text-[#9A9A92] disabled:cursor-not-allowed text-[#F1F0E1] text-[10.5px] uppercase tracking-[0.14em] font-semibold transition-colors flex items-center justify-center gap-2 cursor-pointer border border-[#506385]"
                 >
                   <KeyRound className="w-3.5 h-3.5 text-[#F1F0E1]" />
                   <span>
-                    {daysUntilNextChange > 0
-                      ? `CAMBIO BLOQUEADO (${daysUntilNextChange}D)`
+                    {cooldownSeconds > 0
+                      ? `ESPERAR (${formatCooldown(cooldownSeconds)})`
                       : passwordLoading
                       ? "ENVIANDO CORREO..."
                       : "SOLICITAR CAMBIO POR EMAIL"}
