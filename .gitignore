@@ -92,6 +92,7 @@ next-env.d.ts
 # local assistant / tooling state
 .claude/
 .github/skills/
-.agents/skills/
+.agents/
+.gemini/
 .aider*
 skills-lock.json

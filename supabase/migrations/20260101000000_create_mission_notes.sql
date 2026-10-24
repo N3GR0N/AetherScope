@@ -119,33 +119,39 @@ grant insert on public.coordinates to authenticated;
 grant select, insert, update, delete on public.mission_notes to authenticated;
 
 -- Políticas en coordinates:
+drop policy if exists "Coordinates are readable by everyone" on public.coordinates;
 create policy "Coordinates are readable by everyone"
   on public.coordinates for select
   to public
   using (true);
 
+drop policy if exists "Authenticated users can create coordinates" on public.coordinates;
 create policy "Authenticated users can create coordinates"
   on public.coordinates for insert
   to authenticated
   with check (true);
 
 -- Políticas en mission_notes (Aislamiento estricto por usuario):
+drop policy if exists "Users can read only their own notes" on public.mission_notes;
 create policy "Users can read only their own notes"
   on public.mission_notes for select
   to authenticated
   using ((select auth.uid()) = user_id);
 
+drop policy if exists "Users can insert only their own notes" on public.mission_notes;
 create policy "Users can insert only their own notes"
   on public.mission_notes for insert
   to authenticated
   with check ((select auth.uid()) = user_id);
 
+drop policy if exists "Users can update only their own notes" on public.mission_notes;
 create policy "Users can update only their own notes"
   on public.mission_notes for update
   to authenticated
   using ((select auth.uid()) = user_id)
   with check ((select auth.uid()) = user_id);
 
+drop policy if exists "Users can delete only their own notes" on public.mission_notes;
 create policy "Users can delete only their own notes"
   on public.mission_notes for delete
   to authenticated
