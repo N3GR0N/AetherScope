@@ -207,10 +207,10 @@ export default function AuthModal({ isOpen, onClose }: AuthModalProps) {
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-xs select-none font-[family-name:var(--font-proto)] animate-in fade-in duration-150">
-      <div className="bg-[#17171C] border border-[#2B2B31] w-full max-w-md overflow-hidden shadow-2xl flex flex-col">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-black/80 backdrop-blur-xs select-none font-[family-name:var(--font-proto)] animate-in fade-in duration-150">
+      <div className="bg-[#17171C] border border-[#2B2B31] w-full max-w-md max-h-[92vh] overflow-hidden shadow-2xl flex flex-col">
         {/* Modal Header */}
-        <div className="p-4 bg-[#141418] border-b border-[#2B2B31] flex items-center justify-between">
+        <div className="p-3.5 sm:p-4 bg-[#141418] border-b border-[#2B2B31] flex items-center justify-between shrink-0">
           <div className="flex items-center gap-2.5">
             <div className={`w-2 h-2 ${isLockedOut ? "bg-[#EF4444] animate-ping" : "bg-[#F1F0E1]"}`} />
             <h2 className="text-[#F1F0E1] font-semibold text-xs tracking-[0.16em] uppercase">
@@ -227,7 +227,7 @@ export default function AuthModal({ isOpen, onClose }: AuthModalProps) {
         </div>
 
         {/* Modal Body */}
-        <div className="p-6 bg-[#17171C] flex flex-col gap-4">
+        <div className="p-4 sm:p-6 bg-[#17171C] flex flex-col gap-4 overflow-y-auto">
           {user ? (
             /* Usuario autenticado */
             <div className="flex flex-col gap-5">
