@@ -8,8 +8,15 @@ export interface AuthUser {
   email: string;
 }
 
+export interface AuthCredentials {
+  email: string;
+  password: string;
+}
+
 export interface AuthService {
   getUser(): Promise<AuthUser | null>;
-  signIn(): Promise<void>;
+  signIn(credentials?: AuthCredentials): Promise<AuthUser | null>;
+  signUp?(credentials: AuthCredentials): Promise<AuthUser | null>;
   signOut(): Promise<void>;
+  onAuthStateChange?(callback: (user: AuthUser | null) => void): () => void;
 }

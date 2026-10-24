@@ -133,12 +133,34 @@ export function calculateAngularSeparation(
     Math.sin(dDec / 2) * Math.sin(dDec / 2) +
     Math.cos(dec1) * Math.cos(dec2) * Math.sin(dRa / 2) * Math.sin(dRa / 2);
 
-  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+  const safeA = Math.max(0, Math.min(1, a));
+  const c = 2 * Math.atan2(Math.sqrt(safeA), Math.sqrt(1 - safeA));
   return (c * 180) / Math.PI;
 }
 
 // Alias de retrocompatibilidad
 export const calculateOrthodromicDistance = calculateAngularSeparation;
+
+export function sanitizeCoordinateParams(
+  rawRa: string | null | undefined,
+  rawDec: string | null | undefined,
+  rawFov: string | null | undefined,
+  defaults = { ra: 274.7, dec: -13.806, fov: 0.18 }
+): { ra: number; dec: number; fov: number } {
+  let ra = rawRa !== null && rawRa !== undefined ? parseFloat(rawRa) : defaults.ra;
+  let dec = rawDec !== null && rawDec !== undefined ? parseFloat(rawDec) : defaults.dec;
+  let fov = rawFov !== null && rawFov !== undefined ? parseFloat(rawFov) : defaults.fov;
+
+  if (!Number.isFinite(ra)) ra = defaults.ra;
+  if (!Number.isFinite(dec)) dec = defaults.dec;
+  if (!Number.isFinite(fov)) fov = defaults.fov;
+
+  ra = ((ra % 360) + 360) % 360;
+  dec = Math.max(-90, Math.min(90, dec));
+  fov = Math.max(0.001, Math.min(180, fov));
+
+  return { ra, dec, fov };
+}
 
 /**
  * Estimates the constellation for a given RA and Dec (approximate celestial bounding regions)

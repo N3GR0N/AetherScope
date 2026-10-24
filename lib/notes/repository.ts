@@ -33,6 +33,7 @@ export interface NotesRepository {
   create(input: CreateNoteInput): Promise<MissionNote>;
   update(id: string, patch: UpdateNotePatch): Promise<MissionNote>;
   remove(id: string): Promise<boolean>;
+  removeMany(ids: string[]): Promise<number>;
   exportAll(): Promise<string>;
   importAll(jsonString: string): Promise<ImportResult>;
 }

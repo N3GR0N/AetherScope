@@ -2,6 +2,7 @@
 
 import { Suspense } from "react";
 import { useSearchParams } from "next/navigation";
+import { sanitizeCoordinateParams } from "@/lib/astronomy/coordinates";
 import { SpaceProvider } from "@/context/SpaceContext";
 import SpaceCanvas from "@/components/space-canvas/SpaceCanvas";
 import HeaderBar from "@/components/hud/HeaderBar";
@@ -16,13 +17,12 @@ function AetherScopeMainContent() {
   const decParam = searchParams.get("dec");
   const fovParam = searchParams.get("fov");
 
-  const parsedRa = raParam ? parseFloat(raParam) : undefined;
-  const parsedDec = decParam ? parseFloat(decParam) : undefined;
-  const parsedFov = fovParam ? parseFloat(fovParam) : undefined;
+  const hasParams = Boolean(raParam || decParam || fovParam);
+  const sanitized = hasParams ? sanitizeCoordinateParams(raParam, decParam, fovParam) : null;
 
-  const initialRa = parsedRa !== undefined && !isNaN(parsedRa) ? parsedRa : undefined;
-  const initialDec = parsedDec !== undefined && !isNaN(parsedDec) ? parsedDec : undefined;
-  const initialFov = parsedFov !== undefined && !isNaN(parsedFov) ? parsedFov : undefined;
+  const initialRa = sanitized ? sanitized.ra : undefined;
+  const initialDec = sanitized ? sanitized.dec : undefined;
+  const initialFov = sanitized ? sanitized.fov : undefined;
 
   return (
     <SpaceProvider
@@ -50,7 +50,7 @@ function AetherScopeMainContent() {
         {/* 5. Tactical Target Scanner & Capture Zone Button (Bottom-Center) */}
         <CaptureZoneButton />
 
-        {/* 6. Deep Space Dossier Catalog Drawer */}
+        {/* 6. Scientific Astronomical Dossier & Target Selector (Modal / Drawer) */}
         <DossierDrawer />
       </main>
     </SpaceProvider>
@@ -59,7 +59,16 @@ function AetherScopeMainContent() {
 
 export default function AetherScopePage() {
   return (
-    <Suspense fallback={<div className="w-screen h-screen bg-[#101015]" />}>
+    <Suspense
+      fallback={
+        <div className="w-screen h-screen bg-[#101015] flex flex-col items-center justify-center text-[#F1F0E1] space-y-4 font-[family-name:var(--font-proto)]">
+          <div className="w-8 h-8 border-2 border-[#506385] border-t-[#F1F0E1] rounded-full animate-spin" />
+          <p className="text-xs uppercase tracking-[0.2em] text-[#9A9A92]">
+            CALIBRANDO INSTRUMENTAL ESPACIAL...
+          </p>
+        </div>
+      }
+    >
       <AetherScopeMainContent />
     </Suspense>
   );

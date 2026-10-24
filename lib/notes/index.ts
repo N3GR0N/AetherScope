@@ -5,36 +5,9 @@
 
 import type { NotesRepository } from './repository';
 import { LocalNotesRepository } from './localRepository';
+import { SupabaseNotesRepository } from './supabaseRepository';
 
-/**
- * Stub tipado para futuro backend Supabase remoto.
- * No importa paquetes externos ni requiere dependencias instaladas.
- */
-class SupabaseNotesRepository implements NotesRepository {
-  async list(): Promise<never> {
-    throw new Error('SupabaseNotesRepository: Backend Supabase aún no implementado.');
-  }
-  async listForCapture(): Promise<never> {
-    throw new Error('SupabaseNotesRepository: Backend Supabase aún no implementado.');
-  }
-  async create(): Promise<never> {
-    throw new Error('SupabaseNotesRepository: Backend Supabase aún no implementado.');
-  }
-  async update(): Promise<never> {
-    throw new Error('SupabaseNotesRepository: Backend Supabase aún no implementado.');
-  }
-  async remove(): Promise<never> {
-    throw new Error('SupabaseNotesRepository: Backend Supabase aún no implementado.');
-  }
-  async exportAll(): Promise<never> {
-    throw new Error('SupabaseNotesRepository: Backend Supabase aún no implementado.');
-  }
-  async importAll(): Promise<never> {
-    throw new Error('SupabaseNotesRepository: Backend Supabase aún no implementado.');
-  }
-}
-
-// Instancia singleton para el cliente
+// Instancias singleton para el cliente
 let localRepoInstance: LocalNotesRepository | null = null;
 let supabaseRepoInstance: SupabaseNotesRepository | null = null;
 
@@ -57,3 +30,4 @@ export function getNotesRepository(): NotesRepository {
 export * from './types';
 export * from './repository';
 export * from './localRepository';
+export * from './supabaseRepository';

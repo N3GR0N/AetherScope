@@ -52,20 +52,12 @@ export default function DossierDrawer() {
             {/* Modal Header */}
             <div className="p-4 bg-[#17171C] border-b border-[#2B2B31] flex items-center justify-between">
               <div className="flex items-center gap-3">
-                <div
-                  aria-hidden="true"
-                  className="grid grid-cols-3 gap-[3px] w-4 h-4 shrink-0"
-                >
-                  <div className="w-[3px] h-[3px] bg-[#F1F0E1]" />
-                  <div className="w-[3px] h-[3px] bg-[#F1F0E1]" />
-                  <div className="w-[3px] h-[3px] bg-[#F1F0E1]" />
-                  <div className="w-[3px] h-[3px] bg-[#F1F0E1]" />
-                  <div className="w-[3px] h-[3px] bg-[#F1F0E1]" />
-                  <div className="w-[3px] h-[3px] bg-[#F1F0E1]" />
-                  <div className="w-[3px] h-[3px] bg-[#F1F0E1]" />
-                  <div className="w-[3px] h-[3px] bg-[#F1F0E1]" />
-                  <div className="w-[3px] h-[3px] bg-[#F1F0E1]" />
-                </div>
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img
+                  src="/favicon.ico"
+                  alt="AetherScope"
+                  className="w-5 h-5 shrink-0 object-contain"
+                />
                 <div>
                   <h2 className="text-[#F1F0E1] font-semibold text-sm tracking-[0.14em] uppercase flex items-center gap-2">
                     <span>CATÁLOGO CIENTÍFICO DEEP SPACE</span>

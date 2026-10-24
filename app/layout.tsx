@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from "next";
 import "./globals.css";
 import { Share_Tech_Mono } from "next/font/google";
+import { AuthProvider } from "@/components/auth/AuthProvider";
 
 const shareTechMono = Share_Tech_Mono({
   weight: "400",
@@ -45,7 +46,7 @@ export default function RootLayout({
       className={`dark h-full w-full overflow-hidden select-none bg-[#101015] ${shareTechMono.variable}`}
     >
       <body className="h-full w-full overflow-hidden bg-[#101015] text-[#F1F0E1] antialiased font-[family-name:var(--font-proto)]">
-        {children}
+        <AuthProvider>{children}</AuthProvider>
       </body>
     </html>
   );

@@ -19,8 +19,13 @@ import {
   runAstrophysicalAnalysis,
   type SpectralFilterOption,
 } from "@/lib/astronomy/analysis";
-import { formatCoordinates, formatFov, getConstellation } from "@/lib/astronomy/coordinates";
+import Link from "next/link";
+import { formatCoordinates, formatFov, getConstellation, sanitizeCoordinateParams } from "@/lib/astronomy/coordinates";
 import { getNotesRepository, type MissionNote } from "@/lib/notes";
+import { useAuth } from "@/components/auth/AuthProvider";
+import AuthModal from "@/components/auth/AuthModal";
+import ConfirmDeleteModal from "@/components/ui/ConfirmDeleteModal";
+import { useIsMounted } from "@/lib/hooks/useIsMounted";
 import {
   ArrowLeft,
   ArrowUpRight,
@@ -32,6 +37,7 @@ import {
   Upload,
   Trash2,
   AlertTriangle,
+  User,
 } from "lucide-react";
 
 function LaboratoryContent() {
@@ -44,9 +50,11 @@ function LaboratoryContent() {
   const rawDec = searchParams.get("dec");
   const rawFov = searchParams.get("fov");
 
-  const raParam = rawRa ? parseFloat(rawRa) : 274.7;
-  const decParam = rawDec ? parseFloat(rawDec) : -13.806;
-  const fovParam = rawFov ? parseFloat(rawFov) : 0.18;
+  const { ra: raParam, dec: decParam, fov: fovParam } = sanitizeCoordinateParams(
+    rawRa,
+    rawDec,
+    rawFov
+  );
 
   // Clave única del objeto/sector observado
   const currentCoordKey = `${raParam.toFixed(5)},${decParam.toFixed(5)}`;
@@ -61,27 +69,14 @@ function LaboratoryContent() {
     [raParam, decParam, fovParam]
   );
 
-  // Estado persistente del panel lateral
-  const [isSidebarOpen, setIsSidebarOpen] = useState<boolean>(() => {
-    if (typeof window === "undefined") return true;
-    try {
-      const savedPanel = sessionStorage.getItem("aetherscope_lab_panel_open");
-      return savedPanel !== null ? JSON.parse(savedPanel) : true;
-    } catch {
-      return true;
-    }
-  });
+  // Hook canónico de montaje de cliente para evitar discrepancias de hidratación SSR
+  const isMounted = useIsMounted();
 
-  // Estado persistente por objeto del detalle químico
-  const [showFullChemistry, setShowFullChemistry] = useState<boolean>(() => {
-    if (typeof window === "undefined") return false;
-    try {
-      const savedChem = sessionStorage.getItem(`aetherscope_chem_open_${currentCoordKey}`);
-      return savedChem !== null ? JSON.parse(savedChem) : false;
-    } catch {
-      return false;
-    }
-  });
+  // Estado del panel lateral (abierto por defecto en escritorio)
+  const [isSidebarOpen, setIsSidebarOpen] = useState<boolean>(true);
+
+  // Estado del detalle químico extendido (cerrado por defecto para progressive disclosure)
+  const [showFullChemistry, setShowFullChemistry] = useState<boolean>(false);
 
   const toggleSidebar = () => {
     setIsSidebarOpen((prev) => {
@@ -299,11 +294,15 @@ function LaboratoryContent() {
   );
 
   // ─── PARTE B: BITÁCORA DE MISIÓN DESACOPLADA ───
+  const { user } = useAuth();
+  const [authModalOpen, setAuthModalOpen] = useState(false);
+  const isSupabaseBackend = process.env.NEXT_PUBLIC_NOTES_BACKEND === "supabase";
   const notesRepo = useMemo(() => getNotesRepository(), []);
   const [missionNotes, setMissionNotes] = useState<MissionNote[]>([]);
   const [notesRefreshKey, setNotesRefreshKey] = useState(0);
   const [newNoteBody, setNewNoteBody] = useState<string>("");
   const [noteSaved, setNoteSaved] = useState<boolean>(false);
+  const [noteSaving, setNoteSaving] = useState<boolean>(false);
   const [notesError, setNotesError] = useState<string | null>(null);
 
   // Carga reactiva de notas para la captura actual
@@ -334,12 +333,19 @@ function LaboratoryContent() {
       active = false;
       window.removeEventListener("storage", handleStorageChange);
     };
-  }, [notesRepo, currentCapture, currentMatch, notesRefreshKey]);
+  }, [notesRepo, currentCapture, currentMatch, notesRefreshKey, user]);
 
   const handleSaveNote = async () => {
-    if (!newNoteBody.trim()) return;
+    if (!newNoteBody.trim() || noteSaving) return;
     setNotesError(null);
 
+    if (isSupabaseBackend && !user) {
+      setNotesError("DEBES INICIAR SESIÓN CON TU CUENTA DE OPERADOR PARA GUARDAR NOTAS EN LA BASE DE DATOS.");
+      setAuthModalOpen(true);
+      return;
+    }
+
+    setNoteSaving(true);
     try {
       await notesRepo.create({
         objectId: identifiedTarget?.id || null,
@@ -358,15 +364,65 @@ function LaboratoryContent() {
     } catch (err: unknown) {
       const message = err instanceof Error ? err.message : "Error guardando observación";
       setNotesError(message);
+    } finally {
+      setNoteSaving(false);
     }
   };
 
-  const handleDeleteNote = async (id: string) => {
+  const [deleteModalState, setDeleteModalState] = useState<{
+    isOpen: boolean;
+    type: "note" | "all";
+    title: string;
+    description: string;
+    targetName?: string;
+    noteId?: string;
+    isProcessing?: boolean;
+  }>({
+    isOpen: false,
+    type: "note",
+    title: "",
+    description: "",
+  });
+
+  const requestDeleteNote = (note: MissionNote) => {
+    const snippet = note.body.length > 55 ? `${note.body.slice(0, 55)}...` : note.body;
+    setDeleteModalState({
+      isOpen: true,
+      type: "note",
+      title: "ELIMINAR OBSERVACIÓN INDIVIDUAL",
+      description: "¿Deseas eliminar permanentemente esta observación de tu bitácora?",
+      targetName: `"${snippet}"`,
+      noteId: note.id,
+      isProcessing: false,
+    });
+  };
+
+  const requestDeleteAllCaptureNotes = () => {
+    if (!missionNotes.length) return;
+    const name = currentMatch?.object?.name || "este sector astronómico";
+    setDeleteModalState({
+      isOpen: true,
+      type: "all",
+      title: "PURGAR OBSERVACIONES DEL SECTOR",
+      description: `¿Confirmas la eliminación definitiva de las ${missionNotes.length} observaciones registradas en ${name}?`,
+      targetName: name,
+      isProcessing: false,
+    });
+  };
+
+  const handleConfirmDelete = async () => {
+    setDeleteModalState((s) => ({ ...s, isProcessing: true }));
     try {
-      await notesRepo.remove(id);
+      if (deleteModalState.type === "note" && deleteModalState.noteId) {
+        await notesRepo.remove(deleteModalState.noteId);
+      } else if (deleteModalState.type === "all" && missionNotes.length) {
+        await notesRepo.removeMany(missionNotes.map((n) => n.id));
+      }
       setNotesRefreshKey((k) => k + 1);
+      setDeleteModalState((s) => ({ ...s, isOpen: false, isProcessing: false }));
     } catch (err: unknown) {
-      console.warn("[AetherScope] Error eliminando nota:", err);
+      console.warn("[AetherScope] Error eliminando notas:", err);
+      setDeleteModalState((s) => ({ ...s, isProcessing: false }));
     }
   };
 
@@ -422,23 +478,15 @@ function LaboratoryContent() {
     <div className="relative w-screen h-screen overflow-hidden bg-[#101015] text-[#F1F0E1] select-none flex flex-col font-[family-name:var(--font-proto)]">
       {/* ─── 1. TOP UNIFIED TECHNICAL HEADER ─── */}
       <header className="h-14 shrink-0 px-4 md:px-6 flex items-center justify-between bg-[#17171C] border-b border-[#2B2B31] z-40 select-none">
-        {/* Left Section: 9-dots + Volver + Telemetry strip */}
+        {/* Left Section: Favicon + Volver + Telemetry strip */}
         <div className="flex items-center gap-3">
-          {/* 9-dot grid icon */}
-          <div
-            aria-hidden="true"
-            className="grid grid-cols-3 gap-[3px] w-4 h-4 shrink-0"
-          >
-            <div className="w-[3px] h-[3px] bg-[#F1F0E1]" />
-            <div className="w-[3px] h-[3px] bg-[#F1F0E1]" />
-            <div className="w-[3px] h-[3px] bg-[#F1F0E1]" />
-            <div className="w-[3px] h-[3px] bg-[#F1F0E1]" />
-            <div className="w-[3px] h-[3px] bg-[#F1F0E1]" />
-            <div className="w-[3px] h-[3px] bg-[#F1F0E1]" />
-            <div className="w-[3px] h-[3px] bg-[#F1F0E1]" />
-            <div className="w-[3px] h-[3px] bg-[#F1F0E1]" />
-            <div className="w-[3px] h-[3px] bg-[#F1F0E1]" />
-          </div>
+          {/* Favicon icon */}
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img
+            src="/favicon.ico"
+            alt="AetherScope"
+            className="w-5 h-5 shrink-0 object-contain"
+          />
 
           <button
             onClick={handleReturnToExplorer}
@@ -528,6 +576,38 @@ function LaboratoryContent() {
             </div>
             <span className="hidden sm:inline">
               {isSidebarOpen ? "OCULTAR PANEL" : "MOSTRAR PANEL"}
+            </span>
+          </button>
+
+          {/* Profile Navigation Button (if authenticated and mounted) */}
+          {isMounted && user ? (
+            <Link
+              href="/profile"
+              className="border border-[#3A3A42] bg-[#1A1A1F] hover:bg-[#506385] hover:border-[#506385] text-[#F1F0E1] text-[11px] uppercase tracking-[0.12em] px-3 py-1.5 transition-colors flex items-center gap-1.5 cursor-pointer"
+              title="Ir a Mi Perfil y Bitácora Personal"
+            >
+              <User className="w-3.5 h-3.5 text-[#506385]" />
+              <span className="hidden lg:inline">MI PERFIL</span>
+            </Link>
+          ) : null}
+
+          {/* Operator Auth Status / Access Button */}
+          <button
+            onClick={() => setAuthModalOpen(true)}
+            className={`px-3 py-1.5 text-[11px] uppercase tracking-[0.12em] font-[family-name:var(--font-proto)] transition-colors cursor-pointer border flex items-center gap-1.5 ${
+              isMounted && user
+                ? "bg-[#16222F] text-[#F1F0E1] border-[#506385] hover:bg-[#1E2E3E]"
+                : "bg-transparent text-[#F1F0E1] border-[#3A3A42] hover:bg-[#1A1A1F]"
+            }`}
+            title={isMounted && user ? `Operador: ${user.email} (Haz clic para gestionar sesión)` : "Iniciar sesión o registrarse"}
+          >
+            <span
+              className={`w-1.5 h-1.5 rounded-full ${
+                isMounted && user ? "bg-[#506385] animate-pulse" : "bg-[#9A9A92]"
+              }`}
+            />
+            <span className="truncate max-w-[80px] sm:max-w-[110px]">
+              {isMounted && user ? user.email.split("@")[0].toUpperCase() : "ACCESO"}
             </span>
           </button>
         </div>
@@ -1128,6 +1208,17 @@ function LaboratoryContent() {
                     <span>IMPORTAR</span>
                   </button>
 
+                  {missionNotes.length > 0 && (
+                    <button
+                      onClick={requestDeleteAllCaptureNotes}
+                      className="border border-[#5C2B2B] bg-[#251515] hover:bg-[#381A1A] text-[#FCA5A5] hover:text-[#EF4444] text-[9.5px] uppercase tracking-wider px-2 py-1 flex items-center gap-1 transition-colors cursor-pointer"
+                      title="Eliminar todas las notas registradas en este sector"
+                    >
+                      <Trash2 className="w-3 h-3 text-[#FCA5A5]" />
+                      <span>VACIAR</span>
+                    </button>
+                  )}
+
                   <input
                     type="file"
                     ref={fileInputRef}
@@ -1181,8 +1272,8 @@ function LaboratoryContent() {
                       </div>
 
                       <button
-                        onClick={() => handleDeleteNote(note.id)}
-                        className="w-6 h-6 rounded-full bg-[#1A1A1F] border border-[#3A3A42] hover:border-[#F1F0E1] text-[#9A9A92] hover:text-[#F1F0E1] flex items-center justify-center shrink-0 transition-colors cursor-pointer"
+                        onClick={() => requestDeleteNote(note)}
+                        className="w-6 h-6 rounded-full bg-[#1A1A1F] border border-[#3A3A42] hover:border-[#EF4444] text-[#9A9A92] hover:text-[#EF4444] flex items-center justify-center shrink-0 transition-colors cursor-pointer"
                         title="Eliminar observación"
                       >
                         <Trash2 className="w-3 h-3" />
@@ -1197,22 +1288,47 @@ function LaboratoryContent() {
                 <textarea
                   value={newNoteBody}
                   onChange={(e) => setNewNoteBody(e.target.value)}
+                  disabled={noteSaving}
                   placeholder="ANOTAR HIPÓTESIS U OBSERVACIONES ESPECTRALES..."
-                  className="w-full h-16 bg-[#101015] border border-[#2B2B31] p-2 text-xs uppercase text-[#F1F0E1] placeholder-[#9A9A92]/50 focus:outline-hidden focus:border-[#506385] resize-none"
+                  className="w-full h-16 bg-[#101015] border border-[#2B2B31] p-2 text-xs uppercase text-[#F1F0E1] placeholder-[#9A9A92]/50 focus:outline-hidden focus:border-[#506385] resize-none disabled:opacity-50"
                 />
 
                 <button
                   onClick={handleSaveNote}
-                  className="w-full py-2 bg-[#506385] text-[#F1F0E1] text-[11px] uppercase tracking-[0.14em] font-semibold transition-colors flex items-center justify-center gap-2 hover:opacity-95 cursor-pointer"
+                  disabled={noteSaving || !newNoteBody.trim()}
+                  className="w-full py-2 bg-[#506385] disabled:bg-[#1A1A1F] disabled:text-[#9A9A92] disabled:border-[#3A3A42] disabled:cursor-not-allowed text-[#F1F0E1] text-[11px] uppercase tracking-[0.14em] font-semibold transition-colors flex items-center justify-center gap-2 hover:opacity-95 cursor-pointer border border-[#506385]"
                 >
-                  <Bookmark className="w-3.5 h-3.5 text-[#F1F0E1]" />
-                  <span>REGISTRAR OBSERVACIÓN</span>
+                  {noteSaving ? (
+                    <>
+                      <Loader2 className="w-3.5 h-3.5 text-[#F1F0E1] animate-spin" />
+                      <span>GUARDANDO EN BASE DE DATOS...</span>
+                    </>
+                  ) : (
+                    <>
+                      <Bookmark className="w-3.5 h-3.5 text-[#F1F0E1]" />
+                      <span>REGISTRAR OBSERVACIÓN</span>
+                    </>
+                  )}
                 </button>
               </div>
             </div>
           </div>
         </aside>
       </div>
+
+      {/* Operator Authentication Modal */}
+      <AuthModal isOpen={authModalOpen} onClose={() => setAuthModalOpen(false)} />
+
+      {/* Technical Protocol Confirmation Modal */}
+      <ConfirmDeleteModal
+        isOpen={deleteModalState.isOpen}
+        title={deleteModalState.title}
+        description={deleteModalState.description}
+        targetName={deleteModalState.targetName}
+        isProcessing={deleteModalState.isProcessing}
+        onConfirm={handleConfirmDelete}
+        onClose={() => setDeleteModalState((s) => ({ ...s, isOpen: false }))}
+      />
     </div>
   );
 }

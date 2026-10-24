@@ -120,6 +120,24 @@ export class LocalNotesRepository implements NotesRepository {
     if (!trimmedBody) {
       throw new Error('VALIDACION: La nota no puede estar vacía.');
     }
+    if (trimmedBody.length > 10000) {
+      throw new Error('VALIDACION: La nota no puede superar los 10.000 caracteres.');
+    }
+    if (!Number.isFinite(input.raDeg) || input.raDeg < 0 || input.raDeg >= 360) {
+      throw new Error('VALIDACION: Coordenada RA fuera de rango permitido [0, 360).');
+    }
+    if (!Number.isFinite(input.decDeg) || input.decDeg < -90 || input.decDeg > 90) {
+      throw new Error('VALIDACION: Coordenada Dec fuera de rango permitido [-90, +90].');
+    }
+
+    const cleanRadius =
+      Number.isFinite(input.radiusDeg) && input.radiusDeg > 0 && input.radiusDeg <= 180
+        ? input.radiusDeg
+        : 0.1;
+    const cleanObjectId =
+      typeof input.objectId === 'string' ? input.objectId.trim().slice(0, 255) || null : null;
+    const cleanObjectName =
+      typeof input.objectName === 'string' ? input.objectName.trim().slice(0, 255) || null : null;
 
     await this.requestPersistenceBestEffort();
 
@@ -130,11 +148,11 @@ export class LocalNotesRepository implements NotesRepository {
 
     const newNote: MissionNote = {
       id,
-      objectId: input.objectId ?? null,
-      objectName: input.objectName ?? null,
+      objectId: cleanObjectId,
+      objectName: cleanObjectName,
       raDeg: input.raDeg,
       decDeg: input.decDeg,
-      radiusDeg: input.radiusDeg,
+      radiusDeg: cleanRadius,
       body: trimmedBody,
       createdAt: now,
       updatedAt: now,
@@ -155,12 +173,34 @@ export class LocalNotesRepository implements NotesRepository {
       throw new Error(`NOT_FOUND: Nota con id ${id} no encontrada.`);
     }
 
+    let updatedBody = env.notes[index].body;
+    if (patch.body !== undefined) {
+      const trimmed = patch.body.trim();
+      if (!trimmed) {
+        throw new Error('VALIDACION: La nota no puede estar vacía.');
+      }
+      if (trimmed.length > 10000) {
+        throw new Error('VALIDACION: La nota no puede superar los 10.000 caracteres.');
+      }
+      updatedBody = trimmed;
+    }
+
     const current = env.notes[index];
     const updated: MissionNote = {
       ...current,
-      body: patch.body !== undefined ? patch.body.trim() : current.body,
-      objectName: patch.objectName !== undefined ? patch.objectName : current.objectName,
-      objectId: patch.objectId !== undefined ? patch.objectId : current.objectId,
+      body: updatedBody,
+      objectName:
+        patch.objectName !== undefined
+          ? typeof patch.objectName === 'string'
+            ? patch.objectName.trim().slice(0, 255) || null
+            : null
+          : current.objectName,
+      objectId:
+        patch.objectId !== undefined
+          ? typeof patch.objectId === 'string'
+            ? patch.objectId.trim().slice(0, 255) || null
+            : null
+          : current.objectId,
       updatedAt: new Date().toISOString(),
     };
 
@@ -181,6 +221,21 @@ export class LocalNotesRepository implements NotesRepository {
     }
 
     return false;
+  }
+
+  public async removeMany(ids: string[]): Promise<number> {
+    if (!ids.length) return 0;
+    const env = this.readEnvelope();
+    const idSet = new Set(ids);
+    const initialLen = env.notes.length;
+    env.notes = env.notes.filter((n) => !idSet.has(n.id));
+
+    const removedCount = initialLen - env.notes.length;
+    if (removedCount > 0) {
+      this.writeEnvelope(env);
+    }
+
+    return removedCount;
   }
 
   public async exportAll(): Promise<string> {
@@ -218,27 +273,48 @@ export class LocalNotesRepository implements NotesRepository {
     let skippedCount = 0;
 
     for (const raw of notesToImport) {
-      // Validación básica de esquema para cada nota
+      // Validación exhaustiva y sanitización contra DoS o inyección
       if (
         raw &&
         typeof raw.id === 'string' &&
         typeof raw.body === 'string' &&
+        raw.body.trim().length > 0 &&
+        raw.body.length <= 10000 &&
         typeof raw.raDeg === 'number' &&
+        Number.isFinite(raw.raDeg) &&
+        raw.raDeg >= 0 &&
+        raw.raDeg < 360 &&
         typeof raw.decDeg === 'number' &&
-        typeof raw.radiusDeg === 'number'
+        Number.isFinite(raw.decDeg) &&
+        raw.decDeg >= -90 &&
+        raw.decDeg <= 90
       ) {
         if (existingIds.has(raw.id)) {
           // No pisar ids existentes
           skippedCount++;
         } else {
+          const cleanRadius =
+            typeof raw.radiusDeg === 'number' &&
+            Number.isFinite(raw.radiusDeg) &&
+            raw.radiusDeg > 0 &&
+            raw.radiusDeg <= 180
+              ? raw.radiusDeg
+              : 0.1;
+
           env.notes.push({
-            id: raw.id,
-            objectId: raw.objectId ?? null,
-            objectName: raw.objectName ?? null,
+            id: raw.id.slice(0, 100),
+            objectId:
+              typeof raw.objectId === 'string'
+                ? raw.objectId.trim().slice(0, 255) || null
+                : null,
+            objectName:
+              typeof raw.objectName === 'string'
+                ? raw.objectName.trim().slice(0, 255) || null
+                : null,
             raDeg: raw.raDeg,
             decDeg: raw.decDeg,
-            radiusDeg: raw.radiusDeg,
-            body: raw.body,
+            radiusDeg: cleanRadius,
+            body: raw.body.trim(),
             createdAt: typeof raw.createdAt === 'string' ? raw.createdAt : new Date().toISOString(),
             updatedAt: typeof raw.updatedAt === 'string' ? raw.updatedAt : new Date().toISOString(),
           });

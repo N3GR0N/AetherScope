@@ -4,7 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import type { SpectralSurvey } from "@/lib/astronomy/surveys";
 import { sexagesimalToDecimal, type CosmicTarget } from "@/lib/astronomy/targets";
 import { useSpace } from "@/context/SpaceContext";
-import { Loader2, Sparkles, WifiOff } from "lucide-react";
+import { Loader2, WifiOff } from "lucide-react";
 
 interface SpaceCanvasProps {
   containerId?: string;
