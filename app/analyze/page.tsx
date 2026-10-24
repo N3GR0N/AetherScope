@@ -211,6 +211,7 @@ function LaboratoryContent() {
         objectType: selectedCandidate.objectType,
         ra: selectedCandidate.raDeg,
         dec: selectedCandidate.decDeg,
+        distanceLy: selectedCandidate.distanceLy,
         constellation: getConstellation(selectedCandidate.raDeg, selectedCandidate.decDeg),
         description:
           selectedCandidate.description ||
@@ -470,9 +471,54 @@ function LaboratoryContent() {
       (analysis.detectedElements.length || 1)
   );
 
-  // Distance extraction
-  const rawDist = identifiedTarget?.distanceLy || "Fondo cósmico";
-  const distanceNumber = rawDist.replace(/[^0-9\.\,]/g, "") || "7.000";
+  // Formateo y extracción científica de distancia
+  const distanceInfo = useMemo(() => {
+    // 1. Campo sin objeto identificado (fondo cósmico verdadero)
+    if (!identifiedTarget) {
+      return {
+        value: "FONDO",
+        unit: "/ CÓSMICO PROFUNDO",
+        isKnown: false,
+        isUnreliable: false,
+        fullText: "FONDO CÓSMICO",
+      };
+    }
+
+    // 2. Objeto identificado pero sin medición de paralaje o distancia en CDS
+    if (!identifiedTarget.distanceLy) {
+      return {
+        value: "NO CALCULABLE",
+        unit: "/ MEDICIÓN NO ACOTADA",
+        isKnown: false,
+        isUnreliable: true,
+        fullText: "NO CALCULABLE DE FORMA FIABLE",
+      };
+    }
+
+    // 3. Objeto con distancia conocida o calculada por paralaje trigonométrico
+    const raw = identifiedTarget.distanceLy;
+    const isMillions = raw.toLowerCase().includes("millon") || raw.toLowerCase().includes("millón");
+    const numMatch = raw.match(/[\d]+([.,][\d]+)?/);
+    const num = numMatch ? numMatch[0] : "";
+
+    if (!num) {
+      return {
+        value: "NO CALCULABLE",
+        unit: "/ MEDICIÓN NO ACOTADA",
+        isKnown: false,
+        isUnreliable: true,
+        fullText: raw || "NO CALCULABLE DE FORMA FIABLE",
+      };
+    }
+
+    return {
+      value: num,
+      unit: isMillions ? "/ MILLONES A.L." : "/ AÑOS LUZ",
+      isKnown: true,
+      isUnreliable: false,
+      fullText: raw,
+    };
+  }, [identifiedTarget]);
 
   return (
     <div className="relative w-screen h-screen overflow-hidden bg-[#101015] text-[#F1F0E1] select-none flex flex-col font-[family-name:var(--font-proto)]">
@@ -529,8 +575,8 @@ function LaboratoryContent() {
             </div>
             <div>
               <span className="text-[#9A9A92] block text-[8.5px] leading-tight">DISTANCIA</span>
-              <span className="text-[#F1F0E1] font-semibold text-[11px] block tabular-nums">
-                {identifiedTarget?.distanceLy || "FONDO"}
+              <span className="text-[#F1F0E1] font-semibold text-[11px] block tabular-nums truncate max-w-[130px] lg:max-w-[160px]" title={distanceInfo.fullText}>
+                {distanceInfo.fullText}
               </span>
             </div>
           </div>
@@ -871,11 +917,38 @@ function LaboratoryContent() {
               <span className="text-[9.5px] uppercase tracking-[0.16em] text-[#F1F0E1]/80 block">
                 DISTANCIA
               </span>
-              <div className="text-[44px] sm:text-[50px] font-bold text-[#F1F0E1] leading-none tabular-nums my-1">
-                {distanceNumber}
-              </div>
-              <div className="text-[9.5px] uppercase tracking-[0.14em] text-[#F1F0E1]/80">
-                / AÑOS LUZ
+
+              {distanceInfo.isUnreliable ? (
+                <div className="my-auto py-1.5">
+                  <div className="text-[13px] sm:text-[14px] font-bold text-[#F1F0E1] uppercase tracking-wide leading-tight">
+                    NO CALCULABLE DE FORMA FIABLE
+                  </div>
+                  <p className="text-[10px] text-[#F1F0E1]/90 leading-snug mt-1.5 font-sans normal-case">
+                    Para este objeto no se dispone de datos de paralaje trigonométrico suficientes en CDS / Gaia para determinar su distancia con precisión.
+                  </p>
+                </div>
+              ) : (
+                <div className="my-auto">
+                  <div
+                    className={`${
+                      distanceInfo.isKnown
+                        ? "text-[38px] sm:text-[46px]"
+                        : "text-[30px] sm:text-[38px]"
+                    } font-bold text-[#F1F0E1] leading-none tabular-nums my-1`}
+                  >
+                    {distanceInfo.value}
+                  </div>
+                  <div className="text-[9.5px] uppercase tracking-[0.14em] text-[#F1F0E1]/80">
+                    {distanceInfo.unit}
+                  </div>
+                </div>
+              )}
+
+              <div className="pt-2 border-t border-[#F1F0E1]/20 flex items-center justify-between text-[9.5px] uppercase tracking-wider text-[#F1F0E1]/80">
+                <span>PARALAJE ESTELAR</span>
+                <span className="text-[#F1F0E1] font-semibold">
+                  {distanceInfo.isKnown ? "VERIFICADO" : distanceInfo.isUnreliable ? "NO ACOTADO" : "N/A (FONDO)"}
+                </span>
               </div>
             </div>
 
@@ -885,11 +958,11 @@ function LaboratoryContent() {
                 <span className="text-[9.5px] uppercase tracking-[0.16em] text-[#9A9A92] block">
                   CONSTELACIÓN
                 </span>
-                <div className="text-[22px] sm:text-[25px] font-bold uppercase text-[#F1F0E1] leading-tight my-1 truncate">
-                  {constellation.split(" ")[0] || "CAMPO"}
+                <div className="text-[19px] sm:text-[22px] font-bold uppercase text-[#F1F0E1] leading-tight my-1 truncate">
+                  {constellation.replace(/\s*\([^)]*\)/, "") || "CAMPO"}
                 </div>
-                <div className="text-[9.5px] uppercase text-[#9A9A92]">
-                  ({constellation.includes(" ") ? constellation.toUpperCase() : "SECTOR"})
+                <div className="text-[9.5px] uppercase text-[#9A9A92] truncate">
+                  {constellation.includes("(") ? constellation.slice(constellation.indexOf("(")) : `(${constellation.toUpperCase()} SECTOR)`}
                 </div>
               </div>
 
