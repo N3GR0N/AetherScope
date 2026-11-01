@@ -21,6 +21,9 @@ import {
   _getCurrentCdsStateForTests,
   _getConsecutiveFailuresForTests,
   isCdsForcedOkInDev,
+  POLL_INTERVAL_DEGRADED_MS,
+  POLL_INTERVAL_HEALTHY_MS,
+  CDS_STATUS_FETCH_TIMEOUT_MS,
 } from '@/lib/hooks/useCdsRecovery';
 import type { Capture } from '@/lib/astronomy/footprint';
 
@@ -520,10 +523,52 @@ describe('Resiliencia y Failover ante Degradación de CDS Estrasburgo', () => {
       expect(recoveredMatch.candidates[0].name).toBe('Polaris Recovered');
     });
 
-    it('pasa a down solo tras 2 comprobaciones fallidas consecutivas y a ok con 1 exitosa', async () => {
+    it('bug: si el estado inicial es checking y la primera comprobación indica caído, pasa directo a down', async () => {
       _resetRecoveryManagerForTests();
 
-      let mockHipsOk = false;
+      global.fetch = vi.fn().mockImplementation((url: string | URL) => {
+        if (url.toString().includes('/api/cds-status')) {
+          return Promise.resolve({
+            ok: true,
+            status: 200,
+            json: async () => ({ simbad: false, hips: false, checkedAt: new Date().toISOString() }),
+          });
+        }
+        return Promise.reject(new Error('err'));
+      });
+
+      const unsubscribe = onCdsRecovered(() => {});
+      expect(_getCurrentCdsStateForTests()).toBe('checking');
+
+      // Primera comprobación indica caído
+      await runPoll();
+
+      // Debe pasar inmediatamente a 'down' para mostrar el cartel sin quedarse en 'checking'
+      expect(_getCurrentCdsStateForTests()).toBe('down');
+
+      unsubscribe();
+    });
+
+    it('si la primera comprobación no responde (timeout 6s / abort) pasa directo de checking a down', async () => {
+      _resetRecoveryManagerForTests();
+
+      global.fetch = vi.fn().mockImplementation(() => {
+        return Promise.reject(new DOMException('The operation was aborted due to timeout', 'AbortError'));
+      });
+
+      const unsubscribe = onCdsRecovered(() => {});
+      expect(_getCurrentCdsStateForTests()).toBe('checking');
+
+      await runPoll();
+
+      expect(_getCurrentCdsStateForTests()).toBe('down');
+      unsubscribe();
+    });
+
+    it('la regla de 2 fallos consecutivos aplica a la transicion ok -> down en sesion abierta', async () => {
+      _resetRecoveryManagerForTests();
+
+      let mockHipsOk = true;
       global.fetch = vi.fn().mockImplementation((url: string | URL) => {
         if (url.toString().includes('/api/cds-status')) {
           return Promise.resolve({
@@ -537,25 +582,10 @@ describe('Resiliencia y Failover ante Degradación de CDS Estrasburgo', () => {
 
       const unsubscribe = onCdsRecovered(() => {});
 
-      // Inicialmente en 'checking'
-      expect(_getCurrentCdsStateForTests()).toBe('checking');
-      expect(_getConsecutiveFailuresForTests()).toBe(0);
-
-      // Comprobación 1 fallida: aún NO debe pasar a 'down' (queda en 'checking', fallos = 1)
+      // Comprobación inicial OK: pasa a 'ok'
       await runPoll();
-      expect(_getConsecutiveFailuresForTests()).toBe(1);
-      expect(_getCurrentCdsStateForTests()).toBe('checking');
-
-      // Comprobación 2 fallida consecutiva: ahora SÍ debe pasar a 'down'
-      await runPoll();
-      expect(_getConsecutiveFailuresForTests()).toBe(2);
-      expect(_getCurrentCdsStateForTests()).toBe('down');
-
-      // Comprobación 3 exitosa (1 sola): pasa inmediatamente a 'ok' y resetea fallos
-      mockHipsOk = true;
-      await runPoll();
-      expect(_getConsecutiveFailuresForTests()).toBe(0);
       expect(_getCurrentCdsStateForTests()).toBe('ok');
+      expect(_getConsecutiveFailuresForTests()).toBe(0);
 
       // Si estando 'ok' ocurre 1 fallo aislado, NO pasa a 'down' de inmediato
       mockHipsOk = false;
@@ -567,6 +597,12 @@ describe('Resiliencia y Failover ante Degradación de CDS Estrasburgo', () => {
       await runPoll();
       expect(_getConsecutiveFailuresForTests()).toBe(2);
       expect(_getCurrentCdsStateForTests()).toBe('down');
+
+      // 1 éxito resetea de inmediato a 'ok'
+      mockHipsOk = true;
+      await runPoll();
+      expect(_getConsecutiveFailuresForTests()).toBe(0);
+      expect(_getCurrentCdsStateForTests()).toBe('ok');
 
       unsubscribe();
     });
@@ -604,6 +640,12 @@ describe('Resiliencia y Failover ante Degradación de CDS Estrasburgo', () => {
           delete process.env.NEXT_PUBLIC_FORCE_CDS_OK;
         }
       }
+    });
+
+    it('configura intervalos de polling coherentes: 30s en down/checking, 2 min en ok, 6s timeout', () => {
+      expect(POLL_INTERVAL_DEGRADED_MS).toBe(30_000);
+      expect(POLL_INTERVAL_HEALTHY_MS).toBe(120_000);
+      expect(CDS_STATUS_FETCH_TIMEOUT_MS).toBe(6_000);
     });
   });
 });

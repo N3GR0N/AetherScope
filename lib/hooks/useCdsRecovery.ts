@@ -32,8 +32,9 @@ let isFetchInFlight = false;
 let pollTimer: ReturnType<typeof setTimeout> | null = null;
 let consecutiveFailures = 0;
 
-const POLL_INTERVAL_DEGRADED_MS = 30_000; // 30 s si está caído/degradado
-const POLL_INTERVAL_HEALTHY_MS = 120_000; // 2 min si está sano
+export const POLL_INTERVAL_DEGRADED_MS = 30_000; // 30 s si está caído/degradado o en checking
+export const POLL_INTERVAL_HEALTHY_MS = 120_000; // 2 min solo si está sano (ok)
+export const CDS_STATUS_FETCH_TIMEOUT_MS = 6_000; // 6 s timeout para /api/cds-status
 
 export function formatCheckedTime(isoOrDate?: string | Date): string {
   try {
@@ -93,8 +94,16 @@ export async function runPoll(): Promise<void> {
   if (isFetchInFlight) return;
   isFetchInFlight = true;
 
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), CDS_STATUS_FETCH_TIMEOUT_MS);
+
   try {
-    const res = await fetch("/api/cds-status", { cache: "no-store" }).catch(() => null);
+    const res = await fetch("/api/cds-status", {
+      cache: "no-store",
+      signal: controller.signal,
+    }).catch(() => null);
+    clearTimeout(timer);
+
     if (!res || !res.ok) throw new Error("HTTP error or network failure");
 
     const data: CdsStatus | null = await res.json().catch(() => null);
@@ -104,7 +113,9 @@ export async function runPoll(): Promise<void> {
 
     if (isHipsDown) {
       consecutiveFailures++;
-      if (consecutiveFailures >= 2) {
+      // Estado inicial checking: si la PRIMERA comprobación indica caído, pasar directo a down.
+      // La regla de 2 fallos consecutivos aplica solo a la transición ok -> down en sesión abierta.
+      if (currentCdsState === "checking" || consecutiveFailures >= 2) {
         currentCdsState = "down";
       }
       isCurrentlyDegraded = true;
@@ -135,8 +146,10 @@ export async function runPoll(): Promise<void> {
       sub.onStatusChange?.(data, isCurrentlyDegraded, currentCdsState);
     }
   } catch {
+    clearTimeout(timer);
     consecutiveFailures++;
-    if (consecutiveFailures >= 2) {
+    // Si la primera comprobación falla o no responde en 6s (timeout), pasar directo a down
+    if (currentCdsState === "checking" || consecutiveFailures >= 2) {
       currentCdsState = "down";
     }
     const fallbackStatus: CdsStatus = {
@@ -152,9 +165,11 @@ export async function runPoll(): Promise<void> {
       sub.onStatusChange?.(fallbackStatus, true, currentCdsState);
     }
   } finally {
+    clearTimeout(timer);
     isFetchInFlight = false;
     if (subscribers.size > 0) {
-      const nextDelay = currentCdsState === "down" ? POLL_INTERVAL_DEGRADED_MS : POLL_INTERVAL_HEALTHY_MS;
+      // Polling: 30 s mientras sea checking o down; 2 min solo en ok
+      const nextDelay = currentCdsState === "ok" ? POLL_INTERVAL_HEALTHY_MS : POLL_INTERVAL_DEGRADED_MS;
       scheduleNextPoll(nextDelay);
     }
   }
@@ -168,7 +183,8 @@ function registerSubscriber(sub: Subscriber): void {
     sub.onStatusChange?.(currentStatus, isCurrentlyDegraded, currentCdsState);
   }
 
-  if (isFirst) {
+  // Disparar inmediatamente al montar si es el primer suscriptor o no ha chequeado aún
+  if (isFirst || (!hasCheckedAtLeastOnce && !isFetchInFlight)) {
     void runPoll();
   }
 }
