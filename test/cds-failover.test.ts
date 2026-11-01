@@ -11,7 +11,7 @@ import {
   findFirstAvailableNonCdsSurvey,
   SPECTRAL_SURVEYS,
 } from '@/lib/astronomy/surveys';
-import { GET as simbadRouteGet, SIMBAD_TAP_ENDPOINTS } from '@/app/api/simbad/route';
+import { GET as simbadRouteGet, SIMBAD_TAP_ENDPOINTS, maxDuration } from '@/app/api/simbad/route';
 import { GET as cdsStatusRouteGet, clearCdsStatusServerCache } from '@/app/api/cds-status/route';
 import {
   runPoll,
@@ -273,6 +273,14 @@ describe('Resiliencia y Failover ante Degradación de CDS Estrasburgo', () => {
   // 3. Route Handler Proxy SIMBAD (/api/simbad)
   // ─────────────────────────────────────────────────────────────────────────────
   describe('Route Handler Proxy SIMBAD (/api/simbad)', () => {
+    it('define maxDuration coherente con el timeout de 4s de las peticiones TAP', () => {
+      expect(maxDuration).toBeDefined();
+      expect(typeof maxDuration).toBe('number');
+      // Debe ser mayor al timeout individual de 4s pero acotado para serverless
+      expect(maxDuration).toBeGreaterThanOrEqual(5);
+      expect(maxDuration).toBeLessThanOrEqual(15);
+    });
+
     it('incluye el endpoint oficial de Estrasburgo y el espejo de Harvard en el proxy', () => {
       expect(SIMBAD_TAP_ENDPOINTS).toContain('https://simbad.cds.unistra.fr/simbad/sim-tap/sync');
       expect(SIMBAD_TAP_ENDPOINTS).toContain('https://simbad.cfa.harvard.edu/simbad/sim-tap/sync');

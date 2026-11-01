@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { sanitizeCoordinateParams } from "@/lib/astronomy/coordinates";
 
 export const dynamic = "force-dynamic";
+export const maxDuration = 10;
 
 export const SIMBAD_TAP_ENDPOINTS = [
   "https://simbad.cds.unistra.fr/simbad/sim-tap/sync",
