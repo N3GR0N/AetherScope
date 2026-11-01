@@ -71,6 +71,10 @@ export { calculateAngularSeparation, calculateAngularSeparation as calculateOrth
 // Caché en memoria para evitar consultas duplicadas
 const crossMatchCache = new Map<string, CaptureMatch>();
 
+export function clearCrossMatchCache(): void {
+  crossMatchCache.clear();
+}
+
 /**
  * Capa 1: Búsqueda en catálogo curado local evaluando la huella angular elíptica.
  * Selección del mejor candidato:

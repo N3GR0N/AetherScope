@@ -22,14 +22,17 @@ export async function GET(request: Request) {
       );
     }
 
-    const { ra, dec } = sanitizeCoordinateParams(rawRa, rawDec, rawRadius);
+    const parsedRawRa = parseFloat(rawRa);
+    const parsedRawDec = parseFloat(rawDec);
     const parsedRadius = parseFloat(rawRadius);
 
     if (
-      !isFinite(ra) ||
-      !isFinite(dec) ||
-      !isFinite(parsedRadius) ||
+      isNaN(parsedRawRa) ||
+      !isFinite(parsedRawRa) ||
+      isNaN(parsedRawDec) ||
+      !isFinite(parsedRawDec) ||
       isNaN(parsedRadius) ||
+      !isFinite(parsedRadius) ||
       parsedRadius <= 0 ||
       parsedRadius > 2.5
     ) {
@@ -38,6 +41,8 @@ export async function GET(request: Request) {
         { status: 400 }
       );
     }
+
+    const { ra, dec } = sanitizeCoordinateParams(rawRa, rawDec, rawRadius);
 
     const cleanRa = Number(ra.toFixed(6));
     const cleanDec = Number(dec.toFixed(6));
