@@ -322,7 +322,10 @@ export default function ProfilePage() {
         text: `Se ha enviado un enlace de confirmación a ${user.email}. Revisa tu bandeja de entrada para completar el cambio seguro.`,
       });
     } catch (err) {
-      const message = err instanceof Error ? err.message : "Error al solicitar restablecimiento.";
+      let message = err instanceof Error ? err.message : "Error al solicitar restablecimiento.";
+      if (message.toLowerCase().includes("rate limit") || message.toLowerCase().includes("rate_limit")) {
+        message = "Límite de envíos alcanzado en el servidor de correo (protección anti-spam de Supabase). Por favor, aguarda unos minutos antes de solicitar otro email.";
+      }
       setPasswordMsg({ type: "error", text: message });
     } finally {
       setPasswordLoading(false);

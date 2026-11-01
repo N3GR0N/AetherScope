@@ -8,10 +8,12 @@ import PrecisionCrosshair from "@/components/hud/PrecisionCrosshair";
 import {
   identifyCelestialCapture,
   matchLocalDossierCapture,
+  clearCrossMatchCache,
   type CaptureMatch,
   type Candidate,
   type MatchedCelestialObject,
 } from "@/lib/astronomy/crossmatch";
+import { useCdsRecovery } from "@/lib/hooks/useCdsRecovery";
 import type { Capture } from "@/lib/astronomy/footprint";
 import {
   LABORATORY_SPECTRAL_FILTERS,
@@ -24,6 +26,7 @@ import { formatCoordinates, formatFov, getConstellation, sanitizeCoordinateParam
 import { getNotesRepository, type MissionNote } from "@/lib/notes";
 import { useAuth } from "@/components/auth/AuthProvider";
 import AuthModal from "@/components/auth/AuthModal";
+import CdsDownCard from "@/components/hud/CdsDownCard";
 import ConfirmDeleteModal from "@/components/ui/ConfirmDeleteModal";
 import { useIsMounted } from "@/lib/hooks/useIsMounted";
 import {
@@ -147,6 +150,16 @@ function LaboratoryContent() {
   // Selección manual de candidato desde el cono cuando state es 'none'
   const [selectedCandidate, setSelectedCandidate] = useState<Candidate | null>(null);
   const [prevCoordKey, setPrevCoordKey] = useState(currentCoordKey);
+  const [crossMatchVersion, setCrossMatchVersion] = useState<number>(0);
+
+  // Al recuperarse el CDS, limpiar caché y relanzar crossmatch automáticamente
+  const { cdsState, lastCheckedTime } = useCdsRecovery({
+    onRecovered: () => {
+      console.info("[AetherScope] CDS recuperado. Relanzando crossmatch en /analyze...");
+      clearCrossMatchCache();
+      setCrossMatchVersion((v) => v + 1);
+    },
+  });
 
   // Resetear candidato manual si cambian las coordenadas (patrón oficial de React sin efecto)
   if (prevCoordKey !== currentCoordKey) {
@@ -192,7 +205,7 @@ function LaboratoryContent() {
     return () => {
       cancelled = true;
     };
-  }, [currentCapture, currentCoordKey]);
+  }, [currentCapture, currentCoordKey, crossMatchVersion]);
 
   const isIdentifying = matchState.loading || matchState.queryKey !== currentCoordKey;
   const currentMatch = matchState.match;
@@ -552,7 +565,7 @@ function LaboratoryContent() {
               <span className="text-[#F1F0E1] font-semibold text-[11px] block truncate max-w-[130px]">
                 {isIdentifying
                   ? "..."
-                  : identifiedTarget?.name || (activeState === "none" ? "CAMPO NO CATALOGADO" : "SECTOR")}
+                  : identifiedTarget?.name || (activeState === "unavailable" ? "SECTOR NO RESUELTO" : activeState === "none" ? "CAMPO NO CATALOGADO" : "SECTOR")}
               </span>
             </div>
             <div>
@@ -665,91 +678,97 @@ function LaboratoryContent() {
       {/* ─── 2. MAIN WORKSPACE LAYOUT ─── */}
       <div className="relative flex-1 flex overflow-hidden">
         {/* Left Side: Captured Celestial Field Viewport & Spectral Mixer */}
-        <div className="relative flex-1 h-full bg-[#101015] flex flex-col overflow-hidden">
-          {/* Aladin Lite WebGL Canvas locked on captured coordinates */}
-          <div className="absolute inset-0">
-            <SpaceCanvas
-              containerId="aladin-analyze-div"
-              initialRa={raParam}
-              initialDec={decParam}
-              initialFov={fovParam}
-              primarySurvey={primarySurveyProp}
-              secondarySurvey={secondarySurveyProp}
-              blendOpacity={blendOpacity}
-            />
-          </div>
-
-          {/* Reticle */}
-          <PrecisionCrosshair visible={true} fov={fovParam} variant="compact" label="CENTRO DE CAPTURA" />
-
-          {/* Bottom Floating Spectral Filters & Mixing Dock */}
-          <div className="absolute bottom-2 left-2 right-2 sm:bottom-4 sm:left-4 sm:right-4 z-30 pointer-events-none flex justify-center">
-            <div className="w-full max-w-4xl bg-[#101015]/95 border border-[#2B2B31] p-2.5 sm:p-3 pointer-events-auto flex flex-col gap-2 sm:gap-2.5 font-[family-name:var(--font-proto)] select-none shadow-2xl">
-              {/* Filter Row: 5 Spectral Surveys */}
-              <div className="flex items-center justify-between text-[9px] sm:text-[10px] uppercase tracking-[0.14em]">
-                <span className="text-[#F1F0E1] font-semibold">CAPAS ESPECTRALES</span>
-                <span className="text-[#9A9A92]">05 CAPAS</span>
+        <div className={`relative flex-1 h-full bg-[#101015] flex flex-col ${cdsState === "down" ? "items-center justify-center p-4" : ""} overflow-hidden`}>
+          {cdsState === "down" ? (
+            <CdsDownCard lastCheckedTime={lastCheckedTime} />
+          ) : (
+            <>
+              {/* Aladin Lite WebGL Canvas locked on captured coordinates */}
+              <div className="absolute inset-0">
+                <SpaceCanvas
+                  containerId="aladin-analyze-div"
+                  initialRa={raParam}
+                  initialDec={decParam}
+                  initialFov={fovParam}
+                  primarySurvey={primarySurveyProp}
+                  secondarySurvey={secondarySurveyProp}
+                  blendOpacity={blendOpacity}
+                />
               </div>
 
-              <div className="flex flex-wrap items-center gap-1.5 sm:gap-2">
-                {LABORATORY_SPECTRAL_FILTERS.map((filter) => {
-                  const isPrimary = activePrimaryFilter.id === filter.id;
-                  const isOverlay = activeOverlayFilter?.id === filter.id;
-                  const isBeingProcessed = processingFilterId === filter.id;
+              {/* Reticle */}
+              <PrecisionCrosshair visible={true} fov={fovParam} variant="compact" label="CENTRO DE CAPTURA" />
 
-                  return (
-                    <button
-                      key={filter.id}
-                      disabled={isProcessingFilter}
-                      onClick={() => handleApplyFilter(filter)}
-                      className={`px-2 py-1 sm:px-3 sm:py-1.5 text-[10px] sm:text-[11px] uppercase tracking-wider font-medium flex items-center gap-1.5 sm:gap-2 border transition-colors cursor-pointer ${
-                        isBeingProcessed
-                          ? "bg-[#506385]/50 border-[#506385] text-[#F1F0E1]"
-                          : isPrimary
-                          ? "bg-[#F1F0E1] text-[#101015] border-[#F1F0E1] font-bold"
-                          : isOverlay
-                          ? "bg-[#506385] text-[#F1F0E1] border-[#506385] font-bold"
-                          : "bg-[#17171C] text-[#F1F0E1] border-[#3A3A42] hover:bg-[#1A1A1F]"
-                      }`}
-                    >
-                      <span>{filter.shortLabel}</span>
-                      {isPrimary ? (
-                        <span className="px-1 py-0.2 bg-[#101015] text-[#F1F0E1] text-[8.5px] sm:text-[9px] font-bold">
-                          BASE
-                        </span>
-                      ) : isOverlay ? (
-                        <span className="px-1 py-0.2 bg-[#F1F0E1] text-[#101015] text-[8.5px] sm:text-[9px] font-bold">
-                          CAPA
-                        </span>
-                      ) : null}
-                    </button>
-                  );
-                })}
-              </div>
+              {/* Bottom Floating Spectral Filters & Mixing Dock */}
+              <div className="absolute bottom-2 left-2 right-2 sm:bottom-4 sm:left-4 sm:right-4 z-30 pointer-events-none flex justify-center">
+                <div className="w-full max-w-4xl bg-[#101015]/95 border border-[#2B2B31] p-2.5 sm:p-3 pointer-events-auto flex flex-col gap-2 sm:gap-2.5 font-[family-name:var(--font-proto)] select-none shadow-2xl">
+                  {/* Filter Row: 5 Spectral Surveys */}
+                  <div className="flex items-center justify-between text-[9px] sm:text-[10px] uppercase tracking-[0.14em]">
+                    <span className="text-[#F1F0E1] font-semibold">CAPAS ESPECTRALES</span>
+                    <span className="text-[#9A9A92]">05 CAPAS</span>
+                  </div>
 
-              {/* Spectral Blend Opacity Slider */}
-              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-1.5 sm:gap-4 pt-2 border-t border-[#2B2B31]">
-                <span className="text-[9.5px] sm:text-[10px] uppercase tracking-wider text-[#F1F0E1]">
-                  MEZCLA MULTIESPECTRAL ({activeOverlayFilter ? activeOverlayFilter.shortLabel : "SIN CAPA"})
-                </span>
+                  <div className="flex flex-wrap items-center gap-1.5 sm:gap-2">
+                    {LABORATORY_SPECTRAL_FILTERS.map((filter) => {
+                      const isPrimary = activePrimaryFilter.id === filter.id;
+                      const isOverlay = activeOverlayFilter?.id === filter.id;
+                      const isBeingProcessed = processingFilterId === filter.id;
 
-                <div className="flex items-center gap-2.5 sm:gap-3 w-full sm:flex-1 sm:max-w-sm">
-                  <input
-                    type="range"
-                    min="0"
-                    max="1"
-                    step="0.02"
-                    value={blendOpacity}
-                    onChange={(e) => setBlendOpacity(parseFloat(e.target.value))}
-                    className="w-full accent-[#F1F0E1] cursor-pointer h-1.5 bg-[#2B2B31]"
-                  />
-                  <span className="text-[18px] sm:text-[20px] font-bold text-[#F1F0E1] tabular-nums w-12 text-right">
-                    {Math.round(blendOpacity * 100)}%
-                  </span>
+                      return (
+                        <button
+                          key={filter.id}
+                          disabled={isProcessingFilter}
+                          onClick={() => handleApplyFilter(filter)}
+                          className={`px-2 py-1 sm:px-3 sm:py-1.5 text-[10px] sm:text-[11px] uppercase tracking-wider font-medium flex items-center gap-1.5 sm:gap-2 border transition-colors cursor-pointer ${
+                            isBeingProcessed
+                              ? "bg-[#506385]/50 border-[#506385] text-[#F1F0E1]"
+                              : isPrimary
+                              ? "bg-[#F1F0E1] text-[#101015] border-[#F1F0E1] font-bold"
+                              : isOverlay
+                              ? "bg-[#506385] text-[#F1F0E1] border-[#506385] font-bold"
+                              : "bg-[#17171C] text-[#F1F0E1] border-[#3A3A42] hover:bg-[#1A1A1F]"
+                          }`}
+                        >
+                          <span>{filter.shortLabel}</span>
+                          {isPrimary ? (
+                            <span className="px-1 py-0.2 bg-[#101015] text-[#F1F0E1] text-[8.5px] sm:text-[9px] font-bold">
+                              BASE
+                            </span>
+                          ) : isOverlay ? (
+                            <span className="px-1 py-0.2 bg-[#F1F0E1] text-[#101015] text-[8.5px] sm:text-[9px] font-bold">
+                              CAPA
+                            </span>
+                          ) : null}
+                        </button>
+                      );
+                    })}
+                  </div>
+
+                  {/* Spectral Blend Opacity Slider */}
+                  <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-1.5 sm:gap-4 pt-2 border-t border-[#2B2B31]">
+                    <span className="text-[9.5px] sm:text-[10px] uppercase tracking-wider text-[#F1F0E1]">
+                      MEZCLA MULTIESPECTRAL ({activeOverlayFilter ? activeOverlayFilter.shortLabel : "SIN CAPA"})
+                    </span>
+
+                    <div className="flex items-center gap-2.5 sm:gap-3 w-full sm:flex-1 sm:max-w-sm">
+                      <input
+                        type="range"
+                        min="0"
+                        max="1"
+                        step="0.02"
+                        value={blendOpacity}
+                        onChange={(e) => setBlendOpacity(parseFloat(e.target.value))}
+                        className="w-full accent-[#F1F0E1] cursor-pointer h-1.5 bg-[#2B2B31]"
+                      />
+                      <span className="text-[18px] sm:text-[20px] font-bold text-[#F1F0E1] tabular-nums w-12 text-right">
+                        {Math.round(blendOpacity * 100)}%
+                      </span>
+                    </div>
+                  </div>
                 </div>
               </div>
-            </div>
-          </div>
+            </>
+          )}
         </div>
 
         {/* ─── 3. RIGHT SIDE: ASTROPHYSICAL ANALYSIS DASHBOARD PANEL ─── */}
@@ -782,7 +801,7 @@ function LaboratoryContent() {
               <div className="flex items-center justify-between text-[9.5px] uppercase tracking-[0.16em]">
                 <span className="text-[#9A9A92]">IDENTIFICACIÓN CELESTE</span>
                 <span className="text-[#F1F0E1]/80 truncate max-w-[200px]">
-                  {identifiedTarget?.designation || (activeState === "none" ? "ICRS FIELD" : "SECTOR")}
+                  {identifiedTarget?.designation || (activeState === "unavailable" ? "CDS / SIMBAD OFF" : activeState === "none" ? "ICRS FIELD" : "SECTOR")}
                 </span>
               </div>
 
@@ -794,10 +813,19 @@ function LaboratoryContent() {
               ) : (
                 <>
                   <h2 className="text-[22px] sm:text-[26px] font-bold text-[#F1F0E1] uppercase tracking-wide leading-tight truncate">
-                    {activeState === "none"
+                    {activeState === "unavailable"
+                      ? "SIMBAD NO DISPONIBLE"
+                      : activeState === "none"
                       ? "CAMPO SIN OBJETO CATALOGADO"
                       : identifiedTarget?.name || "SECTOR CÓSMICO"}
                   </h2>
+
+                  {currentMatch?.simbadUnavailable && (
+                    <div className="p-2 border border-[#C9B98F]/40 bg-[#C9B98F]/10 flex items-center gap-2 text-[10px] text-[#C9B98F] tracking-wide uppercase font-mono">
+                      <span className="w-1.5 h-1.5 bg-[#C9B98F] animate-pulse shrink-0" />
+                      <span>SIMBAD no disponible: mostrando solo catálogo local</span>
+                    </div>
+                  )}
 
                   <div className="flex items-center gap-2 flex-wrap">
                     {activeState === "edge" && identifiedTarget ? (
