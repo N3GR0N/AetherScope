@@ -10,6 +10,7 @@ import {
   clearSurveyHealthCache,
   isCdsHost,
   findFirstAvailableNonCdsSurvey,
+  resolveSurveyUrl,
   SPECTRAL_SURVEYS,
 } from '@/lib/astronomy/surveys';
 import { GET as simbadRouteGet } from '@/app/api/simbad/route';
@@ -218,6 +219,64 @@ describe('Resiliencia y Failover ante Degradación de CDS Estrasburgo', () => {
       expect(survey).not.toBeNull();
       expect(['jwst', 'xray']).toContain(survey?.id);
       expect(isCdsHost(survey!.hipsUrl)).toBe(false);
+    });
+  });
+
+  // ─────────────────────────────────────────────────────────────────────────────
+  // 2.1. Resolución y failover de URLs de Surveys HiPS (resolveSurveyUrl)
+  // ─────────────────────────────────────────────────────────────────────────────
+  describe('Resolución y failover de URLs de Surveys HiPS (resolveSurveyUrl)', () => {
+    const testSurvey = {
+      hipsUrl: 'https://alasky.cds.unistra.fr/DSS/DSSColor',
+      mirrors: [
+        'https://skies.esac.esa.int/DSSColor',
+        'https://casda.csiro.au/hips/DSS2/color',
+      ],
+    };
+
+    it('principal OK: devuelve la URL principal y marca isMirror: false', async () => {
+      global.fetch = vi.fn().mockImplementation((url: string | URL) => {
+        const u = url.toString();
+        if (u.includes('alasky.cds.unistra.fr')) {
+          return Promise.resolve({ ok: true, status: 200 });
+        }
+        return Promise.reject(new Error('Should not call mirror if primary is ok'));
+      });
+
+      const res = await resolveSurveyUrl(testSurvey);
+      expect(res.isAvailable).toBe(true);
+      expect(res.isMirror).toBe(false);
+      expect(res.url).toBe('https://alasky.cds.unistra.fr/DSS/DSSColor');
+    });
+
+    it('principal caída con espejo OK: devuelve la URL del espejo y marca isMirror: true', async () => {
+      global.fetch = vi.fn().mockImplementation((url: string | URL) => {
+        const u = url.toString();
+        if (u.includes('alasky.cds.unistra.fr')) {
+          return Promise.reject(new Error('Connection timed out'));
+        }
+        if (u.includes('skies.esac.esa.int')) {
+          return Promise.resolve({ ok: true, status: 200 });
+        }
+        return Promise.reject(new Error('Not called'));
+      });
+
+      const res = await resolveSurveyUrl(testSurvey);
+      expect(res.isAvailable).toBe(true);
+      expect(res.isMirror).toBe(true);
+      expect(res.mirrorAgency).toBe('ESA');
+      expect(res.url).toBe('https://skies.esac.esa.int/DSSColor');
+    });
+
+    it('todos caídos: retorna isAvailable: false y url: null', async () => {
+      global.fetch = vi.fn().mockImplementation(() => {
+        return Promise.reject(new Error('Network error on all endpoints'));
+      });
+
+      const res = await resolveSurveyUrl(testSurvey);
+      expect(res.isAvailable).toBe(false);
+      expect(res.isMirror).toBe(false);
+      expect(res.url).toBeNull();
     });
   });
 
