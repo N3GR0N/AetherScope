@@ -11,7 +11,7 @@ export interface Capture {
   radiusDeg: number; // Radio angular de la captura (FOV / 2)
 }
 
-export type CaptureMatchState = 'inside' | 'edge' | 'none';
+export type CaptureMatchState = 'inside' | 'edge' | 'none' | 'unavailable';
 
 /**
  * Radio máximo de coincidencia angular para fuentes puntuales (estrellas, núcleos compactos) en minutos de arco.

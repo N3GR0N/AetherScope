@@ -506,7 +506,7 @@ function LaboratoryContent() {
               <span className="text-[#F1F0E1] font-semibold text-[11px] block truncate max-w-[130px]">
                 {isIdentifying
                   ? "..."
-                  : identifiedTarget?.name || (activeState === "none" ? "CAMPO NO CATALOGADO" : "SECTOR")}
+                  : identifiedTarget?.name || (activeState === "unavailable" ? "SECTOR NO RESUELTO" : activeState === "none" ? "CAMPO NO CATALOGADO" : "SECTOR")}
               </span>
             </div>
             <div>
@@ -719,7 +719,7 @@ function LaboratoryContent() {
               <div className="flex items-center justify-between text-[9.5px] uppercase tracking-[0.16em]">
                 <span className="text-[#9A9A92]">IDENTIFICACIÓN CELESTE</span>
                 <span className="text-[#F1F0E1]/80 truncate max-w-[200px]">
-                  {identifiedTarget?.designation || (activeState === "none" ? "ICRS FIELD" : "SECTOR")}
+                  {identifiedTarget?.designation || (activeState === "unavailable" ? "CDS / SIMBAD OFF" : activeState === "none" ? "ICRS FIELD" : "SECTOR")}
                 </span>
               </div>
 
