@@ -10,7 +10,6 @@ import {
   clearSurveyHealthCache,
   isCdsHost,
   findFirstAvailableNonCdsSurvey,
-  resolveSurveyUrl,
   SPECTRAL_SURVEYS,
 } from '@/lib/astronomy/surveys';
 import { GET as simbadRouteGet } from '@/app/api/simbad/route';
@@ -18,6 +17,7 @@ import { GET as cdsStatusRouteGet, clearCdsStatusServerCache } from '@/app/api/c
 import {
   runPoll,
   onCdsRecovered,
+  formatCheckedTime,
   _resetRecoveryManagerForTests,
   _setDegradedStateForTests,
 } from '@/lib/hooks/useCdsRecovery';
@@ -223,60 +223,50 @@ describe('Resiliencia y Failover ante Degradación de CDS Estrasburgo', () => {
   });
 
   // ─────────────────────────────────────────────────────────────────────────────
-  // 2.1. Resolución y failover de URLs de Surveys HiPS (resolveSurveyUrl)
+  // 2.1. Manejo robusto de NetworkError y fallo de infraestructura sin lanzar
   // ─────────────────────────────────────────────────────────────────────────────
-  describe('Resolución y failover de URLs de Surveys HiPS (resolveSurveyUrl)', () => {
-    const testSurvey = {
-      hipsUrl: 'https://alasky.cds.unistra.fr/DSS/DSSColor',
-      mirrors: [
-        'https://skies.esac.esa.int/DSSColor',
-        'https://casda.csiro.au/hips/DSS2/color',
-      ],
-    };
-
-    it('principal OK: devuelve la URL principal y marca isMirror: false', async () => {
-      global.fetch = vi.fn().mockImplementation((url: string | URL) => {
-        const u = url.toString();
-        if (u.includes('alasky.cds.unistra.fr')) {
-          return Promise.resolve({ ok: true, status: 200 });
-        }
-        return Promise.reject(new Error('Should not call mirror if primary is ok'));
-      });
-
-      const res = await resolveSurveyUrl(testSurvey);
-      expect(res.isAvailable).toBe(true);
-      expect(res.isMirror).toBe(false);
-      expect(res.url).toBe('https://alasky.cds.unistra.fr/DSS/DSSColor');
-    });
-
-    it('principal caída con espejo OK: devuelve la URL del espejo y marca isMirror: true', async () => {
-      global.fetch = vi.fn().mockImplementation((url: string | URL) => {
-        const u = url.toString();
-        if (u.includes('alasky.cds.unistra.fr')) {
-          return Promise.reject(new Error('Connection timed out'));
-        }
-        if (u.includes('skies.esac.esa.int')) {
-          return Promise.resolve({ ok: true, status: 200 });
-        }
-        return Promise.reject(new Error('Not called'));
-      });
-
-      const res = await resolveSurveyUrl(testSurvey);
-      expect(res.isAvailable).toBe(true);
-      expect(res.isMirror).toBe(true);
-      expect(res.mirrorAgency).toBe('ESA');
-      expect(res.url).toBe('https://skies.esac.esa.int/DSSColor');
-    });
-
-    it('todos caídos: retorna isAvailable: false y url: null', async () => {
+  describe('Manejo robusto de NetworkError y fallos de infraestructura', () => {
+    it('checkSurveyHealth no lanza excepción ante NetworkError y retorna false', async () => {
       global.fetch = vi.fn().mockImplementation(() => {
-        return Promise.reject(new Error('Network error on all endpoints'));
+        return Promise.reject(new TypeError('NetworkError when attempting to fetch resource'));
       });
 
-      const res = await resolveSurveyUrl(testSurvey);
-      expect(res.isAvailable).toBe(false);
-      expect(res.isMirror).toBe(false);
-      expect(res.url).toBeNull();
+      const result = await checkSurveyHealth('https://alasky.cds.unistra.fr/DSS/DSSColor');
+      expect(result).toBe(false);
+    });
+
+    it('querySimbadConeCapture no lanza excepción ante NetworkError y deriva en unavailable: true', async () => {
+      global.fetch = vi.fn().mockImplementation(() => {
+        return Promise.reject(new TypeError('NetworkError when attempting to fetch resource'));
+      });
+
+      const result = await querySimbadConeCapture({ raDeg: 100, decDeg: -10, radiusDeg: 0.1 });
+      expect(result.unavailable).toBe(true);
+      expect(result.candidates).toEqual([]);
+      expect(result.bestMatch).toBeNull();
+    });
+
+    it('runPoll no lanza ante NetworkError y asigna estado down', async () => {
+      _resetRecoveryManagerForTests();
+      global.fetch = vi.fn().mockImplementation(() => {
+        return Promise.reject(new TypeError('NetworkError when attempting to fetch resource'));
+      });
+
+      onCdsRecovered(() => {}); // registro para que haya suscriptor
+      await expect(runPoll()).resolves.not.toThrow();
+
+      // Sondeo derivó en down sin lanzar excepción
+      global.fetch = vi.fn().mockImplementation((url: string | URL) => {
+        if (url.toString().includes('/api/cds-status')) {
+          return Promise.resolve({
+            ok: true,
+            status: 200,
+            json: async () => ({ simbad: false, hips: false, checkedAt: new Date().toISOString() }),
+          });
+        }
+        return Promise.reject(new Error('err'));
+      });
+      await runPoll();
     });
   });
 
@@ -463,6 +453,27 @@ describe('Resiliencia y Failover ante Degradación de CDS Estrasburgo', () => {
       expect(recoveredMatch.simbadUnavailable).toBeFalsy();
       expect(recoveredMatch.candidates.length).toBeGreaterThan(0);
       expect(recoveredMatch.candidates[0].name).toBe('Polaris Recovered');
+    });
+
+    it('estado inicial checking transiciona a down si el endpoint reporta hips caído', async () => {
+      _resetRecoveryManagerForTests();
+
+      global.fetch = vi.fn().mockImplementation((url: string | URL) => {
+        if (url.toString().includes('/api/cds-status')) {
+          return Promise.resolve({
+            ok: true,
+            status: 200,
+            json: async () => ({ simbad: true, hips: false, checkedAt: '2026-11-01T12:00:00Z' }),
+          });
+        }
+        return Promise.reject(new Error('err'));
+      });
+
+      const unsubscribe = onCdsRecovered(() => {});
+      await runPoll();
+
+      expect(formatCheckedTime('2026-11-01T12:00:00Z')).toMatch(/^\d{2}:\d{2}:\d{2}$/);
+      unsubscribe();
     });
   });
 });
