@@ -8,10 +8,12 @@ import PrecisionCrosshair from "@/components/hud/PrecisionCrosshair";
 import {
   identifyCelestialCapture,
   matchLocalDossierCapture,
+  clearCrossMatchCache,
   type CaptureMatch,
   type Candidate,
   type MatchedCelestialObject,
 } from "@/lib/astronomy/crossmatch";
+import { useCdsRecovery } from "@/lib/hooks/useCdsRecovery";
 import type { Capture } from "@/lib/astronomy/footprint";
 import { checkSurveyHealth } from "@/lib/astronomy/surveys";
 import {
@@ -172,6 +174,16 @@ function LaboratoryContent() {
   // Selección manual de candidato desde el cono cuando state es 'none'
   const [selectedCandidate, setSelectedCandidate] = useState<Candidate | null>(null);
   const [prevCoordKey, setPrevCoordKey] = useState(currentCoordKey);
+  const [crossMatchVersion, setCrossMatchVersion] = useState<number>(0);
+
+  // Al recuperarse el CDS, limpiar caché y relanzar crossmatch automáticamente
+  useCdsRecovery({
+    onRecovered: () => {
+      console.info("[AetherScope] CDS recuperado. Relanzando crossmatch en /analyze...");
+      clearCrossMatchCache();
+      setCrossMatchVersion((v) => v + 1);
+    },
+  });
 
   // Resetear candidato manual si cambian las coordenadas (patrón oficial de React sin efecto)
   if (prevCoordKey !== currentCoordKey) {
@@ -217,7 +229,7 @@ function LaboratoryContent() {
     return () => {
       cancelled = true;
     };
-  }, [currentCapture, currentCoordKey]);
+  }, [currentCapture, currentCoordKey, crossMatchVersion]);
 
   const isIdentifying = matchState.loading || matchState.queryKey !== currentCoordKey;
   const currentMatch = matchState.match;
@@ -781,10 +793,19 @@ function LaboratoryContent() {
               ) : (
                 <>
                   <h2 className="text-[22px] sm:text-[26px] font-bold text-[#F1F0E1] uppercase tracking-wide leading-tight truncate">
-                    {activeState === "none"
+                    {activeState === "unavailable"
+                      ? "SIMBAD NO DISPONIBLE"
+                      : activeState === "none"
                       ? "CAMPO SIN OBJETO CATALOGADO"
                       : identifiedTarget?.name || "SECTOR CÓSMICO"}
                   </h2>
+
+                  {currentMatch?.simbadUnavailable && (
+                    <div className="p-2 border border-[#C9B98F]/40 bg-[#C9B98F]/10 flex items-center gap-2 text-[10px] text-[#C9B98F] tracking-wide uppercase font-mono">
+                      <span className="w-1.5 h-1.5 bg-[#C9B98F] animate-pulse shrink-0" />
+                      <span>SIMBAD no disponible: mostrando solo catálogo local</span>
+                    </div>
+                  )}
 
                   <div className="flex items-center gap-2 flex-wrap">
                     {activeState === "edge" && identifiedTarget ? (

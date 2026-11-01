@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import { useCdsRecovery } from "@/lib/hooks/useCdsRecovery";
 import { NON_CDS_FALLBACK_SURVEY_URL, type SpectralSurvey } from "@/lib/astronomy/surveys";
 import { sexagesimalToDecimal, type CosmicTarget } from "@/lib/astronomy/targets";
 import { useSpace } from "@/context/SpaceContext";
@@ -364,6 +365,20 @@ export default function SpaceCanvas(props: SpaceCanvasProps = {}) {
       }
     }
   }, [primarySurvey, loadingState]);
+
+  // Al recuperarse el CDS, reasignar automáticamente el survey base actual
+  useCdsRecovery({
+    onRecovered: () => {
+      const aladin = aladinInstanceRef.current;
+      if (!aladin || loadingState !== "ready") return;
+      console.info("[AetherScope] CDS recuperado. Reasignando survey base actual:", primarySurvey.name);
+      try {
+        aladin.setImageSurvey(primarySurvey.hipsUrl || primarySurvey.hipsId);
+      } catch (err) {
+        console.warn("[AetherScope] Error reasignando survey base tras recuperación:", err);
+      }
+    },
+  });
 
   // Synchronize secondary overlay layer and blend opacity
   useEffect(() => {

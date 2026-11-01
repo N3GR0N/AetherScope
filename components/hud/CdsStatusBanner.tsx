@@ -1,43 +1,12 @@
 "use client";
 
-import { useEffect, useState } from "react";
-
-interface CdsStatusResponse {
-  simbad: boolean;
-  hips: boolean;
-  checkedAt: string;
-}
+import { useCdsRecovery } from "@/lib/hooks/useCdsRecovery";
 
 export default function CdsStatusBanner() {
-  const [status, setStatus] = useState<CdsStatusResponse | null>(null);
-
-  useEffect(() => {
-    let cancelled = false;
-
-    async function checkStatus() {
-      try {
-        const res = await fetch("/api/cds-status", { cache: "no-store" });
-        if (!res.ok) throw new Error("HTTP error");
-        const data: CdsStatusResponse = await res.json();
-        if (!cancelled) setStatus(data);
-      } catch {
-        if (!cancelled) {
-          setStatus({ simbad: false, hips: false, checkedAt: new Date().toISOString() });
-        }
-      }
-    }
-
-    checkStatus();
-    const interval = setInterval(checkStatus, 120_000);
-
-    return () => {
-      cancelled = true;
-      clearInterval(interval);
-    };
-  }, []);
+  const { status, isDegraded } = useCdsRecovery();
 
   // Nada visible si todo está OK o aún no ha cargado
-  if (!status || (status.simbad && status.hips)) {
+  if (!status || !isDegraded || (status.simbad && status.hips)) {
     return null;
   }
 
