@@ -50,6 +50,17 @@ export function formatCheckedTime(isoOrDate?: string | Date): string {
   }
 }
 
+/**
+ * Determina si el estado 'ok' del CDS está forzado por variable de entorno de desarrollo.
+ * Solo activo fuera de entornos de producción (NODE_ENV !== 'production').
+ */
+export function isCdsForcedOkInDev(): boolean {
+  return (
+    process.env.NODE_ENV !== "production" &&
+    process.env.NEXT_PUBLIC_FORCE_CDS_OK === "1"
+  );
+}
+
 function scheduleNextPoll(delayMs: number): void {
   if (pollTimer) {
     clearTimeout(pollTimer);
@@ -63,6 +74,22 @@ function scheduleNextPoll(delayMs: number): void {
 }
 
 export async function runPoll(): Promise<void> {
+  if (isCdsForcedOkInDev()) {
+    consecutiveFailures = 0;
+    currentCdsState = "ok";
+    isCurrentlyDegraded = false;
+    currentStatus = {
+      simbad: true,
+      hips: true,
+      checkedAt: new Date().toISOString(),
+    };
+    hasCheckedAtLeastOnce = true;
+    for (const sub of subscribers.values()) {
+      sub.onStatusChange?.(currentStatus, false, "ok");
+    }
+    return;
+  }
+
   if (isFetchInFlight) return;
   isFetchInFlight = true;
 
@@ -215,9 +242,12 @@ export interface UseCdsRecoveryOptions {
 }
 
 export function useCdsRecovery(options: UseCdsRecoveryOptions = {}) {
-  const [status, setStatus] = useState<CdsStatus | null>(() => currentStatus);
-  const [isDegraded, setIsDegraded] = useState<boolean>(() => isCurrentlyDegraded);
-  const [cdsState, setCdsState] = useState<CdsState>(() => currentCdsState);
+  const isForced = isCdsForcedOkInDev();
+  const [status, setStatus] = useState<CdsStatus | null>(() =>
+    isForced ? { simbad: true, hips: true, checkedAt: new Date().toISOString() } : currentStatus
+  );
+  const [isDegraded, setIsDegraded] = useState<boolean>(() => (isForced ? false : isCurrentlyDegraded));
+  const [cdsState, setCdsState] = useState<CdsState>(() => (isForced ? "ok" : currentCdsState));
 
   const onRecoveredRef = useRef(options.onRecovered);
   useEffect(() => {

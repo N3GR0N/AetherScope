@@ -20,6 +20,7 @@ import {
   _setDegradedStateForTests,
   _getCurrentCdsStateForTests,
   _getConsecutiveFailuresForTests,
+  isCdsForcedOkInDev,
 } from '@/lib/hooks/useCdsRecovery';
 import type { Capture } from '@/lib/astronomy/footprint';
 
@@ -560,6 +561,41 @@ describe('Resiliencia y Failover ante Degradación de CDS Estrasburgo', () => {
       expect(_getCurrentCdsStateForTests()).toBe('down');
 
       unsubscribe();
+    });
+
+    it('NEXT_PUBLIC_FORCE_CDS_OK=1 fuerza estado ok solo en entornos que no son production', async () => {
+      const originalEnv = process.env.NODE_ENV;
+      const originalForced = process.env.NEXT_PUBLIC_FORCE_CDS_OK;
+
+      try {
+        // En entorno de testing / desarrollo con flag activada
+        process.env.NODE_ENV = 'development';
+        process.env.NEXT_PUBLIC_FORCE_CDS_OK = '1';
+        expect(isCdsForcedOkInDev()).toBe(true);
+
+        _resetRecoveryManagerForTests();
+        await runPoll();
+        expect(_getCurrentCdsStateForTests()).toBe('ok');
+
+        // /api/cds-status retorna OK forzado
+        const response = await cdsStatusRouteGet();
+        const json = await response.json();
+        expect(json.simbad).toBe(true);
+        expect(json.hips).toBe(true);
+        expect(response.headers.get('X-Dev-Forced')).toBe('1');
+
+        // En producción la variable de entorno es estrictamente ignorada
+        process.env.NODE_ENV = 'production';
+        process.env.NEXT_PUBLIC_FORCE_CDS_OK = '1';
+        expect(isCdsForcedOkInDev()).toBe(false);
+      } finally {
+        process.env.NODE_ENV = originalEnv;
+        if (originalForced !== undefined) {
+          process.env.NEXT_PUBLIC_FORCE_CDS_OK = originalForced;
+        } else {
+          delete process.env.NEXT_PUBLIC_FORCE_CDS_OK;
+        }
+      }
     });
   });
 });

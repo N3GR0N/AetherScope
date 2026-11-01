@@ -46,6 +46,22 @@ async function pingEndpoint(url: string, timeoutMs = 2500): Promise<boolean> {
 }
 
 export async function GET() {
+  if (process.env.NODE_ENV !== "production" && process.env.NEXT_PUBLIC_FORCE_CDS_OK === "1") {
+    return NextResponse.json(
+      {
+        simbad: true,
+        hips: true,
+        checkedAt: new Date().toISOString(),
+      },
+      {
+        headers: {
+          "Cache-Control": "no-store, max-age=0",
+          "X-Dev-Forced": "1",
+        },
+      }
+    );
+  }
+
   const now = Date.now();
 
   if (cachedServerStatus && now - cachedServerStatus.timestamp < CDS_STATUS_SERVER_CACHE_TTL_MS) {
