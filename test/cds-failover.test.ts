@@ -13,7 +13,7 @@ import {
   SPECTRAL_SURVEYS,
 } from '@/lib/astronomy/surveys';
 import { GET as simbadRouteGet } from '@/app/api/simbad/route';
-import { GET as cdsStatusRouteGet } from '@/app/api/cds-status/route';
+import { GET as cdsStatusRouteGet, clearCdsStatusServerCache } from '@/app/api/cds-status/route';
 import type { Capture } from '@/lib/astronomy/footprint';
 
 describe('Resiliencia y Failover ante Degradación de CDS Estrasburgo', () => {
@@ -23,6 +23,7 @@ describe('Resiliencia y Failover ante Degradación de CDS Estrasburgo', () => {
     vi.restoreAllMocks();
     clearCrossMatchCache();
     clearSurveyHealthCache();
+    clearCdsStatusServerCache();
   });
 
   afterEach(() => {
