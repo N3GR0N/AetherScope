@@ -25,6 +25,7 @@ import { formatCoordinates, formatFov, getConstellation, sanitizeCoordinateParam
 import { getNotesRepository, type MissionNote } from "@/lib/notes";
 import { useAuth } from "@/components/auth/AuthProvider";
 import AuthModal from "@/components/auth/AuthModal";
+import CdsStatusBanner from "@/components/hud/CdsStatusBanner";
 import ConfirmDeleteModal from "@/components/ui/ConfirmDeleteModal";
 import { useIsMounted } from "@/lib/hooks/useIsMounted";
 import {
@@ -528,6 +529,9 @@ function LaboratoryContent() {
 
   return (
     <div className="relative w-screen h-screen overflow-hidden bg-[#101015] text-[#F1F0E1] select-none flex flex-col font-[family-name:var(--font-proto)]">
+      {/* Discreet Tactical CDS Degradation Banner */}
+      <CdsStatusBanner />
+
       {/* ─── 1. TOP UNIFIED TECHNICAL HEADER ─── */}
       <header className="h-14 shrink-0 px-4 md:px-6 flex items-center justify-between bg-[#17171C] border-b border-[#2B2B31] z-40 select-none">
         {/* Left Section: Favicon + Volver + Telemetry strip */}

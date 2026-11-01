@@ -6,6 +6,7 @@ import { sanitizeCoordinateParams } from "@/lib/astronomy/coordinates";
 import { SpaceProvider } from "@/context/SpaceContext";
 import SpaceCanvas from "@/components/space-canvas/SpaceCanvas";
 import HeaderBar from "@/components/hud/HeaderBar";
+import CdsStatusBanner from "@/components/hud/CdsStatusBanner";
 import PrecisionCrosshair from "@/components/hud/PrecisionCrosshair";
 import CoordinateOverlay from "@/components/hud/CoordinateOverlay";
 import CaptureZoneButton from "@/components/hud/CaptureZoneButton";
@@ -43,6 +44,9 @@ function AetherScopeMainContent() {
 
         {/* 3. Top Unified Navigation Bar */}
         <HeaderBar />
+
+        {/* 3.1 Discreet Tactical CDS Degradation Banner */}
+        <CdsStatusBanner />
 
         {/* 4. Real-time Celestial Coordinates Card (Bottom-Left) */}
         <CoordinateOverlay />
