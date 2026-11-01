@@ -321,6 +321,59 @@ describe('Resiliencia y Failover ante Degradación de CDS Estrasburgo', () => {
       expect(json.data.length).toBe(1);
       expect(json.data[0][0]).toBe('Rigel');
     });
+
+    it('consulta endpoints TAP en paralelo (Promise.any) y devuelve el primero que responda bien', async () => {
+      const calledUrls: string[] = [];
+      global.fetch = vi.fn().mockImplementation((url: string | URL) => {
+        const urlStr = url.toString();
+        calledUrls.push(urlStr);
+        if (urlStr.includes('simbad.cds.unistra.fr')) {
+          return new Promise((resolve) => {
+            setTimeout(() => {
+              resolve({
+                ok: true,
+                status: 200,
+                json: async () => ({ data: [['Slow CDS', 'Star', 10, 10, null, null, null]] }),
+              });
+            }, 80);
+          });
+        }
+        if (urlStr.includes('simbad.cfa.harvard.edu')) {
+          return new Promise((resolve) => {
+            setTimeout(() => {
+              resolve({
+                ok: true,
+                status: 200,
+                json: async () => ({ data: [['Fast Harvard', 'Star', 10, 10, null, null, null]] }),
+              });
+            }, 10);
+          });
+        }
+        return Promise.reject(new Error('Unknown host'));
+      });
+
+      const request = new Request('http://localhost:3000/api/simbad?ra=10&dec=10&radius=0.1');
+      const response = await simbadRouteGet(request);
+      expect(response.status).toBe(200);
+
+      const json = await response.json();
+      expect(json.data[0][0]).toBe('Fast Harvard');
+      expect(response.headers.get('X-SIMBAD-Endpoint')).toContain('harvard.edu');
+      expect(calledUrls.some((u) => u.includes('unistra'))).toBe(true);
+      expect(calledUrls.some((u) => u.includes('harvard'))).toBe(true);
+    });
+
+    it('devuelve status 503 con unavailable: true si todos los endpoints fallan', async () => {
+      global.fetch = vi.fn().mockRejectedValue(new Error('Network failure on all mirrors'));
+
+      const request = new Request('http://localhost:3000/api/simbad?ra=10&dec=10&radius=0.1');
+      const response = await simbadRouteGet(request);
+      expect(response.status).toBe(503);
+
+      const json = await response.json();
+      expect(json.unavailable).toBe(true);
+      expect(json.error).toBeDefined();
+    });
   });
 
   // ─────────────────────────────────────────────────────────────────────────────

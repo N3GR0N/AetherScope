@@ -64,7 +64,12 @@ export async function GET(request: Request) {
       ORDER BY dist ASC
     `.trim().replace(/\s+/g, " ");
 
-    for (const endpoint of SIMBAD_TAP_ENDPOINTS) {
+    interface SuccessfulTapResult {
+      data: unknown;
+      endpoint: string;
+    }
+
+    const tapPromises = SIMBAD_TAP_ENDPOINTS.map(async (endpoint): Promise<SuccessfulTapResult> => {
       const controller = new AbortController();
       const timer = setTimeout(() => controller.abort(), 4000);
 
@@ -74,34 +79,41 @@ export async function GET(request: Request) {
           signal: controller.signal,
           headers: { Accept: "application/json" },
           cache: "no-store",
-        }).catch(() => null);
-        clearTimeout(timer);
+        });
 
-        if (res && res.ok) {
-          const data: unknown = await res.json().catch(() => null);
-          if (data) {
-            return NextResponse.json(data, {
-              status: 200,
-              headers: {
-                "X-SIMBAD-Endpoint": endpoint,
-                "Cache-Control": "public, max-age=60",
-              },
-            });
-          }
+        if (!res.ok) {
+          throw new Error(`Endpoint ${endpoint} returned HTTP ${res.status}`);
         }
-      } catch {
-        clearTimeout(timer);
-        // Continue to next mirror endpoint
-      }
-    }
 
-    return NextResponse.json(
-      {
-        error: "Todos los endpoints de SIMBAD TAP no están disponibles",
-        unavailable: true,
-      },
-      { status: 503 }
-    );
+        const data: unknown = await res.json();
+        if (!data || typeof data !== "object") {
+          throw new Error(`Endpoint ${endpoint} returned empty or invalid JSON`);
+        }
+
+        return { data, endpoint };
+      } finally {
+        clearTimeout(timer);
+      }
+    });
+
+    try {
+      const { data, endpoint } = await Promise.any(tapPromises);
+      return NextResponse.json(data, {
+        status: 200,
+        headers: {
+          "X-SIMBAD-Endpoint": endpoint,
+          "Cache-Control": "public, max-age=60",
+        },
+      });
+    } catch {
+      return NextResponse.json(
+        {
+          error: "Todos los endpoints de SIMBAD TAP no están disponibles",
+          unavailable: true,
+        },
+        { status: 503 }
+      );
+    }
   } catch (err) {
     return NextResponse.json(
       { error: "Error interno al procesar consulta a SIMBAD", details: String(err) },
