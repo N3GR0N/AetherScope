@@ -11,7 +11,6 @@ import {
   DEFAULT_OVERLAY_SURVEY,
   NASA_COMPOSITE_SURVEY,
   checkSurveyHealth,
-  findFirstAvailableNonCdsSurvey,
   type SpectralSurvey,
 } from "@/lib/astronomy/surveys";
 import {
@@ -62,6 +61,7 @@ interface SpaceContextValue {
   // Spectral Survey Controls
   primarySurvey: SpectralSurvey;
   secondarySurvey: SpectralSurvey;
+  isPrimarySurveyAvailable: boolean;
   blendOpacity: number;
   isNasaComposite: boolean;
   setPrimarySurvey: (survey: SpectralSurvey) => void;
@@ -166,20 +166,16 @@ export function SpaceProvider({
   const [blendOpacity, setBlendOpacity] = useState<number>(0.0);
   const [isNasaComposite, setIsNasaComposite] = useState<boolean>(false);
 
-  // Automatic failover: if primary survey is down, fallback to first verified non-CDS survey
+  // Health check del survey primario (sin conmutación automática de survey)
+  const [isPrimarySurveyAvailable, setIsPrimarySurveyAvailable] = useState<boolean>(true);
+
   useEffect(() => {
     let cancelled = false;
 
     async function evaluatePrimarySurveyHealth() {
       const isHealthy = await checkSurveyHealth(primarySurvey);
-      if (cancelled || isHealthy) return;
-
-      const fallback = await findFirstAvailableNonCdsSurvey();
-      if (!cancelled && fallback && fallback.id !== primarySurvey.id) {
-        console.warn(
-          `[AetherScope] Survey base activo (${primarySurvey.name}) no disponible. Failover automático a ${fallback.name}.`
-        );
-        setPrimarySurveyState(fallback);
+      if (!cancelled) {
+        setIsPrimarySurveyAvailable(isHealthy);
       }
     }
 
@@ -380,6 +376,7 @@ export function SpaceProvider({
     syncOrbitalOrientation,
     primarySurvey,
     secondarySurvey,
+    isPrimarySurveyAvailable,
     blendOpacity,
     isNasaComposite,
     setPrimarySurvey,

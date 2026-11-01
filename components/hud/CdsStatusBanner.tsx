@@ -45,6 +45,8 @@ export default function CdsStatusBanner() {
   if (!status.simbad) details.push("SIMBAD TAP");
   if (!status.hips) details.push("HiPS CDS");
 
+  const isBaseMapDown = !status.hips;
+
   return (
     <aside
       aria-live="polite"
@@ -54,7 +56,7 @@ export default function CdsStatusBanner() {
         <span className="w-1.5 h-1.5 bg-[#C9B98F] animate-pulse shrink-0" />
         <div className="flex items-center gap-2">
           <span className="text-[10px] uppercase font-bold tracking-[0.16em] text-[#C9B98F]">
-            SERVICIOS CDS DEGRADADOS
+            {isBaseMapDown ? "MAPA BASE NO DISPONIBLE (CDS)" : "SERVICIOS CDS DEGRADADOS"}
           </span>
           <span className="text-[9px] uppercase tracking-wider text-[#9A9A92] border-l border-[#3A3A42] pl-2 hidden sm:inline">
             MODO FAILOVER ACTIVO ({details.join(" + ")})

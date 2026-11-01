@@ -13,7 +13,7 @@ import {
   type MatchedCelestialObject,
 } from "@/lib/astronomy/crossmatch";
 import type { Capture } from "@/lib/astronomy/footprint";
-import { checkSurveyHealth, isCdsHost } from "@/lib/astronomy/surveys";
+import { checkSurveyHealth } from "@/lib/astronomy/surveys";
 import {
   LABORATORY_SPECTRAL_FILTERS,
   spectralFilterToSurvey,
@@ -135,34 +135,6 @@ function LaboratoryContent() {
       }
       if (cancelled) return;
       setSurveyHealthMap(results);
-
-      // Si el filtro primario activo está caído, failover automático al primer no-CDS disponible
-      setActivePrimaryFilter((currentPrimary) => {
-        if (results[currentPrimary.id] === false) {
-          const priorityIds = ["jwst", "chandra"];
-          const fallback =
-            LABORATORY_SPECTRAL_FILTERS.find(
-              (f) => priorityIds.includes(f.id) && results[f.id] && !isCdsHost(f.hipsUrl)
-            ) ||
-            LABORATORY_SPECTRAL_FILTERS.find((f) => results[f.id] && !isCdsHost(f.hipsUrl));
-
-          if (fallback) {
-            console.warn(
-              `[AetherScope] Filtro activo ${currentPrimary.shortLabel} no disponible. Failover a ${fallback.shortLabel}.`
-            );
-            return fallback;
-          }
-        }
-        return currentPrimary;
-      });
-
-      // Si la capa secundaria activa está caída, deseleccionarla
-      setActiveOverlayFilter((currentOverlay) => {
-        if (currentOverlay && results[currentOverlay.id] === false) {
-          return null;
-        }
-        return currentOverlay;
-      });
     }
 
     evaluateFilterHealth();
@@ -320,9 +292,12 @@ function LaboratoryContent() {
     startTransition(() => {
       if (isPrimary) {
         // Already base layer
-      } else if (isOverlay) {
+      } else if (isOverlay || surveyHealthMap[activePrimaryFilter.id] === false) {
+        // Si ya era overlay o el base actual está caído, ascender este filtro disponible a base
         setActivePrimaryFilter(filter);
-        setActiveOverlayFilter(activePrimaryFilter);
+        if (isOverlay) {
+          setActiveOverlayFilter(activePrimaryFilter);
+        }
       } else {
         setActiveOverlayFilter(filter);
       }
@@ -694,7 +669,14 @@ function LaboratoryContent() {
             <div className="w-full max-w-4xl bg-[#101015]/95 border border-[#2B2B31] p-3 pointer-events-auto flex flex-col gap-2.5 font-[family-name:var(--font-proto)] select-none">
               {/* Filter Row: 5 Spectral Surveys */}
               <div className="flex items-center justify-between text-[10px] uppercase tracking-[0.14em]">
-                <span className="text-[#F1F0E1] font-semibold">CAPAS ESPECTRALES</span>
+                <div className="flex items-center gap-2.5">
+                  <span className="text-[#F1F0E1] font-semibold">CAPAS ESPECTRALES</span>
+                  {surveyHealthMap[activePrimaryFilter.id] === false && (
+                    <span className="text-[#C9B98F] text-[9px] font-bold border border-[#C9B98F]/40 bg-[#C9B98F]/10 px-1.5 py-0.5 tracking-wider">
+                      MAPA BASE NO DISPONIBLE (CDS)
+                    </span>
+                  )}
+                </div>
                 <span className="text-[#9A9A92]">05 CAPAS</span>
               </div>
 
