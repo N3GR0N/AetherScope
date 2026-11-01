@@ -16,9 +16,10 @@ import { GET as cdsStatusRouteGet, clearCdsStatusServerCache } from '@/app/api/c
 import {
   runPoll,
   onCdsRecovered,
-  formatCheckedTime,
   _resetRecoveryManagerForTests,
   _setDegradedStateForTests,
+  _getCurrentCdsStateForTests,
+  _getConsecutiveFailuresForTests,
 } from '@/lib/hooks/useCdsRecovery';
 import type { Capture } from '@/lib/astronomy/footprint';
 
@@ -510,24 +511,54 @@ describe('Resiliencia y Failover ante Degradación de CDS Estrasburgo', () => {
       expect(recoveredMatch.candidates[0].name).toBe('Polaris Recovered');
     });
 
-    it('estado inicial checking transiciona a down si el endpoint reporta hips caído', async () => {
+    it('pasa a down solo tras 2 comprobaciones fallidas consecutivas y a ok con 1 exitosa', async () => {
       _resetRecoveryManagerForTests();
 
+      let mockHipsOk = false;
       global.fetch = vi.fn().mockImplementation((url: string | URL) => {
         if (url.toString().includes('/api/cds-status')) {
           return Promise.resolve({
             ok: true,
             status: 200,
-            json: async () => ({ simbad: true, hips: false, checkedAt: '2026-11-01T12:00:00Z' }),
+            json: async () => ({ simbad: true, hips: mockHipsOk, checkedAt: '2026-11-01T12:00:00Z' }),
           });
         }
         return Promise.reject(new Error('err'));
       });
 
       const unsubscribe = onCdsRecovered(() => {});
-      await runPoll();
 
-      expect(formatCheckedTime('2026-11-01T12:00:00Z')).toMatch(/^\d{2}:\d{2}:\d{2}$/);
+      // Inicialmente en 'checking'
+      expect(_getCurrentCdsStateForTests()).toBe('checking');
+      expect(_getConsecutiveFailuresForTests()).toBe(0);
+
+      // Comprobación 1 fallida: aún NO debe pasar a 'down' (queda en 'checking', fallos = 1)
+      await runPoll();
+      expect(_getConsecutiveFailuresForTests()).toBe(1);
+      expect(_getCurrentCdsStateForTests()).toBe('checking');
+
+      // Comprobación 2 fallida consecutiva: ahora SÍ debe pasar a 'down'
+      await runPoll();
+      expect(_getConsecutiveFailuresForTests()).toBe(2);
+      expect(_getCurrentCdsStateForTests()).toBe('down');
+
+      // Comprobación 3 exitosa (1 sola): pasa inmediatamente a 'ok' y resetea fallos
+      mockHipsOk = true;
+      await runPoll();
+      expect(_getConsecutiveFailuresForTests()).toBe(0);
+      expect(_getCurrentCdsStateForTests()).toBe('ok');
+
+      // Si estando 'ok' ocurre 1 fallo aislado, NO pasa a 'down' de inmediato
+      mockHipsOk = false;
+      await runPoll();
+      expect(_getConsecutiveFailuresForTests()).toBe(1);
+      expect(_getCurrentCdsStateForTests()).toBe('ok');
+
+      // Segundo fallo consecutivo: ahora sí pasa a 'down'
+      await runPoll();
+      expect(_getConsecutiveFailuresForTests()).toBe(2);
+      expect(_getCurrentCdsStateForTests()).toBe('down');
+
       unsubscribe();
     });
   });

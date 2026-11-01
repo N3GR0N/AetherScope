@@ -30,6 +30,7 @@ let isCurrentlyDegraded = false;
 let hasCheckedAtLeastOnce = false;
 let isFetchInFlight = false;
 let pollTimer: ReturnType<typeof setTimeout> | null = null;
+let consecutiveFailures = 0;
 
 const POLL_INTERVAL_DEGRADED_MS = 30_000; // 30 s si está caído/degradado
 const POLL_INTERVAL_HEALTHY_MS = 120_000; // 2 min si está sano
@@ -72,46 +73,56 @@ export async function runPoll(): Promise<void> {
     const data: CdsStatus | null = await res.json().catch(() => null);
     if (!data || typeof data.hips !== "boolean") throw new Error("Invalid payload");
 
-    // Estado down: HiPS caído, o HiPS y SIMBAD caídos
-    const isDown = !data.hips;
-    const nextCdsState: CdsState = isDown ? "down" : "ok";
-    const nextDegraded = !data.simbad || !data.hips;
-    const isRecoveryTransition = hasCheckedAtLeastOnce && currentCdsState === "down" && nextCdsState === "ok";
+    const isHipsDown = !data.hips;
 
-    currentStatus = data;
-    currentCdsState = nextCdsState;
-    isCurrentlyDegraded = nextDegraded;
-    hasCheckedAtLeastOnce = true;
-
-    for (const sub of subscribers.values()) {
-      sub.onStatusChange?.(data, nextDegraded, nextCdsState);
-    }
-
-    if (isRecoveryTransition) {
-      if (typeof window !== "undefined") {
-        window.dispatchEvent(new CustomEvent("cds-recovered", { detail: data }));
+    if (isHipsDown) {
+      consecutiveFailures++;
+      if (consecutiveFailures >= 2) {
+        currentCdsState = "down";
       }
-      for (const sub of subscribers.values()) {
-        try {
-          sub.onRecovered?.();
-        } catch (err) {
-          console.warn("[useCdsRecovery] Error en callback onRecovered:", err);
+      isCurrentlyDegraded = true;
+    } else {
+      consecutiveFailures = 0;
+      const isRecoveryTransition = hasCheckedAtLeastOnce && currentCdsState === "down";
+      currentCdsState = "ok";
+      isCurrentlyDegraded = !data.simbad;
+
+      if (isRecoveryTransition) {
+        if (typeof window !== "undefined") {
+          window.dispatchEvent(new CustomEvent("cds-recovered", { detail: data }));
+        }
+        for (const sub of subscribers.values()) {
+          try {
+            sub.onRecovered?.();
+          } catch (err) {
+            console.warn("[useCdsRecovery] Error en callback onRecovered:", err);
+          }
         }
       }
     }
+
+    currentStatus = data;
+    hasCheckedAtLeastOnce = true;
+
+    for (const sub of subscribers.values()) {
+      sub.onStatusChange?.(data, isCurrentlyDegraded, currentCdsState);
+    }
   } catch {
+    consecutiveFailures++;
+    if (consecutiveFailures >= 2) {
+      currentCdsState = "down";
+    }
     const fallbackStatus: CdsStatus = {
       simbad: false,
       hips: false,
       checkedAt: new Date().toISOString(),
     };
     currentStatus = fallbackStatus;
-    currentCdsState = "down";
     isCurrentlyDegraded = true;
     hasCheckedAtLeastOnce = true;
 
     for (const sub of subscribers.values()) {
-      sub.onStatusChange?.(fallbackStatus, true, "down");
+      sub.onStatusChange?.(fallbackStatus, true, currentCdsState);
     }
   } finally {
     isFetchInFlight = false;
@@ -168,11 +179,21 @@ export function _resetRecoveryManagerForTests(): void {
   isCurrentlyDegraded = false;
   hasCheckedAtLeastOnce = false;
   isFetchInFlight = false;
+  consecutiveFailures = 0;
+}
+
+export function _getCurrentCdsStateForTests(): CdsState {
+  return currentCdsState;
+}
+
+export function _getConsecutiveFailuresForTests(): number {
+  return consecutiveFailures;
 }
 
 export function _setCdsStateForTests(state: CdsState, status?: CdsStatus): void {
   currentCdsState = state;
   isCurrentlyDegraded = state === "down";
+  consecutiveFailures = state === "down" ? 2 : 0;
   hasCheckedAtLeastOnce = true;
   if (status) {
     currentStatus = status;
