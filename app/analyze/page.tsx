@@ -13,6 +13,7 @@ import {
   type MatchedCelestialObject,
 } from "@/lib/astronomy/crossmatch";
 import type { Capture } from "@/lib/astronomy/footprint";
+import { checkSurveyHealth, isCdsHost } from "@/lib/astronomy/surveys";
 import {
   LABORATORY_SPECTRAL_FILTERS,
   spectralFilterToSurvey,
@@ -118,6 +119,57 @@ function LaboratoryContent() {
   const [, startTransition] = useTransition();
   const [processingFilterId, setProcessingFilterId] = useState<string | null>(null);
   const [isProcessingFilter, setIsProcessingFilter] = useState<boolean>(false);
+
+  // Health check de cada survey espectral para marcar OFFLINE y deshabilitar
+  const [surveyHealthMap, setSurveyHealthMap] = useState<Record<string, boolean>>({});
+
+  useEffect(() => {
+    let cancelled = false;
+
+    async function evaluateFilterHealth() {
+      const results: Record<string, boolean> = {};
+      for (const filter of LABORATORY_SPECTRAL_FILTERS) {
+        const ok = await checkSurveyHealth(filter.hipsUrl);
+        results[filter.id] = ok;
+      }
+      if (cancelled) return;
+      setSurveyHealthMap(results);
+
+      // Si el filtro primario activo está caído, failover automático al primer no-CDS disponible
+      setActivePrimaryFilter((currentPrimary) => {
+        if (results[currentPrimary.id] === false) {
+          const priorityIds = ["jwst", "chandra"];
+          const fallback =
+            LABORATORY_SPECTRAL_FILTERS.find(
+              (f) => priorityIds.includes(f.id) && results[f.id] && !isCdsHost(f.hipsUrl)
+            ) ||
+            LABORATORY_SPECTRAL_FILTERS.find((f) => results[f.id] && !isCdsHost(f.hipsUrl));
+
+          if (fallback) {
+            console.warn(
+              `[AetherScope] Filtro activo ${currentPrimary.shortLabel} no disponible. Failover a ${fallback.shortLabel}.`
+            );
+            return fallback;
+          }
+        }
+        return currentPrimary;
+      });
+
+      // Si la capa secundaria activa está caída, deseleccionarla
+      setActiveOverlayFilter((currentOverlay) => {
+        if (currentOverlay && results[currentOverlay.id] === false) {
+          return null;
+        }
+        return currentOverlay;
+      });
+    }
+
+    evaluateFilterHealth();
+
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   // Target identification state mediante motor de Footprint (A3 / A4)
   const [matchState, setMatchState] = useState<{
@@ -256,7 +308,7 @@ function LaboratoryContent() {
   };
 
   const handleApplyFilter = (filter: SpectralFilterOption) => {
-    if (processingFilterId) return;
+    if (processingFilterId || surveyHealthMap[filter.id] === false) return;
 
     const isPrimary = activePrimaryFilter.id === filter.id;
     const isOverlay = activeOverlayFilter?.id === filter.id;
@@ -647,24 +699,36 @@ function LaboratoryContent() {
                   const isPrimary = activePrimaryFilter.id === filter.id;
                   const isOverlay = activeOverlayFilter?.id === filter.id;
                   const isBeingProcessed = processingFilterId === filter.id;
+                  const isUnavailable = surveyHealthMap[filter.id] === false;
 
                   return (
                     <button
                       key={filter.id}
-                      disabled={isProcessingFilter}
+                      disabled={isProcessingFilter || isUnavailable}
                       onClick={() => handleApplyFilter(filter)}
-                      className={`px-3 py-1.5 text-[11px] uppercase tracking-wider font-medium flex items-center gap-2 border transition-colors cursor-pointer ${
-                        isBeingProcessed
-                          ? "bg-[#506385]/50 border-[#506385] text-[#F1F0E1]"
+                      title={
+                        isUnavailable
+                          ? `Servidor del survey (${filter.shortLabel}) no disponible (CDS degradado)`
+                          : undefined
+                      }
+                      className={`px-3 py-1.5 text-[11px] uppercase tracking-wider font-medium flex items-center gap-2 border transition-colors ${
+                        isUnavailable
+                          ? "bg-[#17171C]/40 text-[#9A9A92]/50 border-[#2B2B31] cursor-not-allowed opacity-60"
+                          : isBeingProcessed
+                          ? "bg-[#506385]/50 border-[#506385] text-[#F1F0E1] cursor-pointer"
                           : isPrimary
-                          ? "bg-[#F1F0E1] text-[#101015] border-[#F1F0E1] font-bold"
+                          ? "bg-[#F1F0E1] text-[#101015] border-[#F1F0E1] font-bold cursor-pointer"
                           : isOverlay
-                          ? "bg-[#506385] text-[#F1F0E1] border-[#506385] font-bold"
-                          : "bg-[#17171C] text-[#F1F0E1] border-[#3A3A42] hover:bg-[#1A1A1F]"
+                          ? "bg-[#506385] text-[#F1F0E1] border-[#506385] font-bold cursor-pointer"
+                          : "bg-[#17171C] text-[#F1F0E1] border-[#3A3A42] hover:bg-[#1A1A1F] cursor-pointer"
                       }`}
                     >
                       <span>{filter.shortLabel}</span>
-                      {isPrimary ? (
+                      {isUnavailable ? (
+                        <span className="px-1 py-0.2 bg-[#E06C75]/20 text-[#E06C75] border border-[#E06C75]/40 text-[8.5px] font-bold font-mono">
+                          OFFLINE
+                        </span>
+                      ) : isPrimary ? (
                         <span className="px-1 py-0.2 bg-[#101015] text-[#F1F0E1] text-[9px] font-bold">
                           BASE
                         </span>

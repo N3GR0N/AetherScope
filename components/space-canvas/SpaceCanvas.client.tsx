@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import type { SpectralSurvey } from "@/lib/astronomy/surveys";
+import { NON_CDS_FALLBACK_SURVEY_URL, type SpectralSurvey } from "@/lib/astronomy/surveys";
 import { sexagesimalToDecimal, type CosmicTarget } from "@/lib/astronomy/targets";
 import { useSpace } from "@/context/SpaceContext";
 import { Loader2, WifiOff } from "lucide-react";
@@ -212,7 +212,7 @@ export default function SpaceCanvas(props: SpaceCanvasProps = {}) {
         const startRa = props.initialRa ?? spaceContext?.currentRa ?? 274.7;
         const startDec = props.initialDec ?? spaceContext?.currentDec ?? -13.8;
         const startFov = props.initialFov ?? spaceContext?.currentFov ?? 0.25;
-        const baseSurveyUrl = primarySurvey.hipsUrl || "https://alasky.cds.unistra.fr/DSS/DSSColor";
+        const baseSurveyUrl = primarySurvey.hipsUrl || NON_CDS_FALLBACK_SURVEY_URL;
 
         const aladin = window.A.aladin(`#${containerId}`, {
           survey: baseSurveyUrl,
@@ -358,9 +358,9 @@ export default function SpaceCanvas(props: SpaceCanvasProps = {}) {
     } catch (err1) {
       console.warn(`[AetherScope] Error cambiando capa base a ${primarySurvey.name}:`, err1);
       try {
-        aladin.setImageSurvey("https://alasky.cds.unistra.fr/DSS/DSSColor");
+        aladin.setImageSurvey(NON_CDS_FALLBACK_SURVEY_URL);
       } catch (fallbackErr) {
-        console.warn("[AetherScope] Error aplicando fallback a DSSColor:", fallbackErr);
+        console.warn("[AetherScope] Error aplicando fallback a survey no-CDS:", fallbackErr);
       }
     }
   }, [primarySurvey, loadingState]);

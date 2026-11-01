@@ -10,6 +10,8 @@ import {
   DEFAULT_PRIMARY_SURVEY,
   DEFAULT_OVERLAY_SURVEY,
   NASA_COMPOSITE_SURVEY,
+  checkSurveyHealth,
+  findFirstAvailableNonCdsSurvey,
   type SpectralSurvey,
 } from "@/lib/astronomy/surveys";
 import {
@@ -163,6 +165,30 @@ export function SpaceProvider({
   const [secondarySurvey, setSecondarySurvey] = useState<SpectralSurvey>(DEFAULT_OVERLAY_SURVEY);
   const [blendOpacity, setBlendOpacity] = useState<number>(0.0);
   const [isNasaComposite, setIsNasaComposite] = useState<boolean>(false);
+
+  // Automatic failover: if primary survey is down, fallback to first verified non-CDS survey
+  useEffect(() => {
+    let cancelled = false;
+
+    async function evaluatePrimarySurveyHealth() {
+      const isHealthy = await checkSurveyHealth(primarySurvey);
+      if (cancelled || isHealthy) return;
+
+      const fallback = await findFirstAvailableNonCdsSurvey();
+      if (!cancelled && fallback && fallback.id !== primarySurvey.id) {
+        console.warn(
+          `[AetherScope] Survey base activo (${primarySurvey.name}) no disponible. Failover automático a ${fallback.name}.`
+        );
+        setPrimarySurveyState(fallback);
+      }
+    }
+
+    evaluatePrimarySurveyHealth();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [primarySurvey]);
 
   // HUD Toggles
   const [showCrosshair, setShowCrosshair] = useState<boolean>(true);
