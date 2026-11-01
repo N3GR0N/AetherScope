@@ -117,6 +117,10 @@ Configura tus credenciales de Supabase en `.env.local`:
 NEXT_PUBLIC_NOTES_BACKEND=supabase
 NEXT_PUBLIC_SUPABASE_URL=https://tu-proyecto.supabase.co
 NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY=tu-anon-key
+
+# Opcional (Desarrollo): Forzar estado OK del mapa para pruebas locales aunque el CDS esté caído
+# Solo tiene efecto cuando NODE_ENV !== 'production'
+# NEXT_PUBLIC_FORCE_CDS_OK=1
 ```
 
 ### Comandos Disponibles

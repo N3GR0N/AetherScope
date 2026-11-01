@@ -26,6 +26,100 @@ export const UNIVERSAL_BASE_SURVEY_URL = 'https://alasky.cds.unistra.fr/DSS/DSSC
 export const UNIVERSAL_BASE_SURVEY_ID = 'CDS/P/DSS2/color';
 export const HST_COLOR_SURVEY_URL = 'https://alasky.cds.unistra.fr/HST-hips/color';
 export const JWST_NIRCAM_OVERLAY_URL = 'https://skies.esac.esa.int/JWST/NIRCam_Imaging/';
+export const NON_CDS_FALLBACK_SURVEY_URL = 'https://skies.esac.esa.int/DSSColor';
+
+interface SurveyHealthCacheEntry {
+  available: boolean;
+  checkedAt: number;
+}
+
+const SURVEY_HEALTH_CACHE_TTL_MS = 60_000;
+const surveyHealthCache = new Map<string, SurveyHealthCacheEntry>();
+
+export function clearSurveyHealthCache(): void {
+  surveyHealthCache.clear();
+}
+
+export function isCdsHost(urlOrHost: string): boolean {
+  if (!urlOrHost) return false;
+  try {
+    const raw = urlOrHost.startsWith('http') ? new URL(urlOrHost).hostname : urlOrHost;
+    const host = raw.toLowerCase();
+    return (
+      host.endsWith('unistra.fr') ||
+      host.endsWith('u-strasbg.fr') ||
+      host.includes('alasky')
+    );
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * Evalúa la disponibilidad de un survey HiPS con timeout de 4 s y caché de 60 s.
+ * Protegido contra NetworkError / excepciones de red para no lanzar jamás excepciones al llamador.
+ */
+export async function checkSurveyHealth(
+  survey: { hipsUrl: string } | string,
+  timeoutMs: number = 4000
+): Promise<boolean> {
+  try {
+    const hipsUrl = typeof survey === 'string' ? survey : survey.hipsUrl;
+    if (!hipsUrl) return false;
+
+    const baseUrl = hipsUrl.replace(/\/+$/, '');
+    const propertiesUrl = `${baseUrl}/properties`;
+
+    const cached = surveyHealthCache.get(propertiesUrl);
+    if (cached && Date.now() - cached.checkedAt < SURVEY_HEALTH_CACHE_TTL_MS) {
+      return cached.available;
+    }
+
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), timeoutMs);
+
+    try {
+      const res = await fetch(propertiesUrl, {
+        method: 'GET',
+        signal: controller.signal,
+        headers: { Accept: 'text/plain, */*' },
+      }).catch(() => null);
+
+      const isAvailable = Boolean(res && res.ok);
+      surveyHealthCache.set(propertiesUrl, { available: isAvailable, checkedAt: Date.now() });
+      return isAvailable;
+    } catch {
+      surveyHealthCache.set(propertiesUrl, { available: false, checkedAt: Date.now() });
+      return false;
+    } finally {
+      clearTimeout(timer);
+    }
+  } catch {
+    return false;
+  }
+}
+
+export async function findFirstAvailableNonCdsSurvey(
+  surveys: SpectralSurvey[] = SPECTRAL_SURVEYS
+): Promise<SpectralSurvey | null> {
+  const priorityIds = ['jwst', 'xray'];
+  const sorted = [...surveys].sort((a, b) => {
+    const aPri = priorityIds.indexOf(a.id);
+    const bPri = priorityIds.indexOf(b.id);
+    if (aPri !== -1 && bPri !== -1) return aPri - bPri;
+    if (aPri !== -1) return -1;
+    if (bPri !== -1) return 1;
+    return 0;
+  });
+
+  for (const s of sorted) {
+    if (!isCdsHost(s.hipsUrl)) {
+      const ok = await checkSurveyHealth(s);
+      if (ok) return s;
+    }
+  }
+  return null;
+}
 
 export const HST_COLOR_SURVEY: SpectralSurvey = {
   id: 'hst-color',
@@ -51,8 +145,8 @@ export const NASA_COMPOSITE_SURVEY: SpectralSurvey = {
   shortLabel: 'Vista NASA',
   telescope: 'Hubble & James Webb',
   agency: 'NASA / ESA / CSA / STScI',
-  hipsId: 'CDS/P/HST/color',
-  hipsUrl: HST_COLOR_SURVEY_URL,
+  hipsId: 'ESAVO/P/JWST/NIRCam_Imaging',
+  hipsUrl: JWST_NIRCAM_OVERLAY_URL,
   wavelengthBand: 'Compuesto Multiespectral Difusión Pública',
   spectralRange: '0.4 µm – 4.4 µm (Hubble Óptico + JWST NIRCam)',
   frequency: '68 THz – 750 THz',
@@ -103,9 +197,9 @@ export const SPECTRAL_SURVEYS: SpectralSurvey[] = [
     name: 'JWST NIRCam / MIRI',
     shortLabel: 'JWST Infra',
     telescope: 'James Webb Space Telescope',
-    agency: 'NASA / ESA / CSA',
-    hipsId: 'CDS/P/JWST/Carina-Nebula/NIRCam',
-    hipsUrl: 'https://alasky.cds.unistra.fr/JWST/CDS_P_JWST_Carina-Nebula_NIRCam',
+    agency: 'ESA / NASA / CSA',
+    hipsId: 'ESAVO/P/JWST/NIRCam_Imaging',
+    hipsUrl: JWST_NIRCAM_OVERLAY_URL,
     wavelengthBand: 'Infrarrojo Cercano / Medio',
     spectralRange: '0.6 µm – 28.0 µm',
     frequency: '10.7 THz – 500 THz',

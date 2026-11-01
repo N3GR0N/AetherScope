@@ -1,7 +1,12 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
-import type { SpectralSurvey } from "@/lib/astronomy/surveys";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { useCdsRecovery, notifyHipsLoadError } from "@/lib/hooks/useCdsRecovery";
+import {
+  DEFAULT_PRIMARY_SURVEY,
+  NON_CDS_FALLBACK_SURVEY_URL,
+  type SpectralSurvey,
+} from "@/lib/astronomy/surveys";
 import { sexagesimalToDecimal, type CosmicTarget } from "@/lib/astronomy/targets";
 import { useSpace } from "@/context/SpaceContext";
 import { Loader2, WifiOff } from "lucide-react";
@@ -55,6 +60,101 @@ declare global {
   }
 }
 
+/**
+ * Predicado acotado a errores de carga de HiPS generados por Aladin Lite.
+ * Mensajes que empiezan con "HiPS" y contienen "not found" o "error".
+ */
+export function isHipsLoadErrorMessage(msg: string): boolean {
+  if (!msg) return false;
+  const trimmed = msg.trim();
+  return trimmed.startsWith("HiPS") && (trimmed.includes("not found") || trimmed.includes("error"));
+}
+
+function getGlobalEventTarget(): (Window & typeof globalThis) | null {
+  if (typeof window !== "undefined" && typeof window.addEventListener === "function") {
+    return window;
+  }
+  return null;
+}
+
+let hasRegisteredGlobalHipsInterceptor = false;
+let activeMountCount = 0;
+let activeRejectionHandler: ((event: PromiseRejectionEvent) => void) | null = null;
+let activeErrorHandler: ((event: ErrorEvent) => void) | null = null;
+
+export function registerHipsInterceptor(): () => void {
+  activeMountCount++;
+  const target = getGlobalEventTarget();
+
+  if (!hasRegisteredGlobalHipsInterceptor && target) {
+    activeRejectionHandler = (event: PromiseRejectionEvent) => {
+      const reasonStr = String(
+        event?.reason?.message ||
+        (typeof event?.reason === "string" ? event.reason : "") ||
+        event?.reason ||
+        ""
+      );
+      if (isHipsLoadErrorMessage(reasonStr)) {
+        event.preventDefault();
+        console.warn("[AetherScope] Error de carga HiPS interceptado:", reasonStr);
+        void notifyHipsLoadError();
+      }
+    };
+
+    activeErrorHandler = (event: ErrorEvent) => {
+      const msg = String(event?.message || "");
+      if (isHipsLoadErrorMessage(msg)) {
+        event.preventDefault();
+        console.warn("[AetherScope] Error global HiPS interceptado:", msg);
+        void notifyHipsLoadError();
+      }
+    };
+
+    target.addEventListener("unhandledrejection", activeRejectionHandler as EventListener);
+    target.addEventListener("error", activeErrorHandler as EventListener);
+    hasRegisteredGlobalHipsInterceptor = true;
+  }
+
+  return () => {
+    activeMountCount = Math.max(0, activeMountCount - 1);
+    const target = getGlobalEventTarget();
+    if (activeMountCount === 0 && hasRegisteredGlobalHipsInterceptor && target) {
+      if (activeRejectionHandler) {
+        target.removeEventListener("unhandledrejection", activeRejectionHandler as EventListener);
+        activeRejectionHandler = null;
+      }
+      if (activeErrorHandler) {
+        target.removeEventListener("error", activeErrorHandler as EventListener);
+        activeErrorHandler = null;
+      }
+      hasRegisteredGlobalHipsInterceptor = false;
+    }
+  };
+}
+
+export function _getHipsInterceptorStateForTests() {
+  return {
+    isRegistered: hasRegisteredGlobalHipsInterceptor,
+    activeMountCount,
+  };
+}
+
+export function _resetHipsInterceptorForTests() {
+  const target = getGlobalEventTarget();
+  if (target) {
+    if (activeRejectionHandler) {
+      target.removeEventListener("unhandledrejection", activeRejectionHandler as EventListener);
+      activeRejectionHandler = null;
+    }
+    if (activeErrorHandler) {
+      target.removeEventListener("error", activeErrorHandler as EventListener);
+      activeErrorHandler = null;
+    }
+  }
+  hasRegisteredGlobalHipsInterceptor = false;
+  activeMountCount = 0;
+}
+
 export default function SpaceCanvas(props: SpaceCanvasProps = {}) {
   // Contexto opcional/degradable
   let spaceContext: ReturnType<typeof useSpace> | null = null;
@@ -66,23 +166,9 @@ export default function SpaceCanvas(props: SpaceCanvasProps = {}) {
   }
 
   const containerId = props.containerId || "aladin-lite-div";
-  const primarySurvey = props.primarySurvey ?? spaceContext?.primarySurvey ?? {
-    id: "dss2",
-    name: "Luz Visible (DSS2 Óptico)",
-    shortLabel: "DSS2 Óptico",
-    telescope: "Digitized Sky Survey",
-    agency: "CDS",
-    hipsId: "CDS/P/DSS2/color",
-    hipsUrl: "https://alasky.cds.unistra.fr/DSS/DSSColor",
-    wavelengthBand: "Óptico",
-    spectralRange: "400 - 750 nm",
-    frequency: "Visible",
-    accentColor: "#38bdf8",
-    tagColor: "text-white",
-    description: "Capa base óptica DSS2",
-    astrophysicalFocus: "Continuo visible",
-    keyEmissions: [],
-  };
+  const primarySurvey = useMemo(() => {
+    return props.primarySurvey ?? spaceContext?.primarySurvey ?? DEFAULT_PRIMARY_SURVEY;
+  }, [props.primarySurvey, spaceContext?.primarySurvey]);
   const secondarySurvey = props.secondarySurvey ?? spaceContext?.secondarySurvey;
   const blendOpacity = props.blendOpacity ?? spaceContext?.blendOpacity ?? 0;
   const activeTarget = props.activeTarget ?? spaceContext?.selectedTarget;
@@ -112,39 +198,9 @@ export default function SpaceCanvas(props: SpaceCanvasProps = {}) {
   });
 
   // Intercept unhandled HiPS rejections & errors to avoid Turbopack / Next.js red overlay
+  // y forzar inmediatamente el estado down ante caída de tiles del CDS.
   useEffect(() => {
-    if (typeof window === "undefined") return;
-
-    const isHipsError = (msg: string) =>
-      msg.includes("HiPS") ||
-      msg.includes("CDS ID") ||
-      msg.includes("aladin") ||
-      msg.includes("mirrors") ||
-      msg.includes("not found at url") ||
-      msg.includes("does not refer to a found");
-
-    const handleRejection = (event: PromiseRejectionEvent) => {
-      const reasonStr = String(event?.reason?.message || event?.reason || "");
-      if (isHipsError(reasonStr)) {
-        console.warn("[AetherScope] Notificación HiPS gestionada:", reasonStr);
-        event.preventDefault();
-      }
-    };
-
-    const handleGlobalError = (event: ErrorEvent) => {
-      const msg = String(event?.message || "");
-      if (isHipsError(msg)) {
-        console.warn("[AetherScope] Notificación de error HiPS interceptada:", msg);
-        event.preventDefault();
-      }
-    };
-
-    window.addEventListener("unhandledrejection", handleRejection);
-    window.addEventListener("error", handleGlobalError);
-    return () => {
-      window.removeEventListener("unhandledrejection", handleRejection);
-      window.removeEventListener("error", handleGlobalError);
-    };
+    return registerHipsInterceptor();
   }, []);
 
   // Strict Client-Only Mount: load Aladin Lite v3 from official CDN
@@ -156,31 +212,38 @@ export default function SpaceCanvas(props: SpaceCanvasProps = {}) {
     const initAladin = async () => {
       try {
         if (!window.A) {
-          setStatusMessage("Cargando motor astronómico CDS Aladin Lite...");
-          await new Promise<void>((resolve, reject) => {
-            const existingScript = document.querySelector('script[src*="aladin.js"]');
-            if (existingScript && window.A) {
-              return resolve();
-            }
+          setStatusMessage("Cargando motor astronómico Aladin Lite (local)...");
+          try {
+            const aladinModule = await import("aladin-lite");
+            const A = (aladinModule.default || aladinModule) as unknown as NonNullable<typeof window.A>;
+            window.A = A;
+          } catch (localErr) {
+            console.warn("[AetherScope] Error al cargar paquete local aladin-lite, intentando fallback de CDN:", localErr);
+            await new Promise<void>((resolve, reject) => {
+              const existingScript = document.querySelector('script[src*="aladin.js"]');
+              if (existingScript && window.A) {
+                return resolve();
+              }
 
-            const script = document.createElement("script");
-            script.src = "https://aladin.cds.unistra.fr/AladinLite/api/v3/3.9.2-beta/aladin.js";
-            script.crossOrigin = "anonymous";
-            script.async = true;
-            script.charset = "utf-8";
-            script.onload = () => resolve();
-            script.onerror = () => {
-              // Fallback to latest CDN if beta version pin changes
-              const fallbackScript = document.createElement("script");
-              fallbackScript.src = "https://aladin.cds.unistra.fr/AladinLite/api/v3/latest/aladin.js";
-              fallbackScript.crossOrigin = "anonymous";
-              fallbackScript.async = true;
-              fallbackScript.onload = () => resolve();
-              fallbackScript.onerror = () => reject(new Error("No se pudo cargar el script de Aladin Lite"));
-              document.head.appendChild(fallbackScript);
-            };
-            document.head.appendChild(script);
-          });
+              const script = document.createElement("script");
+              script.src = "https://aladin.cds.unistra.fr/AladinLite/api/v3/3.9.2-beta/aladin.js";
+              script.crossOrigin = "anonymous";
+              script.async = true;
+              script.charset = "utf-8";
+              script.onload = () => resolve();
+              script.onerror = () => {
+                // Fallback to latest CDN if beta version pin changes
+                const fallbackScript = document.createElement("script");
+                fallbackScript.src = "https://aladin.cds.unistra.fr/AladinLite/api/v3/latest/aladin.js";
+                fallbackScript.crossOrigin = "anonymous";
+                fallbackScript.async = true;
+                fallbackScript.onload = () => resolve();
+                fallbackScript.onerror = () => reject(new Error("No se pudo cargar el script de Aladin Lite"));
+                document.head.appendChild(fallbackScript);
+              };
+              document.head.appendChild(script);
+            });
+          }
         }
 
         if (cancelled) return;
@@ -205,39 +268,46 @@ export default function SpaceCanvas(props: SpaceCanvasProps = {}) {
         const startRa = props.initialRa ?? spaceContext?.currentRa ?? 274.7;
         const startDec = props.initialDec ?? spaceContext?.currentDec ?? -13.8;
         const startFov = props.initialFov ?? spaceContext?.currentFov ?? 0.25;
-        const baseSurveyUrl = primarySurvey.hipsUrl || "https://alasky.cds.unistra.fr/DSS/DSSColor";
+        const baseSurveyUrl = primarySurvey.hipsUrl || NON_CDS_FALLBACK_SURVEY_URL;
 
-        const aladin = window.A.aladin(`#${containerId}`, {
-          survey: baseSurveyUrl,
-          fov: startFov,
-          target: `${startRa} ${startDec}`,
-          showReticle: false,
-          showZoomControl: false,
-          showFullscreenControl: false,
-          showLayersControl: false,
-          showGotoControl: false,
-          showFrame: false,
-          showCooGrid: showGrid,
-          gridColor: "#ffffff",
-          gridOpacity: 0.15,
-          gridOptions: {
-            enabled: showGrid,
-            color: "#ffffff",
-            opacity: 0.15,
-            showLabels: true,
-            thickness: 1,
-            labelSize: 11,
-          },
-          showProjectionControl: false,
-          showSimbadPointerControl: false,
-          showCooGridControl: false,
-          showCooLocation: false,
-          showLocation: false,
-          showFov: false,
-          showStatusBar: false,
-          showShareControl: false,
-          showSettingsControl: false,
-        });
+        let aladin: AladinInstance;
+        try {
+          aladin = window.A.aladin(`#${containerId}`, {
+            survey: baseSurveyUrl,
+            fov: startFov,
+            target: `${startRa} ${startDec}`,
+            showReticle: false,
+            showZoomControl: false,
+            showFullscreenControl: false,
+            showLayersControl: false,
+            showGotoControl: false,
+            showFrame: false,
+            showCooGrid: showGrid,
+            gridColor: "#ffffff",
+            gridOpacity: 0.15,
+            gridOptions: {
+              enabled: showGrid,
+              color: "#ffffff",
+              opacity: 0.15,
+              showLabels: true,
+              thickness: 1,
+              labelSize: 11,
+            },
+            showProjectionControl: false,
+            showSimbadPointerControl: false,
+            showCooGridControl: false,
+            showCooLocation: false,
+            showLocation: false,
+            showFov: false,
+            showStatusBar: false,
+            showShareControl: false,
+            showSettingsControl: false,
+          });
+        } catch (aladinInitErr) {
+          console.warn("[AetherScope] Error instanciando Aladin Lite:", aladinInitErr);
+          setLoadingState("fallback");
+          return;
+        }
 
         if (cancelled) return;
         aladinInstanceRef.current = aladin;
@@ -248,11 +318,30 @@ export default function SpaceCanvas(props: SpaceCanvasProps = {}) {
           onReadyRef.current(aladin);
         }
 
-        // Overlay inicial si existe
+        // Overlay inicial seguro (JWST / filtros secundarios)
         if (blendOpacity > 0.02 && secondarySurvey?.hipsUrl) {
           setTimeout(() => {
+            if (cancelled) return;
             try {
-              aladin.setOverlayImageLayer(secondarySurvey.hipsUrl);
+              const targetSecUrl = secondarySurvey.hipsUrl;
+              try {
+                const layerObj = aladin.createImageSurvey(
+                  secondarySurvey.hipsId,
+                  secondarySurvey.name,
+                  targetSecUrl,
+                  "equatorial",
+                  9,
+                  { imgFormat: "png", errorCallback: () => {} }
+                );
+                aladin.setOverlayImageLayer(layerObj);
+              } catch {
+                try {
+                  aladin.setOverlayImageLayer(targetSecUrl);
+                } catch (e) {
+                  console.warn("[AetherScope] Error aplicando overlay layer inicial:", e);
+                }
+              }
+
               const overlay = aladin.getOverlayImageLayer();
               if (overlay && typeof overlay.setAlpha === "function") {
                 overlay.setAlpha(blendOpacity);
@@ -260,7 +349,7 @@ export default function SpaceCanvas(props: SpaceCanvasProps = {}) {
             } catch (err) {
               console.warn("[AetherScope] Error montando overlay inicial:", err);
             }
-          }, 200);
+          }, 250);
         }
 
         // Event listeners de telemetría
@@ -350,13 +439,22 @@ export default function SpaceCanvas(props: SpaceCanvasProps = {}) {
       }, 80);
     } catch (err1) {
       console.warn(`[AetherScope] Error cambiando capa base a ${primarySurvey.name}:`, err1);
-      try {
-        aladin.setImageSurvey("https://alasky.cds.unistra.fr/DSS/DSSColor");
-      } catch (fallbackErr) {
-        console.warn("[AetherScope] Error aplicando fallback a DSSColor:", fallbackErr);
-      }
     }
   }, [primarySurvey, loadingState]);
+
+  // Al recuperarse el CDS, reasignar el survey base actual
+  useCdsRecovery({
+    onRecovered: () => {
+      const aladin = aladinInstanceRef.current;
+      if (!aladin || loadingState !== "ready") return;
+      console.info("[AetherScope] CDS recuperado. Reasignando survey base actual:", primarySurvey.name);
+      try {
+        aladin.setImageSurvey(primarySurvey.hipsUrl || primarySurvey.hipsId);
+      } catch (err) {
+        console.warn("[AetherScope] Error reasignando survey base tras recuperación:", err);
+      }
+    },
+  });
 
   // Synchronize secondary overlay layer and blend opacity
   useEffect(() => {
@@ -365,19 +463,20 @@ export default function SpaceCanvas(props: SpaceCanvasProps = {}) {
 
     try {
       if (blendOpacity > 0.02 && secondarySurvey?.hipsUrl) {
-        const overlayUrl = secondarySurvey.hipsUrl || secondarySurvey.hipsId;
+        const targetSecUrl = secondarySurvey.hipsUrl;
         try {
-          aladin.setOverlayImageLayer(overlayUrl);
+          const layerObj = aladin.createImageSurvey(
+            secondarySurvey.hipsId,
+            secondarySurvey.name,
+            targetSecUrl,
+            "equatorial",
+            9,
+            { imgFormat: "png", errorCallback: () => {} }
+          );
+          aladin.setOverlayImageLayer(layerObj);
         } catch {
           try {
-            const layerObj = aladin.createImageSurvey(
-              secondarySurvey.hipsId,
-              secondarySurvey.name,
-              secondarySurvey.hipsUrl,
-              "equatorial",
-              9
-            );
-            aladin.setOverlayImageLayer(layerObj);
+            aladin.setOverlayImageLayer(targetSecUrl);
           } catch (e) {
             console.warn(`[AetherScope] Falló capa superpuesta ${secondarySurvey.name}:`, e);
           }
