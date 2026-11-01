@@ -14,6 +14,12 @@ import {
 } from '@/lib/astronomy/surveys';
 import { GET as simbadRouteGet } from '@/app/api/simbad/route';
 import { GET as cdsStatusRouteGet, clearCdsStatusServerCache } from '@/app/api/cds-status/route';
+import {
+  runPoll,
+  onCdsRecovered,
+  _resetRecoveryManagerForTests,
+  _setDegradedStateForTests,
+} from '@/lib/hooks/useCdsRecovery';
 import type { Capture } from '@/lib/astronomy/footprint';
 
 describe('Resiliencia y Failover ante Degradación de CDS Estrasburgo', () => {
@@ -24,10 +30,12 @@ describe('Resiliencia y Failover ante Degradación de CDS Estrasburgo', () => {
     clearCrossMatchCache();
     clearSurveyHealthCache();
     clearCdsStatusServerCache();
+    _resetRecoveryManagerForTests();
   });
 
   afterEach(() => {
     global.fetch = originalFetch;
+    _resetRecoveryManagerForTests();
   });
 
   // ─────────────────────────────────────────────────────────────────────────────
@@ -295,6 +303,107 @@ describe('Resiliencia y Failover ante Degradación de CDS Estrasburgo', () => {
       expect(json.simbad).toBe(true);
       expect(json.hips).toBe(true);
       expect(json.checkedAt).toBeDefined();
+    });
+
+    it('el caché de /api/cds-status devuelve el mismo resultado dentro de los 60 s sin volver a golpear al CDS', async () => {
+      const mockFetch = vi.fn().mockResolvedValue({
+        ok: true,
+        status: 200,
+      });
+      global.fetch = mockFetch;
+
+      const res1 = await cdsStatusRouteGet();
+      expect(res1.status).toBe(200);
+      expect(mockFetch).toHaveBeenCalledTimes(2);
+
+      // Segunda llamada inmediata dentro de los 60s
+      const res2 = await cdsStatusRouteGet();
+      expect(res2.status).toBe(200);
+      // No debe realizar nuevas peticiones HTTP
+      expect(mockFetch).toHaveBeenCalledTimes(2);
+
+      const json1 = await res1.json();
+      const json2 = await res2.json();
+      expect(json2.checkedAt).toBe(json1.checkedAt);
+      expect(res2.headers.get('X-Cache')).toBe('HIT');
+    });
+  });
+
+  // ─────────────────────────────────────────────────────────────────────────────
+  // 5. Reanudación Automática y useCdsRecovery
+  // ─────────────────────────────────────────────────────────────────────────────
+  describe('Reanudación Automática y useCdsRecovery', () => {
+    it('transición degradado → OK dispara el callback de recuperación una sola vez', async () => {
+      _resetRecoveryManagerForTests();
+      _setDegradedStateForTests(true);
+
+      // Mock de /api/cds-status respondiendo recuperado (ambos true)
+      global.fetch = vi.fn().mockImplementation((url: string | URL) => {
+        if (url.toString().includes('/api/cds-status')) {
+          return Promise.resolve({
+            ok: true,
+            status: 200,
+            json: async () => ({ simbad: true, hips: true, checkedAt: new Date().toISOString() }),
+          });
+        }
+        return Promise.reject(new Error('Unexpected fetch'));
+      });
+
+      const onRecoveredSpy = vi.fn();
+      const unsubscribe = onCdsRecovered(onRecoveredSpy);
+
+      // El registro inicial o primer sondeo dispara la transición
+      await runPoll();
+      expect(onRecoveredSpy).toHaveBeenCalledTimes(1);
+
+      // Segundo sondeo: sigue OK, NO debe volver a disparar
+      await runPoll();
+      expect(onRecoveredSpy).toHaveBeenCalledTimes(1);
+
+      unsubscribe();
+      _resetRecoveryManagerForTests();
+    });
+
+    it('/analyze reintenta el crossmatch al recuperarse y limpia el aviso "SIMBAD no disponible"', async () => {
+      // 1. Simular estado degradado inicial: SIMBAD falla en todos los endpoints
+      global.fetch = vi.fn().mockImplementation(() => {
+        return Promise.reject(new Error('SIMBAD Down'));
+      });
+
+      const capture: Capture = {
+        raDeg: 12.3456,
+        decDeg: 78.9012,
+        radiusDeg: 0.05,
+      };
+
+      const degradedMatch = await identifyCelestialCapture(capture);
+      expect(degradedMatch.state).toBe('unavailable');
+      expect(degradedMatch.simbadUnavailable).toBe(true);
+
+      // 2. Transición de recuperación: SIMBAD vuelve a responder con datos
+      global.fetch = vi.fn().mockImplementation((url: string | URL) => {
+        const u = url.toString();
+        if (u.includes('simbad')) {
+          return Promise.resolve({
+            ok: true,
+            status: 200,
+            json: async () => ({
+              data: [['Polaris Recovered', 'Star', 12.3456, 78.9012, null, null, null]],
+            }),
+          });
+        }
+        return Promise.reject(new Error('Unknown url'));
+      });
+
+      // Se ejecuta el flujo de recuperación de /analyze: limpia caché
+      clearCrossMatchCache();
+
+      // 3. Al reintentar con las mismas coordenadas, obtiene resultados reales y limpia el aviso
+      const recoveredMatch = await identifyCelestialCapture(capture);
+      expect(recoveredMatch.state).not.toBe('unavailable');
+      expect(recoveredMatch.simbadUnavailable).toBeFalsy();
+      expect(recoveredMatch.candidates.length).toBeGreaterThan(0);
+      expect(recoveredMatch.candidates[0].name).toBe('Polaris Recovered');
     });
   });
 });

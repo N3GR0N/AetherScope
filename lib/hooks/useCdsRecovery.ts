@@ -124,6 +124,19 @@ function unregisterSubscriber(id: string): void {
   }
 }
 
+export function onCdsRecovered(listener: () => void, autoPoll = false): () => void {
+  const id = Math.random().toString(36).substring(2, 9);
+  const sub: Subscriber = {
+    id,
+    onRecovered: listener,
+  };
+  subscribers.set(sub.id, sub);
+  if (autoPoll) {
+    void runPoll();
+  }
+  return () => unregisterSubscriber(id);
+}
+
 // Helpers para testing unitario
 export function _resetRecoveryManagerForTests(): void {
   if (pollTimer) {
