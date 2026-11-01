@@ -124,3 +124,74 @@
   -ms-overflow-style: none;
   scrollbar-width: none;
 }
+
+
+/* ─── CDS Tactical Status Animations ─── */
+@keyframes cds-fade-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes cds-scan {
+  0% {
+    transform: translateX(-100%);
+  }
+  100% {
+    transform: translateX(350%);
+  }
+}
+
+@keyframes cds-dot-pulse {
+  0%, 100% {
+    opacity: 0.2;
+  }
+  50% {
+    opacity: 1;
+  }
+}
+
+.cds-fade {
+  animation: cds-fade-in 200ms ease-in-out forwards;
+}
+
+.cds-scan-bar {
+  animation: cds-scan 1.5s cubic-bezier(0.4, 0, 0.2, 1) infinite;
+}
+
+.animate-cds-dot-1 {
+  animation: cds-dot-pulse 1.2s infinite;
+}
+
+.animate-cds-dot-2 {
+  animation: cds-dot-pulse 1.2s infinite 0.2s;
+}
+
+.animate-cds-dot-3 {
+  animation: cds-dot-pulse 1.2s infinite 0.4s;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .cds-fade {
+    animation: none;
+    opacity: 1;
+  }
+
+  .cds-scan-bar {
+    animation: none;
+    transform: none;
+    left: 0;
+    width: 100%;
+    background: #506385;
+  }
+
+  .animate-cds-dot-1,
+  .animate-cds-dot-2,
+  .animate-cds-dot-3 {
+    animation: none;
+    opacity: 1;
+  }
+}

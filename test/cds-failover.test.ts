@@ -34,6 +34,10 @@ import {
   _resetHipsInterceptorForTests,
 } from '@/components/space-canvas/SpaceCanvas.client';
 import type { Capture } from '@/lib/astronomy/footprint';
+import React from 'react';
+import { renderToStaticMarkup } from 'react-dom/server';
+import CdsCheckingCard from '@/components/hud/CdsCheckingCard';
+import CdsDownCard from '@/components/hud/CdsDownCard';
 
 describe('Resiliencia y Failover ante Degradación de CDS Estrasburgo', () => {
   const originalFetch = global.fetch;
@@ -836,6 +840,67 @@ describe('Resiliencia y Failover ante Degradación de CDS Estrasburgo', () => {
       cleanup2();
       expect(_getHipsInterceptorStateForTests().isRegistered).toBe(false);
       expect(_getHipsInterceptorStateForTests().activeMountCount).toBe(0);
+    });
+  });
+
+  // ─────────────────────────────────────────────────────────────────────────────
+  // 7. Pantalla de Carga Táctica ante cdsState === "checking" (CdsCheckingCard)
+  // ─────────────────────────────────────────────────────────────────────────────
+  describe('Pantalla de Carga Táctica (CdsCheckingCard)', () => {
+    it('renderiza con role="status", aria-live="polite" y estilo táctico militar', () => {
+      const html = renderToStaticMarkup(React.createElement(CdsCheckingCard, { delayMs: 0 }));
+      expect(html).toContain('role="status"');
+      expect(html).toContain('aria-live="polite"');
+      expect(html).toContain('ESTABLECIENDO ENLACE CON EL CDS');
+      expect(html).toContain('Comprobando disponibilidad del Centro de Datos de Estrasburgo');
+      expect(html).toContain('cds-scan-bar');
+      expect(html).toContain('border-[#C9B98F]');
+      expect(html).toContain('bg-[#101015]');
+    });
+
+    it('anti-parpadeo: con delay de 400ms no renderiza nada inmediatamente (returns null)', () => {
+      const html = renderToStaticMarkup(React.createElement(CdsCheckingCard, { delayMs: 400 }));
+      expect(html).toBe('');
+    });
+
+    it('en checking: se renderiza el cartel de carga y no se monta el visor; en down y ok, no', () => {
+      // Simulación de la lógica de renderizado central de Home y /analyze
+      const renderCentralArea = (state: "checking" | "down" | "ok") => {
+        if (state === "down") {
+          return renderToStaticMarkup(React.createElement(CdsDownCard, { lastCheckedTime: "12:00:00" }));
+        }
+        if (state === "ok") {
+          return renderToStaticMarkup(React.createElement("div", { "data-testid": "space-canvas-mounted" }, "SPACE_CANVAS"));
+        }
+        return renderToStaticMarkup(React.createElement(CdsCheckingCard, { delayMs: 0 }));
+      };
+
+      // 1. Estado checking: cartel de carga presente, sin visor ni cartel de caído
+      const checkingHtml = renderCentralArea("checking");
+      expect(checkingHtml).toContain('ESTABLECIENDO ENLACE CON EL CDS');
+      expect(checkingHtml).toContain('role="status"');
+      expect(checkingHtml).not.toContain('space-canvas-mounted');
+      expect(checkingHtml).not.toContain('SERVICIOS CDS FUERA DE LÍNEA');
+
+      // 2. Estado down: cartel de fuera de línea presente, sin cartel de carga ni visor
+      const downHtml = renderCentralArea("down");
+      expect(downHtml).toContain('SERVICIOS CDS FUERA DE LÍNEA');
+      expect(downHtml).toContain('role="alert"');
+      expect(downHtml).not.toContain('ESTABLECIENDO ENLACE CON EL CDS');
+      expect(downHtml).not.toContain('space-canvas-mounted');
+
+      // 3. Estado ok: visor montado, sin ningún cartel
+      const okHtml = renderCentralArea("ok");
+      expect(okHtml).toContain('space-canvas-mounted');
+      expect(okHtml).not.toContain('ESTABLECIENDO ENLACE CON EL CDS');
+      expect(okHtml).not.toContain('SERVICIOS CDS FUERA DE LÍNEA');
+    });
+
+    it('CdsDownCard y CdsCheckingCard comparten clase cds-fade para transición suave de 200ms', () => {
+      const checkingHtml = renderToStaticMarkup(React.createElement(CdsCheckingCard, { delayMs: 0 }));
+      const downHtml = renderToStaticMarkup(React.createElement(CdsDownCard));
+      expect(checkingHtml).toContain('cds-fade');
+      expect(downHtml).toContain('cds-fade');
     });
   });
 });

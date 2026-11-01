@@ -13,7 +13,7 @@ export default function CdsDownCard({
     <div
       role="alert"
       aria-live="polite"
-      className={`bg-[#101015] border border-[#C9B98F] p-6 max-w-lg w-full text-center font-[family-name:var(--font-proto)] shadow-2xl select-none rounded-none ${className}`}
+      className={`bg-[#101015] border border-[#C9B98F] p-6 max-w-lg w-full text-center font-[family-name:var(--font-proto)] shadow-2xl select-none rounded-none cds-fade ${className}`}
     >
       <div className="flex items-center justify-center gap-2.5 mb-3">
         <span className="w-2 h-2 bg-[#C9B98F] animate-pulse shrink-0" />

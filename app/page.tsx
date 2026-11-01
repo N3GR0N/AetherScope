@@ -11,6 +11,7 @@ import CoordinateOverlay from "@/components/hud/CoordinateOverlay";
 import CaptureZoneButton from "@/components/hud/CaptureZoneButton";
 import DossierDrawer from "@/components/dossier/DossierDrawer";
 import CdsDownCard from "@/components/hud/CdsDownCard";
+import CdsCheckingCard from "@/components/hud/CdsCheckingCard";
 import { useCdsRecovery } from "@/lib/hooks/useCdsRecovery";
 
 function AetherScopeMainViewport({
@@ -30,7 +31,7 @@ function AetherScopeMainViewport({
       {/* 1. HeaderBar: siempre visible */}
       <HeaderBar />
 
-      {/* 2. Área Central: si CDS está 'down', cartel táctico sin montar Aladin */}
+      {/* 2. Área Central: según estado del CDS (down, ok, checking) */}
       {cdsState === "down" ? (
         <div className="absolute inset-0 z-20 flex items-center justify-center p-4 bg-[#101015]">
           <CdsDownCard lastCheckedTime={lastCheckedTime} />
@@ -49,8 +50,10 @@ function AetherScopeMainViewport({
           <CaptureZoneButton />
         </>
       ) : (
-        /* Estado 'checking': primeros segundos de verificación, sin cartel para evitar parpadeo */
-        <div className="absolute inset-0 bg-[#101015]" />
+        /* Estado 'checking': pantalla de carga táctica sin montar visor (aparece tras delay para evitar parpadeo) */
+        <div className="absolute inset-0 z-20 flex items-center justify-center p-4 bg-[#101015]">
+          <CdsCheckingCard />
+        </div>
       )}
 
       {/* 3. Scientific Astronomical Dossier & Target Selector */}

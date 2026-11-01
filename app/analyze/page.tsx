@@ -27,6 +27,7 @@ import { getNotesRepository, type MissionNote } from "@/lib/notes";
 import { useAuth } from "@/components/auth/AuthProvider";
 import AuthModal from "@/components/auth/AuthModal";
 import CdsDownCard from "@/components/hud/CdsDownCard";
+import CdsCheckingCard from "@/components/hud/CdsCheckingCard";
 import ConfirmDeleteModal from "@/components/ui/ConfirmDeleteModal";
 import { useIsMounted } from "@/lib/hooks/useIsMounted";
 import {
@@ -678,9 +679,11 @@ function LaboratoryContent() {
       {/* ─── 2. MAIN WORKSPACE LAYOUT ─── */}
       <div className="relative flex-1 flex overflow-hidden">
         {/* Left Side: Captured Celestial Field Viewport & Spectral Mixer */}
-        <div className={`relative flex-1 h-full bg-[#101015] flex flex-col ${cdsState === "down" ? "items-center justify-center p-4" : ""} overflow-hidden`}>
+        <div className={`relative flex-1 h-full bg-[#101015] flex flex-col ${cdsState === "down" || cdsState === "checking" ? "items-center justify-center p-4" : ""} overflow-hidden`}>
           {cdsState === "down" ? (
             <CdsDownCard lastCheckedTime={lastCheckedTime} />
+          ) : cdsState === "checking" ? (
+            <CdsCheckingCard />
           ) : (
             <>
               {/* Aladin Lite WebGL Canvas locked on captured coordinates */}
