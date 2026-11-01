@@ -58,6 +58,7 @@ export async function GET(request: Request) {
         basic.galdim_majaxis,
         basic.galdim_minaxis,
         basic.galdim_angle,
+        basic.plx_value,
         DISTANCE(POINT('ICRS', basic.ra, basic.dec), POINT('ICRS', ${cleanRa}, ${cleanDec})) AS dist
       FROM basic
       LEFT JOIN otypedef ON basic.otype = otypedef.otype

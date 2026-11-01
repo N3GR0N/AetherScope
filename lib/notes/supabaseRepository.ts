@@ -68,6 +68,16 @@ export class SupabaseNotesRepository implements NotesRepository {
   public async list(): Promise<MissionNote[]> {
     const supabase = this.getClient();
 
+    // 0. Si el operador no está autenticado, no hay notas remotas que listar
+    const {
+      data: { user },
+      error: authError,
+    } = await supabase.auth.getUser();
+
+    if (authError || !user) {
+      return [];
+    }
+
     const { data, error } = await supabase
       .from('mission_notes')
       .select(`
@@ -89,6 +99,9 @@ export class SupabaseNotesRepository implements NotesRepository {
       .order('created_at', { ascending: false });
 
     if (error) {
+      if (error.code === '42501' || error.message?.includes('permission denied')) {
+        return [];
+      }
       throw new Error(`Error al listar notas: ${error.message}`);
     }
 

@@ -32,6 +32,7 @@ export interface Candidate {
   sizeSource?: 'simbad' | 'ned' | 'estimate';
   source: 'dossier' | 'simbad';
   description?: string;
+  distanceLy?: string;
 }
 
 export interface MatchedCelestialObject {
@@ -116,6 +117,7 @@ export function matchLocalDossierCapture(capture: Capture): CaptureMatch {
         positionAngleDeg: classification.effectivePositionAngleDeg,
         sizeSource: classification.sizeSource,
         source: 'dossier',
+        distanceLy: item.distanceLy,
         description: item.description,
       });
     }
@@ -238,7 +240,6 @@ export async function querySimbadConeCapture(
   const cleanRa = Number(raDeg.toFixed(6));
   const cleanDec = Number(decDeg.toFixed(6));
   const cleanRadius = Number(Math.min(Math.max(radiusDeg, 0.01), 2.5).toFixed(4));
-
   let rawData: { data?: unknown[][] } | null = null;
 
   const controller = new AbortController();
@@ -272,15 +273,28 @@ export async function querySimbadConeCapture(
   const candidates: Candidate[] = [];
 
   for (const row of data.data) {
-    const [mainId, otypeLongname, objRa, objDec, galdimMaj, galdimMin, galdimAngle] = row;
-    const parsedRa = typeof objRa === 'number' ? objRa : parseFloat(String(objRa));
-    const parsedDec = typeof objDec === 'number' ? objDec : parseFloat(String(objDec));
+    const [mainId, otypeLongname, objRa, objDec, galdimMaj, galdimMin, galdimAngle, plxValue] = row;
+    const parsedRa = typeof objRa === "number" ? objRa : parseFloat(String(objRa));
+    const parsedDec = typeof objDec === "number" ? objDec : parseFloat(String(objDec));
+    const parsedPlx = typeof plxValue === "number" ? plxValue : (plxValue !== null && plxValue !== undefined ? parseFloat(String(plxValue)) : NaN);
 
     if (isNaN(parsedRa) || isNaN(parsedDec)) continue;
 
-    const majAxis = typeof galdimMaj === 'number' && galdimMaj > 0 ? galdimMaj : undefined;
-    const minAxis = typeof galdimMin === 'number' && galdimMin > 0 ? galdimMin : majAxis;
-    const pa = typeof galdimAngle === 'number' && galdimAngle >= 0 && galdimAngle <= 180 ? galdimAngle : 0;
+    let computedDistanceLy: string | undefined = undefined;
+    if (!isNaN(parsedPlx) && parsedPlx > 0.001) {
+      const distLy = 3261.5638 / parsedPlx;
+      if (distLy >= 1000000) {
+        computedDistanceLy = `${(distLy / 1000000).toLocaleString("es-AR", { maximumFractionDigits: 1 })} millones de años luz`;
+      } else if (distLy >= 1000) {
+        computedDistanceLy = `${Math.round(distLy).toLocaleString("es-AR")} años luz`;
+      } else {
+        computedDistanceLy = `${distLy < 10 ? distLy.toFixed(1) : Math.round(distLy)} años luz`;
+      }
+    }
+
+    const majAxis = typeof galdimMaj === "number" && galdimMaj > 0 ? galdimMaj : undefined;
+    const minAxis = typeof galdimMin === "number" && galdimMin > 0 ? galdimMin : majAxis;
+    const pa = typeof galdimAngle === "number" && galdimAngle >= 0 && galdimAngle <= 180 ? galdimAngle : 0;
 
     const target: FootprintTarget = {
       raDeg: parsedRa,
@@ -288,8 +302,8 @@ export async function querySimbadConeCapture(
       majorDiameterArcmin: majAxis,
       minorDiameterArcmin: minAxis,
       positionAngleDeg: pa,
-      sizeSource: majAxis ? 'simbad' : 'estimate',
-      objectType: otypeLongname ? String(otypeLongname).trim() : 'Objeto astronómico SIMBAD',
+      sizeSource: majAxis ? "simbad" : "estimate",
+      objectType: otypeLongname ? String(otypeLongname).trim() : "Objeto astronómico SIMBAD",
     };
 
     const classification = classifyCapture(capture, target);
@@ -298,7 +312,7 @@ export async function querySimbadConeCapture(
       id: String(mainId).trim(),
       name: String(mainId).trim(),
       designation: `SIMBAD ${String(mainId).trim()}`,
-      objectType: target.objectType || 'Objeto astronómico',
+      objectType: target.objectType || "Objeto astronómico",
       raDeg: parsedRa,
       decDeg: parsedDec,
       separationDeg: classification.separationDeg,
@@ -309,27 +323,28 @@ export async function querySimbadConeCapture(
       minorDiameterArcmin: classification.effectiveMinorDiameterArcmin,
       positionAngleDeg: classification.effectivePositionAngleDeg,
       sizeSource: classification.sizeSource,
-      source: 'simbad',
-      description: `Objeto registrado en CDS SIMBAD. Clasificación: ${target.objectType}.`,
+      source: "simbad",
+      distanceLy: computedDistanceLy,
+      description: `Objeto registrado en CDS SIMBAD. Clasificación: ${target.objectType}.${computedDistanceLy ? ` Distancia estelar estimada por paralaje: ${computedDistanceLy}.` : ""}`,
     });
   }
 
   const insideCandidates = candidates
-    .filter((c) => c.state === 'inside')
+    .filter((c) => c.state === "inside")
     .sort((a, b) => a.angularAreaArcmin2 - b.angularAreaArcmin2);
 
   const edgeCandidates = candidates
-    .filter((c) => c.state === 'edge')
+    .filter((c) => c.state === "edge")
     .sort((a, b) => a.normalizedRadius - b.normalizedRadius);
 
-  const allSorted = [...insideCandidates, ...edgeCandidates, ...candidates.filter((c) => c.state === 'none')];
+  const allSorted = [...insideCandidates, ...edgeCandidates, ...candidates.filter((c) => c.state === "none")];
 
   if (insideCandidates.length > 0) {
     const best = insideCandidates[0];
     return {
       candidates: allSorted,
       bestMatch: {
-        state: 'inside',
+        state: "inside",
         object: {
           id: best.id,
           name: best.name,
@@ -337,24 +352,25 @@ export async function querySimbadConeCapture(
           objectType: best.objectType,
           ra: best.raDeg,
           dec: best.decDeg,
+          distanceLy: best.distanceLy,
           constellation: getConstellation(best.raDeg, best.decDeg),
-          description: best.description || '',
+          description: best.description || "",
           spectralFeatures: [
-            'Registro astrométrico ICRS validado por CDS SIMBAD',
-            'Flujo estelar y coordenadas catalogadas',
-            'Cruzamiento multiespectral internacional',
+            "Registro astrométrico ICRS validado por CDS SIMBAD",
+            "Flujo estelar y coordenadas catalogadas",
+            "Cruzamiento multiespectral internacional",
           ],
           majorDiameterArcmin: best.majorDiameterArcmin,
           minorDiameterArcmin: best.minorDiameterArcmin,
           positionAngleDeg: best.positionAngleDeg,
           sizeSource: best.sizeSource,
-          source: 'simbad_api',
+          source: "simbad_api",
         },
         separationDeg: best.separationDeg,
         normalizedRadius: best.normalizedRadius,
         partial: false,
         candidates: allSorted,
-        source: 'simbad',
+        source: "simbad",
       },
     };
   }
@@ -364,7 +380,7 @@ export async function querySimbadConeCapture(
     return {
       candidates: allSorted,
       bestMatch: {
-        state: 'edge',
+        state: "edge",
         object: {
           id: best.id,
           name: best.name,
@@ -372,23 +388,24 @@ export async function querySimbadConeCapture(
           objectType: best.objectType,
           ra: best.raDeg,
           dec: best.decDeg,
+          distanceLy: best.distanceLy,
           constellation: getConstellation(best.raDeg, best.decDeg),
-          description: best.description || '',
+          description: best.description || "",
           spectralFeatures: [
-            'Registro en zona periférica de objeto SIMBAD',
-            'Transición astrométrica de borde',
+            "Registro en zona periférica de objeto SIMBAD",
+            "Transición astrométrica de borde",
           ],
           majorDiameterArcmin: best.majorDiameterArcmin,
           minorDiameterArcmin: best.minorDiameterArcmin,
           positionAngleDeg: best.positionAngleDeg,
           sizeSource: best.sizeSource,
-          source: 'simbad_api',
+          source: "simbad_api",
         },
         separationDeg: best.separationDeg,
         normalizedRadius: best.normalizedRadius,
         partial: true,
         candidates: allSorted,
-        source: 'simbad',
+        source: "simbad",
       },
     };
   }

@@ -49,6 +49,10 @@ export const CELESTIAL_CATALOG: CatalogTarget[] = [
     raDeg: 266.4168,
     decDeg: -29.0078,
     toleranceDeg: 0.5,
+    majorDiameterArcmin: 0.1,
+    minorDiameterArcmin: 0.1,
+    positionAngleDeg: 0,
+    sizeSource: 'simbad',
     description:
       "El agujero negro supermasivo central de nuestra Vía Láctea, con una masa de 4,15 millones de masas solares. Su entorno genera intensa radiación sincrotrón relativista y acreción térmica detectada en rayos X y ondas de radio.",
     spectralFeatures: [
@@ -107,6 +111,10 @@ export const CELESTIAL_CATALOG: CatalogTarget[] = [
     raDeg: 161.285,
     decDeg: -59.8678,
     toleranceDeg: 0.5,
+    majorDiameterArcmin: 120.0,
+    minorDiameterArcmin: 120.0,
+    positionAngleDeg: 0,
+    sizeSource: 'simbad',
     description:
       "Una de las regiones de formación estelar más energéticas y masivas de la galaxia. Alberga a la hipergigante inestable Eta Carinae y frentes de ionización fotoevaporativa conocidos como Acantilados Cósmicos.",
     spectralFeatures: [
@@ -134,6 +142,10 @@ export const CELESTIAL_CATALOG: CatalogTarget[] = [
     raDeg: 110.83,
     decDeg: -73.454,
     toleranceDeg: 0.45,
+    majorDiameterArcmin: 15.0,
+    minorDiameterArcmin: 15.0,
+    positionAngleDeg: 0,
+    sizeSource: 'simbad',
     description:
       "Cúmulo masivo de galaxias cuya colosal gravedad curva y amplifica la luz de galaxias primordiales situadas detrás, revelando arcos gravitacionales y fuentes con alto corrimiento al rojo (z > 7).",
     spectralFeatures: [

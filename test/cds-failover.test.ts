@@ -99,6 +99,28 @@ describe('Resiliencia y Failover ante Degradación de CDS Estrasburgo', () => {
       expect(calledUrl).not.toContain('harvard');
     });
 
+    it('calcula distanceLy a partir de basic.plx_value devuelto por /api/simbad', async () => {
+      global.fetch = vi.fn().mockImplementation((url: string | URL) => {
+        if (url.toString().startsWith('/api/simbad')) {
+          return Promise.resolve({
+            ok: true,
+            status: 200,
+            json: async () => ({
+              data: [
+                ['HD 116658', 'Star', 200.0, -20.0, null, null, null, 13.06],
+              ],
+            }),
+          });
+        }
+        return Promise.reject(new Error('Unknown url'));
+      });
+
+      const result = await querySimbadConeCapture(testCapture, 500);
+      expect(result.candidates.length).toBe(1);
+      expect(result.candidates[0].distanceLy).toBe('250 años luz');
+      expect(result.bestMatch?.object?.distanceLy).toBe('250 años luz');
+    });
+
     it('fallo HTTP de /api/simbad (ej. status 503) deriva en unavailable: true sin lanzar', async () => {
       const mockFetch = vi.fn().mockImplementation((url: string | URL) => {
         if (url.toString().startsWith('/api/simbad')) {

@@ -85,17 +85,17 @@ export default function CaptureZoneButton() {
   return (
     <aside
       aria-label="Zona de Análisis Espectral"
-      className="fixed bottom-5 right-5 z-30 pointer-events-auto flex flex-col gap-2 w-[340px] sm:w-[420px] max-w-[calc(100vw-2.5rem)] font-[family-name:var(--font-proto)] select-none"
+      className="fixed bottom-3 left-2.5 right-2.5 sm:left-auto sm:right-5 sm:bottom-5 z-30 pointer-events-auto flex flex-col gap-2 w-auto sm:w-[420px] max-w-[calc(100vw-1.25rem)] font-[family-name:var(--font-proto)] select-none"
     >
       {/* ── CARD 1: CAMPO MUY AMPLIO (Aviso en --accent) ── */}
       {!isZoomSufficient && (
-        <div className="bg-[#506385] border border-[#506385] px-3.5 py-2.5 flex items-center justify-between gap-2.5">
-          <span className="text-[10px] sm:text-[11px] uppercase tracking-[0.06em] text-[#F1F0E1] leading-tight flex-1">
+        <div className="bg-[#506385] border border-[#506385] px-3 py-2 sm:px-3.5 sm:py-2.5 flex items-center justify-between gap-2 shadow-lg">
+          <span className="text-[9.5px] sm:text-[11px] uppercase tracking-[0.05em] sm:tracking-[0.06em] text-[#F1F0E1] leading-tight flex-1">
             CAMPO MUY AMPLIO ({currentFovFormatted.rawText}). ACERCÁ A ≤ {thresholdFovFormatted.rawText} PARA ANALIZAR
           </span>
           <button
             onClick={handleAssistiveZoom}
-            className="bg-[#F1F0E1] text-[#101015] px-2.5 py-1 text-[10px] uppercase font-bold tracking-[0.1em] flex items-center gap-1.5 shrink-0 hover:opacity-90 active:scale-95 transition-all cursor-pointer"
+            className="bg-[#F1F0E1] text-[#101015] px-2 py-1 sm:px-2.5 sm:py-1 text-[9.5px] sm:text-[10px] uppercase font-bold tracking-[0.1em] flex items-center gap-1.5 shrink-0 hover:opacity-90 active:scale-95 transition-all cursor-pointer"
             title="Aproximar cámara automáticamente"
           >
             <Search className="w-3 h-3 text-[#101015]" strokeWidth={2.5} />
@@ -107,7 +107,7 @@ export default function CaptureZoneButton() {
       {/* ── CARD 2: CTA PRINCIPAL DE ANÁLISIS EN --BEIGE ── */}
       <div
         onClick={isZoomSufficient ? handleCapture : handleAssistiveZoom}
-        className={`bg-[#B7B6A8] text-[#101015] border border-[#B7B6A8] p-4 flex flex-col justify-between gap-3 transition-opacity cursor-pointer ${
+        className={`bg-[#B7B6A8] text-[#101015] border border-[#B7B6A8] p-3.5 sm:p-4 flex flex-col justify-between gap-2.5 sm:gap-3 transition-opacity shadow-xl cursor-pointer ${
           isScanning ? "opacity-75 cursor-wait" : "hover:opacity-98"
         }`}
         title={
@@ -117,9 +117,9 @@ export default function CaptureZoneButton() {
         }
       >
         {/* Top telemetry row */}
-        <div className="flex items-center justify-between text-[9.5px] uppercase tracking-[0.12em] text-[#101015]/75">
+        <div className="flex items-center justify-between text-[9px] sm:text-[9.5px] uppercase tracking-[0.12em] text-[#101015]/75">
           <span className="font-semibold">ANÁLISIS ESPECTRAL</span>
-          <span>
+          <span className="truncate max-w-[170px] sm:max-w-none text-right">
             {isZoomSufficient
               ? matchState === 'inside' && localMatch
                 ? `${localMatch.name} · ENFOCADO`
@@ -132,10 +132,10 @@ export default function CaptureZoneButton() {
 
         {/* Main CTA Title */}
         <div className="flex items-baseline justify-between gap-2">
-          <h2 className="text-[20px] sm:text-[23px] font-bold text-[#101015] uppercase tracking-wide leading-none">
+          <h2 className="text-[18px] xs:text-[20px] sm:text-[23px] font-bold text-[#101015] uppercase tracking-wide leading-none truncate">
             {isScanning ? (
               <span className="flex items-center gap-2">
-                <Loader2 className="w-5 h-5 animate-spin text-[#101015]" />
+                <Loader2 className="w-4 h-4 sm:w-5 sm:h-5 animate-spin text-[#101015]" />
                 <span>INICIANDO ANÁLISIS...</span>
               </span>
             ) : isZoomSufficient ? (
@@ -148,19 +148,19 @@ export default function CaptureZoneButton() {
 
         {/* Bottom coordinate readout & circular action button */}
         <div className="flex items-center justify-between pt-1 border-t border-[#101015]/15">
-          <span className="text-[11px] text-[#101015]/85 tabular-nums font-medium tracking-tight">
+          <span className="text-[10px] sm:text-[11px] text-[#101015]/85 tabular-nums font-medium tracking-tight">
             {coords.raHms} · {coords.decDms}
           </span>
 
           <button
             disabled={isScanning}
-            className="w-8 h-8 rounded-full bg-[#101015] text-[#F1F0E1] flex items-center justify-center hover:scale-105 active:scale-95 transition-all shrink-0 cursor-pointer"
+            className="w-7 h-7 sm:w-8 sm:h-8 rounded-full bg-[#101015] text-[#F1F0E1] flex items-center justify-center hover:scale-105 active:scale-95 transition-all shrink-0 cursor-pointer"
             title={isZoomSufficient ? "Entrar al laboratorio" : "Aproximar"}
           >
             {isScanning ? (
-              <Loader2 className="w-4 h-4 animate-spin text-[#F1F0E1]" />
+              <Loader2 className="w-3.5 h-3.5 sm:w-4 sm:h-4 animate-spin text-[#F1F0E1]" />
             ) : (
-              <ArrowUpRight className="w-4 h-4 text-[#F1F0E1]" strokeWidth={2.5} />
+              <ArrowUpRight className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-[#F1F0E1]" strokeWidth={2.5} />
             )}
           </button>
         </div>

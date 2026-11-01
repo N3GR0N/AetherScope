@@ -116,7 +116,8 @@ revoke all on public.mission_notes from public, anon;
 
 grant select on public.coordinates to authenticated, anon;
 grant insert on public.coordinates to authenticated;
-grant select, insert, update, delete on public.mission_notes to authenticated;
+grant select on public.mission_notes to authenticated, anon;
+grant insert, update, delete on public.mission_notes to authenticated;
 
 -- Políticas en coordinates:
 drop policy if exists "Coordinates are readable by everyone" on public.coordinates;
