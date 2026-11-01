@@ -15,7 +15,6 @@ import {
 } from "@/lib/astronomy/crossmatch";
 import { useCdsRecovery } from "@/lib/hooks/useCdsRecovery";
 import type { Capture } from "@/lib/astronomy/footprint";
-import { checkSurveyHealth } from "@/lib/astronomy/surveys";
 import {
   LABORATORY_SPECTRAL_FILTERS,
   spectralFilterToSurvey,
@@ -27,7 +26,7 @@ import { formatCoordinates, formatFov, getConstellation, sanitizeCoordinateParam
 import { getNotesRepository, type MissionNote } from "@/lib/notes";
 import { useAuth } from "@/components/auth/AuthProvider";
 import AuthModal from "@/components/auth/AuthModal";
-import CdsStatusBanner from "@/components/hud/CdsStatusBanner";
+import CdsDownCard from "@/components/hud/CdsDownCard";
 import ConfirmDeleteModal from "@/components/ui/ConfirmDeleteModal";
 import { useIsMounted } from "@/lib/hooks/useIsMounted";
 import {
@@ -123,29 +122,6 @@ function LaboratoryContent() {
   const [processingFilterId, setProcessingFilterId] = useState<string | null>(null);
   const [isProcessingFilter, setIsProcessingFilter] = useState<boolean>(false);
 
-  // Health check de cada survey espectral para marcar OFFLINE y deshabilitar
-  const [surveyHealthMap, setSurveyHealthMap] = useState<Record<string, boolean>>({});
-
-  useEffect(() => {
-    let cancelled = false;
-
-    async function evaluateFilterHealth() {
-      const results: Record<string, boolean> = {};
-      for (const filter of LABORATORY_SPECTRAL_FILTERS) {
-        const ok = await checkSurveyHealth(filter.hipsUrl);
-        results[filter.id] = ok;
-      }
-      if (cancelled) return;
-      setSurveyHealthMap(results);
-    }
-
-    evaluateFilterHealth();
-
-    return () => {
-      cancelled = true;
-    };
-  }, []);
-
   // Target identification state mediante motor de Footprint (A3 / A4)
   const [matchState, setMatchState] = useState<{
     match: CaptureMatch | null;
@@ -177,7 +153,7 @@ function LaboratoryContent() {
   const [crossMatchVersion, setCrossMatchVersion] = useState<number>(0);
 
   // Al recuperarse el CDS, limpiar caché y relanzar crossmatch automáticamente
-  useCdsRecovery({
+  const { cdsState, lastCheckedTime } = useCdsRecovery({
     onRecovered: () => {
       console.info("[AetherScope] CDS recuperado. Relanzando crossmatch en /analyze...");
       clearCrossMatchCache();
@@ -293,7 +269,7 @@ function LaboratoryContent() {
   };
 
   const handleApplyFilter = (filter: SpectralFilterOption) => {
-    if (processingFilterId || surveyHealthMap[filter.id] === false) return;
+    if (processingFilterId) return;
 
     const isPrimary = activePrimaryFilter.id === filter.id;
     const isOverlay = activeOverlayFilter?.id === filter.id;
@@ -304,12 +280,9 @@ function LaboratoryContent() {
     startTransition(() => {
       if (isPrimary) {
         // Already base layer
-      } else if (isOverlay || surveyHealthMap[activePrimaryFilter.id] === false) {
-        // Si ya era overlay o el base actual está caído, ascender este filtro disponible a base
+      } else if (isOverlay) {
         setActivePrimaryFilter(filter);
-        if (isOverlay) {
-          setActiveOverlayFilter(activePrimaryFilter);
-        }
+        setActiveOverlayFilter(activePrimaryFilter);
       } else {
         setActiveOverlayFilter(filter);
       }
@@ -516,9 +489,6 @@ function LaboratoryContent() {
 
   return (
     <div className="relative w-screen h-screen overflow-hidden bg-[#101015] text-[#F1F0E1] select-none flex flex-col font-[family-name:var(--font-proto)]">
-      {/* Discreet Tactical CDS Degradation Banner */}
-      <CdsStatusBanner />
-
       {/* ─── 1. TOP UNIFIED TECHNICAL HEADER ─── */}
       <header className="h-14 shrink-0 px-4 md:px-6 flex items-center justify-between bg-[#17171C] border-b border-[#2B2B31] z-40 select-none">
         {/* Left Section: Favicon + Volver + Telemetry strip */}
@@ -659,110 +629,97 @@ function LaboratoryContent() {
       {/* ─── 2. MAIN WORKSPACE LAYOUT ─── */}
       <div className="relative flex-1 flex overflow-hidden">
         {/* Left Side: Captured Celestial Field Viewport & Spectral Mixer */}
-        <div className="relative flex-1 h-full bg-[#101015] flex flex-col overflow-hidden">
-          {/* Aladin Lite WebGL Canvas locked on captured coordinates */}
-          <div className="absolute inset-0">
-            <SpaceCanvas
-              containerId="aladin-analyze-div"
-              initialRa={raParam}
-              initialDec={decParam}
-              initialFov={fovParam}
-              primarySurvey={primarySurveyProp}
-              secondarySurvey={secondarySurveyProp}
-              blendOpacity={blendOpacity}
-            />
-          </div>
+        <div className="relative flex-1 h-full bg-[#101015] flex flex-col items-center justify-center p-4 overflow-hidden">
+          {cdsState === "down" ? (
+            <CdsDownCard lastCheckedTime={lastCheckedTime} />
+          ) : (
+            <>
+              {/* Aladin Lite WebGL Canvas locked on captured coordinates */}
+              <div className="absolute inset-0">
+                <SpaceCanvas
+                  containerId="aladin-analyze-div"
+                  initialRa={raParam}
+                  initialDec={decParam}
+                  initialFov={fovParam}
+                  primarySurvey={primarySurveyProp}
+                  secondarySurvey={secondarySurveyProp}
+                  blendOpacity={blendOpacity}
+                />
+              </div>
 
-          {/* Reticle */}
-          <PrecisionCrosshair visible={true} fov={fovParam} variant="compact" label="CENTRO DE CAPTURA" />
+              {/* Reticle */}
+              <PrecisionCrosshair visible={true} fov={fovParam} variant="compact" label="CENTRO DE CAPTURA" />
 
-          {/* Bottom Floating Spectral Filters & Mixing Dock */}
-          <div className="absolute bottom-4 left-4 right-4 z-30 pointer-events-none flex justify-center">
-            <div className="w-full max-w-4xl bg-[#101015]/95 border border-[#2B2B31] p-3 pointer-events-auto flex flex-col gap-2.5 font-[family-name:var(--font-proto)] select-none">
-              {/* Filter Row: 5 Spectral Surveys */}
-              <div className="flex items-center justify-between text-[10px] uppercase tracking-[0.14em]">
-                <div className="flex items-center gap-2.5">
-                  <span className="text-[#F1F0E1] font-semibold">CAPAS ESPECTRALES</span>
-                  {surveyHealthMap[activePrimaryFilter.id] === false && (
-                    <span className="text-[#C9B98F] text-[9px] font-bold border border-[#C9B98F]/40 bg-[#C9B98F]/10 px-1.5 py-0.5 tracking-wider">
-                      MAPA BASE NO DISPONIBLE (CDS)
+              {/* Bottom Floating Spectral Filters & Mixing Dock */}
+              <div className="absolute bottom-4 left-4 right-4 z-30 pointer-events-none flex justify-center">
+                <div className="w-full max-w-4xl bg-[#101015]/95 border border-[#2B2B31] p-3 pointer-events-auto flex flex-col gap-2.5 font-[family-name:var(--font-proto)] select-none">
+                  {/* Filter Row: 5 Spectral Surveys */}
+                  <div className="flex items-center justify-between text-[10px] uppercase tracking-[0.14em]">
+                    <span className="text-[#F1F0E1] font-semibold">CAPAS ESPECTRALES</span>
+                    <span className="text-[#9A9A92]">05 CAPAS</span>
+                  </div>
+
+                  <div className="flex flex-wrap items-center gap-2">
+                    {LABORATORY_SPECTRAL_FILTERS.map((filter) => {
+                      const isPrimary = activePrimaryFilter.id === filter.id;
+                      const isOverlay = activeOverlayFilter?.id === filter.id;
+                      const isBeingProcessed = processingFilterId === filter.id;
+
+                      return (
+                        <button
+                          key={filter.id}
+                          disabled={isProcessingFilter}
+                          onClick={() => handleApplyFilter(filter)}
+                          className={`px-3 py-1.5 text-[11px] uppercase tracking-wider font-medium flex items-center gap-2 border transition-colors ${
+                            isBeingProcessed
+                              ? "bg-[#506385]/50 border-[#506385] text-[#F1F0E1] cursor-pointer"
+                              : isPrimary
+                              ? "bg-[#F1F0E1] text-[#101015] border-[#F1F0E1] font-bold cursor-pointer"
+                              : isOverlay
+                              ? "bg-[#506385] text-[#F1F0E1] border-[#506385] font-bold cursor-pointer"
+                              : "bg-[#17171C] text-[#F1F0E1] border-[#3A3A42] hover:bg-[#1A1A1F] cursor-pointer"
+                          }`}
+                        >
+                          <span>{filter.shortLabel}</span>
+                          {isPrimary ? (
+                            <span className="px-1 py-0.2 bg-[#101015] text-[#F1F0E1] text-[9px] font-bold">
+                              BASE
+                            </span>
+                          ) : isOverlay ? (
+                            <span className="px-1 py-0.2 bg-[#F1F0E1] text-[#101015] text-[9px] font-bold">
+                              CAPA
+                            </span>
+                          ) : null}
+                        </button>
+                      );
+                    })}
+                  </div>
+
+                  {/* Spectral Blend Opacity Slider */}
+                  <div className="flex items-center justify-between gap-4 pt-2 border-t border-[#2B2B31]">
+                    <span className="text-[10px] uppercase tracking-wider text-[#F1F0E1]">
+                      MEZCLA MULTIESPECTRAL ({activeOverlayFilter ? activeOverlayFilter.shortLabel : "SIN CAPA"})
                     </span>
-                  )}
-                </div>
-                <span className="text-[#9A9A92]">05 CAPAS</span>
-              </div>
 
-              <div className="flex flex-wrap items-center gap-2">
-                {LABORATORY_SPECTRAL_FILTERS.map((filter) => {
-                  const isPrimary = activePrimaryFilter.id === filter.id;
-                  const isOverlay = activeOverlayFilter?.id === filter.id;
-                  const isBeingProcessed = processingFilterId === filter.id;
-                  const isUnavailable = surveyHealthMap[filter.id] === false;
-
-                  return (
-                    <button
-                      key={filter.id}
-                      disabled={isProcessingFilter || isUnavailable}
-                      onClick={() => handleApplyFilter(filter)}
-                      title={
-                        isUnavailable
-                          ? `Servidor del survey (${filter.shortLabel}) no disponible (CDS degradado)`
-                          : undefined
-                      }
-                      className={`px-3 py-1.5 text-[11px] uppercase tracking-wider font-medium flex items-center gap-2 border transition-colors ${
-                        isUnavailable
-                          ? "bg-[#17171C]/40 text-[#9A9A92]/50 border-[#2B2B31] cursor-not-allowed opacity-60"
-                          : isBeingProcessed
-                          ? "bg-[#506385]/50 border-[#506385] text-[#F1F0E1] cursor-pointer"
-                          : isPrimary
-                          ? "bg-[#F1F0E1] text-[#101015] border-[#F1F0E1] font-bold cursor-pointer"
-                          : isOverlay
-                          ? "bg-[#506385] text-[#F1F0E1] border-[#506385] font-bold cursor-pointer"
-                          : "bg-[#17171C] text-[#F1F0E1] border-[#3A3A42] hover:bg-[#1A1A1F] cursor-pointer"
-                      }`}
-                    >
-                      <span>{filter.shortLabel}</span>
-                      {isUnavailable ? (
-                        <span className="px-1 py-0.2 bg-[#E06C75]/20 text-[#E06C75] border border-[#E06C75]/40 text-[8.5px] font-bold font-mono">
-                          OFFLINE
-                        </span>
-                      ) : isPrimary ? (
-                        <span className="px-1 py-0.2 bg-[#101015] text-[#F1F0E1] text-[9px] font-bold">
-                          BASE
-                        </span>
-                      ) : isOverlay ? (
-                        <span className="px-1 py-0.2 bg-[#F1F0E1] text-[#101015] text-[9px] font-bold">
-                          CAPA
-                        </span>
-                      ) : null}
-                    </button>
-                  );
-                })}
-              </div>
-
-              {/* Spectral Blend Opacity Slider */}
-              <div className="flex items-center justify-between gap-4 pt-2 border-t border-[#2B2B31]">
-                <span className="text-[10px] uppercase tracking-wider text-[#F1F0E1]">
-                  MEZCLA MULTIESPECTRAL ({activeOverlayFilter ? activeOverlayFilter.shortLabel : "SIN CAPA"})
-                </span>
-
-                <div className="flex items-center gap-3 flex-1 max-w-sm">
-                  <input
-                    type="range"
-                    min="0"
-                    max="1"
-                    step="0.02"
-                    value={blendOpacity}
-                    onChange={(e) => setBlendOpacity(parseFloat(e.target.value))}
-                    className="w-full accent-[#F1F0E1] cursor-pointer h-1.5 bg-[#2B2B31]"
-                  />
-                  <span className="text-[20px] font-bold text-[#F1F0E1] tabular-nums w-12 text-right">
-                    {Math.round(blendOpacity * 100)}%
-                  </span>
+                    <div className="flex items-center gap-3 flex-1 max-w-sm">
+                      <input
+                        type="range"
+                        min="0"
+                        max="1"
+                        step="0.02"
+                        value={blendOpacity}
+                        onChange={(e) => setBlendOpacity(parseFloat(e.target.value))}
+                        className="w-full accent-[#F1F0E1] cursor-pointer h-1.5 bg-[#2B2B31]"
+                      />
+                      <span className="text-[20px] font-bold text-[#F1F0E1] tabular-nums w-12 text-right">
+                        {Math.round(blendOpacity * 100)}%
+                      </span>
+                    </div>
+                  </div>
                 </div>
               </div>
-            </div>
-          </div>
+            </>
+          )}
         </div>
 
         {/* ─── 3. RIGHT SIDE: ASTROPHYSICAL ANALYSIS DASHBOARD PANEL ─── */}
