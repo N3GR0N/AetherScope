@@ -36,8 +36,8 @@ async function pingEndpoint(url: string, timeoutMs = 2500): Promise<boolean> {
         "User-Agent": "AetherScope-HealthCheck/1.0",
       },
       cache: "no-store",
-    });
-    return res.ok;
+    }).catch(() => null);
+    return Boolean(res && res.ok);
   } catch {
     return false;
   } finally {

@@ -74,18 +74,20 @@ export async function GET(request: Request) {
           signal: controller.signal,
           headers: { Accept: "application/json" },
           cache: "no-store",
-        });
+        }).catch(() => null);
         clearTimeout(timer);
 
-        if (res.ok) {
-          const data: unknown = await res.json();
-          return NextResponse.json(data, {
-            status: 200,
-            headers: {
-              "X-SIMBAD-Endpoint": endpoint,
-              "Cache-Control": "public, max-age=60",
-            },
-          });
+        if (res && res.ok) {
+          const data: unknown = await res.json().catch(() => null);
+          if (data) {
+            return NextResponse.json(data, {
+              status: 200,
+              headers: {
+                "X-SIMBAD-Endpoint": endpoint,
+                "Cache-Control": "public, max-age=60",
+              },
+            });
+          }
         }
       } catch {
         clearTimeout(timer);

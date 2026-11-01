@@ -275,11 +275,11 @@ export async function querySimbadConeCapture(
       const res = await fetch(fullUrl, {
         signal: controller.signal,
         cache: 'force-cache',
-      });
+      }).catch(() => null);
       clearTimeout(timer);
 
-      if (res.ok) {
-        const json = (await res.json()) as { data?: unknown[][] };
+      if (res && res.ok) {
+        const json = (await res.json().catch(() => null)) as { data?: unknown[][] } | null;
         if (json && Array.isArray(json.data)) {
           rawData = json;
           break;
@@ -297,11 +297,11 @@ export async function querySimbadConeCapture(
     try {
       const res = await fetch(`/api/simbad?ra=${cleanRa}&dec=${cleanDec}&radius=${cleanRadius}`, {
         signal: controller.signal,
-      });
+      }).catch(() => null);
       clearTimeout(timer);
 
-      if (res.ok) {
-        const json = (await res.json()) as { data?: unknown[][] };
+      if (res && res.ok) {
+        const json = (await res.json().catch(() => null)) as { data?: unknown[][] } | null;
         if (json && Array.isArray(json.data)) {
           rawData = json;
         }
