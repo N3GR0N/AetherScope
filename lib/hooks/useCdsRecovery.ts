@@ -51,15 +51,77 @@ export function formatCheckedTime(isoOrDate?: string | Date): string {
   }
 }
 
+let hasRetriedHipsSurvey = false;
+let hipsErrorForcedDown = false;
+
 /**
  * Determina si el estado 'ok' del CDS está forzado por variable de entorno de desarrollo.
- * Solo activo fuera de entornos de producción (NODE_ENV !== 'production').
+ * Solo activo fuera de entornos de producción (NODE_ENV !== 'production') y si no ocurrió
+ * un fallo crítico de carga de HiPS en la sesión actual.
  */
 export function isCdsForcedOkInDev(): boolean {
+  if (hipsErrorForcedDown) return false;
   return (
     process.env.NODE_ENV !== "production" &&
     process.env.NEXT_PUBLIC_FORCE_CDS_OK === "1"
   );
+}
+
+/**
+ * Notificación de fallo crítico de carga de HiPS emitida desde Aladin Lite.
+ * Fuerza de inmediato el estado a 'down' (desmonta el visor sin esperar al polling ni
+ * a la regla de 2 fallos) y confirma con /api/cds-status. Si el servidor responde ok,
+ * vuelve a 'ok' y permite reintentar el survey una sola vez.
+ */
+export async function notifyHipsLoadError(): Promise<void> {
+  hipsErrorForcedDown = true;
+  consecutiveFailures = 2;
+  currentCdsState = "down";
+  isCurrentlyDegraded = true;
+
+  const fallbackStatus: CdsStatus = {
+    simbad: false,
+    hips: false,
+    checkedAt: new Date().toISOString(),
+  };
+  currentStatus = fallbackStatus;
+  hasCheckedAtLeastOnce = true;
+
+  for (const sub of subscribers.values()) {
+    sub.onStatusChange?.(fallbackStatus, true, "down");
+  }
+
+  try {
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), CDS_STATUS_FETCH_TIMEOUT_MS);
+
+    const res = await fetch("/api/cds-status", {
+      cache: "no-store",
+      signal: controller.signal,
+    }).catch(() => null);
+    clearTimeout(timer);
+
+    if (res && res.ok) {
+      const data: CdsStatus | null = await res.json().catch(() => null);
+      if (data && data.hips === true && !hasRetriedHipsSurvey) {
+        hasRetriedHipsSurvey = true;
+        hipsErrorForcedDown = false;
+        consecutiveFailures = 0;
+        currentCdsState = "ok";
+        isCurrentlyDegraded = !data.simbad;
+        currentStatus = data;
+
+        for (const sub of subscribers.values()) {
+          sub.onStatusChange?.(data, isCurrentlyDegraded, "ok");
+        }
+        return;
+      }
+    }
+  } catch {
+    // Si la confirmación falla, se mantiene en down
+  }
+
+  scheduleNextPoll(POLL_INTERVAL_DEGRADED_MS);
 }
 
 function scheduleNextPoll(delayMs: number): void {
@@ -223,6 +285,8 @@ export function _resetRecoveryManagerForTests(): void {
   hasCheckedAtLeastOnce = false;
   isFetchInFlight = false;
   consecutiveFailures = 0;
+  hasRetriedHipsSurvey = false;
+  hipsErrorForcedDown = false;
 }
 
 export function _getCurrentCdsStateForTests(): CdsState {

@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
-import { useCdsRecovery } from "@/lib/hooks/useCdsRecovery";
+import { useCdsRecovery, notifyHipsLoadError } from "@/lib/hooks/useCdsRecovery";
 import {
   DEFAULT_PRIMARY_SURVEY,
   NON_CDS_FALLBACK_SURVEY_URL,
@@ -60,6 +60,101 @@ declare global {
   }
 }
 
+/**
+ * Predicado acotado a errores de carga de HiPS generados por Aladin Lite.
+ * Mensajes que empiezan con "HiPS" y contienen "not found" o "error".
+ */
+export function isHipsLoadErrorMessage(msg: string): boolean {
+  if (!msg) return false;
+  const trimmed = msg.trim();
+  return trimmed.startsWith("HiPS") && (trimmed.includes("not found") || trimmed.includes("error"));
+}
+
+function getGlobalEventTarget(): (Window & typeof globalThis) | null {
+  if (typeof window !== "undefined" && typeof window.addEventListener === "function") {
+    return window;
+  }
+  return null;
+}
+
+let hasRegisteredGlobalHipsInterceptor = false;
+let activeMountCount = 0;
+let activeRejectionHandler: ((event: PromiseRejectionEvent) => void) | null = null;
+let activeErrorHandler: ((event: ErrorEvent) => void) | null = null;
+
+export function registerHipsInterceptor(): () => void {
+  activeMountCount++;
+  const target = getGlobalEventTarget();
+
+  if (!hasRegisteredGlobalHipsInterceptor && target) {
+    activeRejectionHandler = (event: PromiseRejectionEvent) => {
+      const reasonStr = String(
+        event?.reason?.message ||
+        (typeof event?.reason === "string" ? event.reason : "") ||
+        event?.reason ||
+        ""
+      );
+      if (isHipsLoadErrorMessage(reasonStr)) {
+        event.preventDefault();
+        console.warn("[AetherScope] Error de carga HiPS interceptado:", reasonStr);
+        void notifyHipsLoadError();
+      }
+    };
+
+    activeErrorHandler = (event: ErrorEvent) => {
+      const msg = String(event?.message || "");
+      if (isHipsLoadErrorMessage(msg)) {
+        event.preventDefault();
+        console.warn("[AetherScope] Error global HiPS interceptado:", msg);
+        void notifyHipsLoadError();
+      }
+    };
+
+    target.addEventListener("unhandledrejection", activeRejectionHandler as EventListener);
+    target.addEventListener("error", activeErrorHandler as EventListener);
+    hasRegisteredGlobalHipsInterceptor = true;
+  }
+
+  return () => {
+    activeMountCount = Math.max(0, activeMountCount - 1);
+    const target = getGlobalEventTarget();
+    if (activeMountCount === 0 && hasRegisteredGlobalHipsInterceptor && target) {
+      if (activeRejectionHandler) {
+        target.removeEventListener("unhandledrejection", activeRejectionHandler as EventListener);
+        activeRejectionHandler = null;
+      }
+      if (activeErrorHandler) {
+        target.removeEventListener("error", activeErrorHandler as EventListener);
+        activeErrorHandler = null;
+      }
+      hasRegisteredGlobalHipsInterceptor = false;
+    }
+  };
+}
+
+export function _getHipsInterceptorStateForTests() {
+  return {
+    isRegistered: hasRegisteredGlobalHipsInterceptor,
+    activeMountCount,
+  };
+}
+
+export function _resetHipsInterceptorForTests() {
+  const target = getGlobalEventTarget();
+  if (target) {
+    if (activeRejectionHandler) {
+      target.removeEventListener("unhandledrejection", activeRejectionHandler as EventListener);
+      activeRejectionHandler = null;
+    }
+    if (activeErrorHandler) {
+      target.removeEventListener("error", activeErrorHandler as EventListener);
+      activeErrorHandler = null;
+    }
+  }
+  hasRegisteredGlobalHipsInterceptor = false;
+  activeMountCount = 0;
+}
+
 export default function SpaceCanvas(props: SpaceCanvasProps = {}) {
   // Contexto opcional/degradable
   let spaceContext: ReturnType<typeof useSpace> | null = null;
@@ -103,39 +198,9 @@ export default function SpaceCanvas(props: SpaceCanvasProps = {}) {
   });
 
   // Intercept unhandled HiPS rejections & errors to avoid Turbopack / Next.js red overlay
+  // y forzar inmediatamente el estado down ante caída de tiles del CDS.
   useEffect(() => {
-    if (typeof window === "undefined") return;
-
-    const isHipsError = (msg: string) =>
-      msg.includes("HiPS") ||
-      msg.includes("CDS ID") ||
-      msg.includes("aladin") ||
-      msg.includes("mirrors") ||
-      msg.includes("not found at url") ||
-      msg.includes("does not refer to a found");
-
-    const handleRejection = (event: PromiseRejectionEvent) => {
-      const reasonStr = String(event?.reason?.message || event?.reason || "");
-      if (isHipsError(reasonStr)) {
-        console.warn("[AetherScope] Notificación HiPS gestionada:", reasonStr);
-        event.preventDefault();
-      }
-    };
-
-    const handleGlobalError = (event: ErrorEvent) => {
-      const msg = String(event?.message || "");
-      if (isHipsError(msg)) {
-        console.warn("[AetherScope] Notificación de error HiPS interceptada:", msg);
-        event.preventDefault();
-      }
-    };
-
-    window.addEventListener("unhandledrejection", handleRejection);
-    window.addEventListener("error", handleGlobalError);
-    return () => {
-      window.removeEventListener("unhandledrejection", handleRejection);
-      window.removeEventListener("error", handleGlobalError);
-    };
+    return registerHipsInterceptor();
   }, []);
 
   // Strict Client-Only Mount: load Aladin Lite v3 from official CDN

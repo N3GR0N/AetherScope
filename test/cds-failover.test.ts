@@ -18,13 +18,21 @@ import {
   onCdsRecovered,
   _resetRecoveryManagerForTests,
   _setDegradedStateForTests,
+  _setCdsStateForTests,
   _getCurrentCdsStateForTests,
   _getConsecutiveFailuresForTests,
   isCdsForcedOkInDev,
+  notifyHipsLoadError,
   POLL_INTERVAL_DEGRADED_MS,
   POLL_INTERVAL_HEALTHY_MS,
   CDS_STATUS_FETCH_TIMEOUT_MS,
 } from '@/lib/hooks/useCdsRecovery';
+import {
+  isHipsLoadErrorMessage,
+  registerHipsInterceptor,
+  _getHipsInterceptorStateForTests,
+  _resetHipsInterceptorForTests,
+} from '@/components/space-canvas/SpaceCanvas.client';
 import type { Capture } from '@/lib/astronomy/footprint';
 
 describe('Resiliencia y Failover ante Degradación de CDS Estrasburgo', () => {
@@ -36,11 +44,13 @@ describe('Resiliencia y Failover ante Degradación de CDS Estrasburgo', () => {
     clearSurveyHealthCache();
     clearCdsStatusServerCache();
     _resetRecoveryManagerForTests();
+    _resetHipsInterceptorForTests();
   });
 
   afterEach(() => {
     global.fetch = originalFetch;
     _resetRecoveryManagerForTests();
+    _resetHipsInterceptorForTests();
   });
 
   // ─────────────────────────────────────────────────────────────────────────────
@@ -646,6 +656,164 @@ describe('Resiliencia y Failover ante Degradación de CDS Estrasburgo', () => {
       expect(POLL_INTERVAL_DEGRADED_MS).toBe(30_000);
       expect(POLL_INTERVAL_HEALTHY_MS).toBe(120_000);
       expect(CDS_STATUS_FETCH_TIMEOUT_MS).toBe(6_000);
+    });
+  });
+
+  // ─────────────────────────────────────────────────────────────────────────────
+  // 6. Intercepción y Mitigación de Errores de Carga de HiPS (SpaceCanvas)
+  // ─────────────────────────────────────────────────────────────────────────────
+  describe('Intercepción y Mitigación de Errores de Carga de HiPS (SpaceCanvas)', () => {
+    let originalWindow: unknown;
+
+    beforeEach(() => {
+      originalWindow = (globalThis as { window?: unknown }).window;
+      const listeners = new Map<string, Set<EventListener>>();
+      (globalThis as { window?: unknown }).window = {
+        addEventListener: (type: string, listener: EventListener) => {
+          if (!listeners.has(type)) {
+            listeners.set(type, new Set());
+          }
+          listeners.get(type)!.add(listener);
+        },
+        removeEventListener: (type: string, listener: EventListener) => {
+          listeners.get(type)?.delete(listener);
+        },
+        dispatchEvent: (event: Event) => {
+          const set = listeners.get(event.type);
+          if (set) {
+            for (const fn of set) {
+              fn(event);
+            }
+          }
+          return !event.defaultPrevented;
+        },
+      };
+      _resetHipsInterceptorForTests();
+      _resetRecoveryManagerForTests();
+    });
+
+    afterEach(() => {
+      _resetHipsInterceptorForTests();
+      if (originalWindow !== undefined) {
+        (globalThis as { window?: unknown }).window = originalWindow;
+      } else {
+        delete (globalThis as { window?: unknown }).window;
+      }
+    });
+
+    it('isHipsLoadErrorMessage acota exclusivamente a mensajes de HiPS con error o not found', () => {
+      expect(
+        isHipsLoadErrorMessage('HiPS https://alasky.cds.unistra.fr/DSS/DSSColor error: HiPS not found at url ...')
+      ).toBe(true);
+      expect(
+        isHipsLoadErrorMessage('HiPS CDS/P/DSS2/color error: connection refused')
+      ).toBe(true);
+      expect(isHipsLoadErrorMessage('HiPS not found')).toBe(true);
+      expect(isHipsLoadErrorMessage('Error unrelated to hips')).toBe(false);
+      expect(isHipsLoadErrorMessage('Uncaught TypeError: something failed')).toBe(false);
+      expect(isHipsLoadErrorMessage('')).toBe(false);
+    });
+
+    it('notifyHipsLoadError fuerza estado down inmediatamente sin esperar al polling ni a 2 fallos', async () => {
+      _resetRecoveryManagerForTests();
+      _setCdsStateForTests('ok');
+      expect(_getCurrentCdsStateForTests()).toBe('ok');
+
+      // /api/cds-status confirma que efectivamente HiPS está caído
+      global.fetch = vi.fn().mockResolvedValue({
+        ok: true,
+        status: 200,
+        json: async () => ({ simbad: false, hips: false, checkedAt: new Date().toISOString() }),
+      });
+
+      const unsubscribe = onCdsRecovered(() => {});
+
+      await notifyHipsLoadError();
+
+      expect(_getCurrentCdsStateForTests()).toBe('down');
+      unsubscribe();
+    });
+
+    it('si /api/cds-status responde ok ante notifyHipsLoadError, vuelve a ok y permite reintentar una sola vez', async () => {
+      _resetRecoveryManagerForTests();
+      _setCdsStateForTests('down');
+
+      // Servidor responde que HiPS responde OK
+      global.fetch = vi.fn().mockResolvedValue({
+        ok: true,
+        status: 200,
+        json: async () => ({ simbad: true, hips: true, checkedAt: new Date().toISOString() }),
+      });
+
+      const unsubscribe = onCdsRecovered(() => {});
+
+      // 1er error: servidor dice ok -> vuelve a 'ok' para reintentar
+      await notifyHipsLoadError();
+      expect(_getCurrentCdsStateForTests()).toBe('ok');
+
+      // 2do error en la misma sesión: ya se agotó el reintento único -> permanece en 'down'
+      await notifyHipsLoadError();
+      expect(_getCurrentCdsStateForTests()).toBe('down');
+
+      unsubscribe();
+    });
+
+    it('el listener de unhandledrejection llama preventDefault para evitar overlay rojo en dev y dispara down', async () => {
+      _resetRecoveryManagerForTests();
+      _resetHipsInterceptorForTests();
+      _setCdsStateForTests('ok');
+
+      global.fetch = vi.fn().mockResolvedValue({
+        ok: true,
+        status: 200,
+        json: async () => ({ simbad: false, hips: false, checkedAt: new Date().toISOString() }),
+      });
+
+      const cleanup = registerHipsInterceptor();
+
+      const event = new Event('unhandledrejection', { cancelable: true });
+      Object.assign(event, {
+        reason:
+          'HiPS https://alasky.cds.unistra.fr/DSS/DSSColor error: HiPS not found at url https://alasky.cds.unistra.fr/DSS/DSSColor\nReason: 503',
+      });
+
+      window.dispatchEvent(event);
+
+      // preventDefault() es esencial para evitar el overlay rojo de desarrollo de Next.js
+      expect(event.defaultPrevented).toBe(true);
+
+      // Esperar microtareas para que notifyHipsLoadError complete
+      await new Promise((r) => setTimeout(r, 10));
+      expect(_getCurrentCdsStateForTests()).toBe('down');
+
+      cleanup();
+    });
+
+    it('no se registran listeners duplicados en window ante montajes múltiples y limpia al desmontar', () => {
+      _resetHipsInterceptorForTests();
+      expect(_getHipsInterceptorStateForTests().isRegistered).toBe(false);
+      expect(_getHipsInterceptorStateForTests().activeMountCount).toBe(0);
+
+      // Primer montaje de SpaceCanvas
+      const cleanup1 = registerHipsInterceptor();
+      expect(_getHipsInterceptorStateForTests().isRegistered).toBe(true);
+      expect(_getHipsInterceptorStateForTests().activeMountCount).toBe(1);
+
+      // Segundo montaje (o re-render simultáneo)
+      const cleanup2 = registerHipsInterceptor();
+      // No debe agregar un listener duplicado: isRegistered sigue siendo true y activeMountCount = 2
+      expect(_getHipsInterceptorStateForTests().isRegistered).toBe(true);
+      expect(_getHipsInterceptorStateForTests().activeMountCount).toBe(2);
+
+      // Primer desmontaje: aún queda un componente activo, no desregistra de window
+      cleanup1();
+      expect(_getHipsInterceptorStateForTests().isRegistered).toBe(true);
+      expect(_getHipsInterceptorStateForTests().activeMountCount).toBe(1);
+
+      // Segundo desmontaje: contador llega a 0, desregistra los listeners de window
+      cleanup2();
+      expect(_getHipsInterceptorStateForTests().isRegistered).toBe(false);
+      expect(_getHipsInterceptorStateForTests().activeMountCount).toBe(0);
     });
   });
 });
