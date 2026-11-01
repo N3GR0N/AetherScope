@@ -3,7 +3,6 @@ import {
   querySimbadConeCapture,
   identifyCelestialCapture,
   clearCrossMatchCache,
-  SIMBAD_TAP_ENDPOINTS,
 } from '@/lib/astronomy/crossmatch';
 import {
   checkSurveyHealth,
@@ -12,7 +11,7 @@ import {
   findFirstAvailableNonCdsSurvey,
   SPECTRAL_SURVEYS,
 } from '@/lib/astronomy/surveys';
-import { GET as simbadRouteGet } from '@/app/api/simbad/route';
+import { GET as simbadRouteGet, SIMBAD_TAP_ENDPOINTS } from '@/app/api/simbad/route';
 import { GET as cdsStatusRouteGet, clearCdsStatusServerCache } from '@/app/api/cds-status/route';
 import {
   runPoll,
@@ -40,23 +39,23 @@ describe('Resiliencia y Failover ante Degradación de CDS Estrasburgo', () => {
   });
 
   // ─────────────────────────────────────────────────────────────────────────────
-  // 1. Cadena de failover de SIMBAD TAP en crossmatch.ts
+  // 1. Delegación segura de SIMBAD TAP a /api/simbad (crossmatch.ts)
   // ─────────────────────────────────────────────────────────────────────────────
-  describe('Cadena de failover de SIMBAD TAP (crossmatch.ts)', () => {
-    it('incluye el endpoint oficial de Estrasburgo y el espejo de Harvard', () => {
-      expect(SIMBAD_TAP_ENDPOINTS).toContain('https://simbad.cds.unistra.fr/simbad/sim-tap/sync');
-      expect(SIMBAD_TAP_ENDPOINTS).toContain('https://simbad.cfa.harvard.edu/simbad/sim-tap/sync');
-    });
+  describe('Consulta a SIMBAD en crossmatch.ts (delegación a /api/simbad)', () => {
     const testCapture: Capture = {
       raDeg: 200.0,
       decDeg: -20.0,
       radiusDeg: 0.1,
     };
 
-    it('éxito en el endpoint primario (CDS): no recurre al espejo', async () => {
+    it('crossmatch.ts no hace fetch a hosts externos y llama exclusivamente a /api/simbad', async () => {
       const mockFetch = vi.fn().mockImplementation((url: string | URL) => {
         const urlStr = url.toString();
-        if (urlStr.includes('simbad.cds.unistra.fr')) {
+        // Verificar que NO contacta directamente a Estrasburgo ni a Harvard desde el cliente
+        if (urlStr.includes('simbad.cds.unistra.fr') || urlStr.includes('simbad.cfa.harvard.edu')) {
+          throw new Error(`Violación de seguridad: crossmatch.ts llamó directamente a host externo: ${urlStr}`);
+        }
+        if (urlStr.startsWith('/api/simbad')) {
           return Promise.resolve({
             ok: true,
             status: 200,
@@ -67,7 +66,7 @@ describe('Resiliencia y Failover ante Degradación de CDS Estrasburgo', () => {
             }),
           });
         }
-        return Promise.reject(new Error('Should not call mirror if primary succeeds'));
+        return Promise.reject(new Error(`URL no esperada: ${urlStr}`));
       });
 
       global.fetch = mockFetch;
@@ -79,51 +78,49 @@ describe('Resiliencia y Failover ante Degradación de CDS Estrasburgo', () => {
       expect(result.candidates[0].name).toBe('HD 116658');
       expect(result.candidates[0].designation).toBe('SIMBAD HD 116658');
       expect(mockFetch).toHaveBeenCalledTimes(1);
-      expect(mockFetch.mock.calls[0][0].toString()).toContain('simbad.cds.unistra.fr');
+      const calledUrl = mockFetch.mock.calls[0][0].toString();
+      expect(calledUrl).toMatch(/^\/api\/simbad\?ra=200&dec=-20&radius=0\.1/);
+      expect(calledUrl).not.toContain('unistra');
+      expect(calledUrl).not.toContain('harvard');
     });
 
-    it('fallo del endpoint primario (CDS) con failover exitoso al espejo secundario (Harvard)', async () => {
+    it('fallo HTTP de /api/simbad (ej. status 503) deriva en unavailable: true sin lanzar', async () => {
       const mockFetch = vi.fn().mockImplementation((url: string | URL) => {
-        const urlStr = url.toString();
-        if (urlStr.includes('simbad.cds.unistra.fr')) {
-          // Primario falla por timeout / desconexión
-          return Promise.reject(new Error('Connection timed out'));
-        }
-        if (urlStr.includes('simbad.cfa.harvard.edu')) {
-          // Espejo de Harvard responde 200
+        if (url.toString().startsWith('/api/simbad')) {
           return Promise.resolve({
-            ok: true,
-            status: 200,
-            json: async () => ({
-              data: [
-                ['Spica Mirror', 'B0IV', 200.001, -20.001, 0.2, 0.2, 45],
-              ],
-            }),
+            ok: false,
+            status: 503,
+            json: async () => ({ error: 'Todos los endpoints de SIMBAD TAP no están disponibles' }),
           });
         }
-        return Promise.reject(new Error(`Unexpected url: ${urlStr}`));
+        return Promise.reject(new Error('Unknown url'));
       });
 
       global.fetch = mockFetch;
 
       const result = await querySimbadConeCapture(testCapture, 500);
 
-      expect(result.unavailable).toBeFalsy();
-      expect(result.candidates.length).toBe(1);
-      expect(result.candidates[0].name).toBe('Spica Mirror');
-      expect(result.candidates[0].designation).toBe('SIMBAD Spica Mirror');
-      // Verificamos que ambos endpoints fueron intentados en orden
-      expect(mockFetch).toHaveBeenCalledTimes(2);
-      expect(mockFetch.mock.calls[0][0].toString()).toContain('simbad.cds.unistra.fr');
-      expect(mockFetch.mock.calls[1][0].toString()).toContain('simbad.cfa.harvard.edu');
+      expect(result.unavailable).toBe(true);
+      expect(result.candidates).toEqual([]);
+      expect(result.bestMatch).toBeNull();
     });
 
-    it('timeout en todos los endpoints: devuelve unavailable explícito (no "sin match")', async () => {
-      const mockFetch = vi.fn().mockImplementation(() => {
-        return Promise.reject(new Error('AbortError: The operation was aborted due to timeout'));
+    it('rechazo de red (NetworkError) en /api/simbad deriva en unavailable: true sin lanzar', async () => {
+      global.fetch = vi.fn().mockImplementation(() => {
+        return Promise.reject(new TypeError('NetworkError when attempting to fetch resource'));
       });
 
-      global.fetch = mockFetch;
+      const result = await querySimbadConeCapture(testCapture, 500);
+
+      expect(result.unavailable).toBe(true);
+      expect(result.candidates).toEqual([]);
+      expect(result.bestMatch).toBeNull();
+    });
+
+    it('fallo en /api/simbad hace que identifyCelestialCapture devuelva state: unavailable', async () => {
+      global.fetch = vi.fn().mockImplementation(() => {
+        return Promise.reject(new Error('AbortError: The operation was aborted due to timeout'));
+      });
 
       // Coordenadas que NO corresponden a ningún objeto del catálogo curado local
       const remoteCapture: Capture = {
@@ -274,6 +271,11 @@ describe('Resiliencia y Failover ante Degradación de CDS Estrasburgo', () => {
   // 3. Route Handler Proxy SIMBAD (/api/simbad)
   // ─────────────────────────────────────────────────────────────────────────────
   describe('Route Handler Proxy SIMBAD (/api/simbad)', () => {
+    it('incluye el endpoint oficial de Estrasburgo y el espejo de Harvard en el proxy', () => {
+      expect(SIMBAD_TAP_ENDPOINTS).toContain('https://simbad.cds.unistra.fr/simbad/sim-tap/sync');
+      expect(SIMBAD_TAP_ENDPOINTS).toContain('https://simbad.cfa.harvard.edu/simbad/sim-tap/sync');
+    });
+
     it('valida parámetros y rechaza coordenadas inválidas con status 400', async () => {
       const request = new Request('http://localhost:3000/api/simbad?ra=invalid&dec=0');
       const response = await simbadRouteGet(request);

@@ -222,17 +222,8 @@ export function matchLocalDossier(
 }
 
 /**
- * Capa 2: Consulta tipo cono a SIMBAD TAP con TOP 30 ordenada por distancia,
- * solicitando columnas verificadas de extensión angular (galdim_majaxis, galdim_minaxis, galdim_angle).
- */
-export const SIMBAD_TAP_ENDPOINTS = [
-  'https://simbad.cds.unistra.fr/simbad/sim-tap/sync',
-  'https://simbad.cfa.harvard.edu/simbad/sim-tap/sync',
-];
-
-/**
- * Capa 2: Consulta tipo cono a SIMBAD TAP con lista ordenada de endpoints (failover)
- * y timeout de 4s por endpoint, solicitando columnas verificadas de extensión angular.
+ * Capa 2: Consulta tipo cono a SIMBAD delegando en el proxy del servidor /api/simbad
+ * (que maneja validación, ADQL seguro y failover CDS -> Harvard).
  */
 export async function querySimbadConeCapture(
   capture: Capture,
@@ -248,67 +239,25 @@ export async function querySimbadConeCapture(
   const cleanDec = Number(decDeg.toFixed(6));
   const cleanRadius = Number(Math.min(Math.max(radiusDeg, 0.01), 2.5).toFixed(4));
 
-  const adql = `
-    SELECT TOP 30
-      basic.main_id,
-      otypedef.otype_longname,
-      basic.ra,
-      basic.dec,
-      basic.galdim_majaxis,
-      basic.galdim_minaxis,
-      basic.galdim_angle,
-      DISTANCE(POINT('ICRS', basic.ra, basic.dec), POINT('ICRS', ${cleanRa}, ${cleanDec})) AS dist
-    FROM basic
-    LEFT JOIN otypedef ON basic.otype = otypedef.otype
-    WHERE CONTAINS(POINT('ICRS', basic.ra, basic.dec), CIRCLE('ICRS', ${cleanRa}, ${cleanDec}, ${cleanRadius})) = 1
-    ORDER BY dist ASC
-  `.trim().replace(/\s+/g, ' ');
-
   let rawData: { data?: unknown[][] } | null = null;
 
-  for (const endpoint of SIMBAD_TAP_ENDPOINTS) {
-    const controller = new AbortController();
-    const timer = setTimeout(() => controller.abort(), timeoutMs);
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), timeoutMs);
 
-    try {
-      const fullUrl = `${endpoint}?request=doQuery&lang=adql&format=json&query=${encodeURIComponent(adql)}`;
-      const res = await fetch(fullUrl, {
-        signal: controller.signal,
-        cache: 'force-cache',
-      }).catch(() => null);
-      clearTimeout(timer);
+  try {
+    const res = await fetch(`/api/simbad?ra=${cleanRa}&dec=${cleanDec}&radius=${cleanRadius}`, {
+      signal: controller.signal,
+    }).catch(() => null);
+    clearTimeout(timer);
 
-      if (res && res.ok) {
-        const json = (await res.json().catch(() => null)) as { data?: unknown[][] } | null;
-        if (json && Array.isArray(json.data)) {
-          rawData = json;
-          break;
-        }
+    if (res && res.ok) {
+      const json = (await res.json().catch(() => null)) as { data?: unknown[][] } | null;
+      if (json && Array.isArray(json.data)) {
+        rawData = json;
       }
-    } catch {
-      clearTimeout(timer);
     }
-  }
-
-  if (!rawData && typeof window !== 'undefined') {
-    const controller = new AbortController();
-    const timer = setTimeout(() => controller.abort(), timeoutMs);
-
-    try {
-      const res = await fetch(`/api/simbad?ra=${cleanRa}&dec=${cleanDec}&radius=${cleanRadius}`, {
-        signal: controller.signal,
-      }).catch(() => null);
-      clearTimeout(timer);
-
-      if (res && res.ok) {
-        const json = (await res.json().catch(() => null)) as { data?: unknown[][] } | null;
-        if (json && Array.isArray(json.data)) {
-          rawData = json;
-        }
-      }
-    } catch {
-      clearTimeout(timer);
-    }
+  } catch {
+    clearTimeout(timer);
   }
 
   if (!rawData) {
