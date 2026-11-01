@@ -156,31 +156,38 @@ export default function SpaceCanvas(props: SpaceCanvasProps = {}) {
     const initAladin = async () => {
       try {
         if (!window.A) {
-          setStatusMessage("Cargando motor astronómico CDS Aladin Lite...");
-          await new Promise<void>((resolve, reject) => {
-            const existingScript = document.querySelector('script[src*="aladin.js"]');
-            if (existingScript && window.A) {
-              return resolve();
-            }
+          setStatusMessage("Cargando motor astronómico Aladin Lite (local)...");
+          try {
+            const aladinModule = await import("aladin-lite");
+            const A = (aladinModule.default || aladinModule) as unknown as NonNullable<typeof window.A>;
+            window.A = A;
+          } catch (localErr) {
+            console.warn("[AetherScope] Error al cargar paquete local aladin-lite, intentando fallback de CDN:", localErr);
+            await new Promise<void>((resolve, reject) => {
+              const existingScript = document.querySelector('script[src*="aladin.js"]');
+              if (existingScript && window.A) {
+                return resolve();
+              }
 
-            const script = document.createElement("script");
-            script.src = "https://aladin.cds.unistra.fr/AladinLite/api/v3/3.9.2-beta/aladin.js";
-            script.crossOrigin = "anonymous";
-            script.async = true;
-            script.charset = "utf-8";
-            script.onload = () => resolve();
-            script.onerror = () => {
-              // Fallback to latest CDN if beta version pin changes
-              const fallbackScript = document.createElement("script");
-              fallbackScript.src = "https://aladin.cds.unistra.fr/AladinLite/api/v3/latest/aladin.js";
-              fallbackScript.crossOrigin = "anonymous";
-              fallbackScript.async = true;
-              fallbackScript.onload = () => resolve();
-              fallbackScript.onerror = () => reject(new Error("No se pudo cargar el script de Aladin Lite"));
-              document.head.appendChild(fallbackScript);
-            };
-            document.head.appendChild(script);
-          });
+              const script = document.createElement("script");
+              script.src = "https://aladin.cds.unistra.fr/AladinLite/api/v3/3.9.2-beta/aladin.js";
+              script.crossOrigin = "anonymous";
+              script.async = true;
+              script.charset = "utf-8";
+              script.onload = () => resolve();
+              script.onerror = () => {
+                // Fallback to latest CDN if beta version pin changes
+                const fallbackScript = document.createElement("script");
+                fallbackScript.src = "https://aladin.cds.unistra.fr/AladinLite/api/v3/latest/aladin.js";
+                fallbackScript.crossOrigin = "anonymous";
+                fallbackScript.async = true;
+                fallbackScript.onload = () => resolve();
+                fallbackScript.onerror = () => reject(new Error("No se pudo cargar el script de Aladin Lite"));
+                document.head.appendChild(fallbackScript);
+              };
+              document.head.appendChild(script);
+            });
+          }
         }
 
         if (cancelled) return;
