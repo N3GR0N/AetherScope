@@ -3,14 +3,61 @@
 import { Suspense } from "react";
 import { useSearchParams } from "next/navigation";
 import { sanitizeCoordinateParams } from "@/lib/astronomy/coordinates";
-import { SpaceProvider } from "@/context/SpaceContext";
+import { SpaceProvider, useSpace } from "@/context/SpaceContext";
 import SpaceCanvas from "@/components/space-canvas/SpaceCanvas";
 import HeaderBar from "@/components/hud/HeaderBar";
-import CdsStatusBanner from "@/components/hud/CdsStatusBanner";
 import PrecisionCrosshair from "@/components/hud/PrecisionCrosshair";
 import CoordinateOverlay from "@/components/hud/CoordinateOverlay";
 import CaptureZoneButton from "@/components/hud/CaptureZoneButton";
 import DossierDrawer from "@/components/dossier/DossierDrawer";
+import CdsDownCard from "@/components/hud/CdsDownCard";
+import { useCdsRecovery } from "@/lib/hooks/useCdsRecovery";
+
+function AetherScopeMainViewport({
+  initialRa,
+  initialDec,
+  initialFov,
+}: {
+  initialRa?: number;
+  initialDec?: number;
+  initialFov?: number;
+}) {
+  const space = useSpace();
+  const { cdsState, lastCheckedTime } = useCdsRecovery();
+
+  return (
+    <main className="relative w-screen h-screen overflow-hidden bg-[#101015] select-none">
+      {/* 1. HeaderBar: siempre visible */}
+      <HeaderBar />
+
+      {/* 2. Área Central: si CDS está 'down', cartel táctico sin montar Aladin */}
+      {cdsState === "down" ? (
+        <div className="absolute inset-0 z-20 flex items-center justify-center p-4 bg-[#101015]">
+          <CdsDownCard lastCheckedTime={lastCheckedTime} />
+        </div>
+      ) : cdsState === "ok" ? (
+        <>
+          {/* Visor montado únicamente cuando CDS está operativo */}
+          <SpaceCanvas
+            initialRa={initialRa ?? space.currentRa}
+            initialDec={initialDec ?? space.currentDec}
+            initialFov={initialFov ?? space.currentFov}
+          />
+          {/* HUD táctico: solo visible con mapa activo */}
+          <PrecisionCrosshair />
+          <CoordinateOverlay />
+          <CaptureZoneButton />
+        </>
+      ) : (
+        /* Estado 'checking': primeros segundos de verificación, sin cartel para evitar parpadeo */
+        <div className="absolute inset-0 bg-[#101015]" />
+      )}
+
+      {/* 3. Scientific Astronomical Dossier & Target Selector */}
+      <DossierDrawer />
+    </main>
+  );
+}
 
 function AetherScopeMainContent() {
   const searchParams = useSearchParams();
@@ -31,32 +78,11 @@ function AetherScopeMainContent() {
       initialDec={initialDec}
       initialFov={initialFov}
     >
-      <main className="relative w-screen h-screen overflow-hidden bg-[#101015] select-none">
-        {/* 1. Infinite Deep Space Optical Canvas (Permanent DSS2 Color Clean Baseline) */}
-        <SpaceCanvas
-          initialRa={initialRa}
-          initialDec={initialDec}
-          initialFov={initialFov}
-        />
-
-        {/* 2. Precision Inspection Reticle HUD */}
-        <PrecisionCrosshair />
-
-        {/* 3. Top Unified Navigation Bar */}
-        <HeaderBar />
-
-        {/* 3.1 Discreet Tactical CDS Degradation Banner */}
-        <CdsStatusBanner />
-
-        {/* 4. Real-time Celestial Coordinates Card (Bottom-Left) */}
-        <CoordinateOverlay />
-
-        {/* 5. Tactical Target Scanner & Capture Zone Button (Bottom-Center) */}
-        <CaptureZoneButton />
-
-        {/* 6. Scientific Astronomical Dossier & Target Selector (Modal / Drawer) */}
-        <DossierDrawer />
-      </main>
+      <AetherScopeMainViewport
+        initialRa={initialRa}
+        initialDec={initialDec}
+        initialFov={initialFov}
+      />
     </SpaceProvider>
   );
 }
