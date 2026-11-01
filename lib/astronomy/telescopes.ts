@@ -26,7 +26,7 @@ export const TELESCOPES: Record<'jwst' | 'hubble', SpaceTelescope> = {
     altitudeInfo: '~1.500.000 km de la Tierra',
     targetInitial: '18 18 48 -13 49 00', // Pilares de la Creación (M16)
     fovInitial: 0.18,
-    baseSurvey: 'https://alasky.cds.unistra.fr/HST-hips/color',
+    baseSurvey: 'https://alasky.cds.unistra.fr/DSS/DSSColor',
     overlaySurvey: 'https://skies.esac.esa.int/JWST/NIRCam_Imaging/',
     instruments: ['NIRCam', 'MIRI', 'NIRSpec', 'FGS/NIRISS'],
     trajectoryColor: '#eab308', // Oro característico de espejos de berilio
@@ -39,7 +39,7 @@ export const TELESCOPES: Record<'jwst' | 'hubble', SpaceTelescope> = {
     altitudeInfo: '~535 km sobre la superficie',
     targetInitial: '18 18 48 -13 49 00',
     fovInitial: 0.25,
-    baseSurvey: 'https://alasky.cds.unistra.fr/HST-hips/color',
+    baseSurvey: 'https://alasky.cds.unistra.fr/DSS/DSSColor',
     instruments: ['WFC3', 'ACS', 'STIS', 'COS'],
     trajectoryColor: '#38bdf8', // Cian / Azul orbital reflectante
   },

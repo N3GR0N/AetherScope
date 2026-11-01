@@ -1,8 +1,13 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useCdsRecovery } from "@/lib/hooks/useCdsRecovery";
-import { NON_CDS_FALLBACK_SURVEY_URL, type SpectralSurvey } from "@/lib/astronomy/surveys";
+import {
+  DEFAULT_PRIMARY_SURVEY,
+  NON_CDS_FALLBACK_SURVEY_URL,
+  resolveSurveyUrl,
+  type SpectralSurvey,
+} from "@/lib/astronomy/surveys";
 import { sexagesimalToDecimal, type CosmicTarget } from "@/lib/astronomy/targets";
 import { useSpace } from "@/context/SpaceContext";
 import { Loader2, WifiOff } from "lucide-react";
@@ -67,23 +72,9 @@ export default function SpaceCanvas(props: SpaceCanvasProps = {}) {
   }
 
   const containerId = props.containerId || "aladin-lite-div";
-  const primarySurvey = props.primarySurvey ?? spaceContext?.primarySurvey ?? {
-    id: "dss2",
-    name: "Luz Visible (DSS2 Óptico)",
-    shortLabel: "DSS2 Óptico",
-    telescope: "Digitized Sky Survey",
-    agency: "CDS",
-    hipsId: "CDS/P/DSS2/color",
-    hipsUrl: "https://alasky.cds.unistra.fr/DSS/DSSColor",
-    wavelengthBand: "Óptico",
-    spectralRange: "400 - 750 nm",
-    frequency: "Visible",
-    accentColor: "#38bdf8",
-    tagColor: "text-white",
-    description: "Capa base óptica DSS2",
-    astrophysicalFocus: "Continuo visible",
-    keyEmissions: [],
-  };
+  const primarySurvey = useMemo(() => {
+    return props.primarySurvey ?? spaceContext?.primarySurvey ?? DEFAULT_PRIMARY_SURVEY;
+  }, [props.primarySurvey, spaceContext?.primarySurvey]);
   const secondarySurvey = props.secondarySurvey ?? spaceContext?.secondarySurvey;
   const blendOpacity = props.blendOpacity ?? spaceContext?.blendOpacity ?? 0;
   const activeTarget = props.activeTarget ?? spaceContext?.selectedTarget;
@@ -208,44 +199,56 @@ export default function SpaceCanvas(props: SpaceCanvasProps = {}) {
         }
 
         container.innerHTML = "";
+        setStatusMessage("Resolviendo servidores HiPS activos...");
+
+        const resolvedPrimary = await resolveSurveyUrl(primarySurvey);
+        if (cancelled) return;
+        const baseSurveyUrl = resolvedPrimary.url || NON_CDS_FALLBACK_SURVEY_URL;
+
         setStatusMessage("Montando lienzo celeste en espacio profundo...");
 
         const startRa = props.initialRa ?? spaceContext?.currentRa ?? 274.7;
         const startDec = props.initialDec ?? spaceContext?.currentDec ?? -13.8;
         const startFov = props.initialFov ?? spaceContext?.currentFov ?? 0.25;
-        const baseSurveyUrl = primarySurvey.hipsUrl || NON_CDS_FALLBACK_SURVEY_URL;
 
-        const aladin = window.A.aladin(`#${containerId}`, {
-          survey: baseSurveyUrl,
-          fov: startFov,
-          target: `${startRa} ${startDec}`,
-          showReticle: false,
-          showZoomControl: false,
-          showFullscreenControl: false,
-          showLayersControl: false,
-          showGotoControl: false,
-          showFrame: false,
-          showCooGrid: showGrid,
-          gridColor: "#ffffff",
-          gridOpacity: 0.15,
-          gridOptions: {
-            enabled: showGrid,
-            color: "#ffffff",
-            opacity: 0.15,
-            showLabels: true,
-            thickness: 1,
-            labelSize: 11,
-          },
-          showProjectionControl: false,
-          showSimbadPointerControl: false,
-          showCooGridControl: false,
-          showCooLocation: false,
-          showLocation: false,
-          showFov: false,
-          showStatusBar: false,
-          showShareControl: false,
-          showSettingsControl: false,
-        });
+        let aladin: AladinInstance;
+        try {
+          aladin = window.A.aladin(`#${containerId}`, {
+            survey: baseSurveyUrl,
+            fov: startFov,
+            target: `${startRa} ${startDec}`,
+            showReticle: false,
+            showZoomControl: false,
+            showFullscreenControl: false,
+            showLayersControl: false,
+            showGotoControl: false,
+            showFrame: false,
+            showCooGrid: showGrid,
+            gridColor: "#ffffff",
+            gridOpacity: 0.15,
+            gridOptions: {
+              enabled: showGrid,
+              color: "#ffffff",
+              opacity: 0.15,
+              showLabels: true,
+              thickness: 1,
+              labelSize: 11,
+            },
+            showProjectionControl: false,
+            showSimbadPointerControl: false,
+            showCooGridControl: false,
+            showCooLocation: false,
+            showLocation: false,
+            showFov: false,
+            showStatusBar: false,
+            showShareControl: false,
+            showSettingsControl: false,
+          });
+        } catch (aladinInitErr) {
+          console.warn("[AetherScope] Error instanciando Aladin Lite:", aladinInitErr);
+          setLoadingState("fallback");
+          return;
+        }
 
         if (cancelled) return;
         aladinInstanceRef.current = aladin;
@@ -256,11 +259,31 @@ export default function SpaceCanvas(props: SpaceCanvasProps = {}) {
           onReadyRef.current(aladin);
         }
 
-        // Overlay inicial si existe
+        // Overlay inicial seguro (JWST / filtros secundarios)
         if (blendOpacity > 0.02 && secondarySurvey?.hipsUrl) {
-          setTimeout(() => {
+          setTimeout(async () => {
+            if (cancelled) return;
             try {
-              aladin.setOverlayImageLayer(secondarySurvey.hipsUrl);
+              const resolvedSec = await resolveSurveyUrl(secondarySurvey);
+              const targetSecUrl = resolvedSec.url || secondarySurvey.hipsUrl;
+              try {
+                const layerObj = aladin.createImageSurvey(
+                  secondarySurvey.hipsId,
+                  secondarySurvey.name,
+                  targetSecUrl,
+                  "equatorial",
+                  9,
+                  { imgFormat: "png", errorCallback: () => {} }
+                );
+                aladin.setOverlayImageLayer(layerObj);
+              } catch {
+                try {
+                  aladin.setOverlayImageLayer(targetSecUrl);
+                } catch (e) {
+                  console.warn("[AetherScope] Error aplicando overlay layer inicial:", e);
+                }
+              }
+
               const overlay = aladin.getOverlayImageLayer();
               if (overlay && typeof overlay.setAlpha === "function") {
                 overlay.setAlpha(blendOpacity);
@@ -268,7 +291,7 @@ export default function SpaceCanvas(props: SpaceCanvasProps = {}) {
             } catch (err) {
               console.warn("[AetherScope] Error montando overlay inicial:", err);
             }
-          }, 200);
+          }, 250);
         }
 
         // Event listeners de telemetría
@@ -337,46 +360,68 @@ export default function SpaceCanvas(props: SpaceCanvasProps = {}) {
     const aladin = aladinInstanceRef.current;
     if (!aladin || loadingState !== "ready") return;
 
-    try {
-      aladin.setImageSurvey(primarySurvey.hipsUrl || primarySurvey.hipsId);
+    let cancelled = false;
 
-      setTimeout(() => {
-        try {
-          const layer = aladin.getBaseImageLayer() as {
-            setColormap?: (cmap: string | null, opts?: object) => void;
-          } | null;
-          if (layer && typeof layer.setColormap === "function") {
-            if (primarySurvey.id === "nasa-composite" || primarySurvey.id === "jwst") {
-              layer.setColormap("magma", { stretch: "asinh" });
-            } else {
-              layer.setColormap("native");
+    const applyPrimarySurvey = async () => {
+      try {
+        const resolved = await resolveSurveyUrl(primarySurvey);
+        if (cancelled) return;
+
+        if (resolved.url) {
+          try {
+            aladin.setImageSurvey(resolved.url);
+          } catch {
+            try {
+              const layer = aladin.createImageSurvey(
+                primarySurvey.hipsId,
+                primarySurvey.name,
+                resolved.url,
+                "equatorial",
+                9,
+                { imgFormat: "jpg", errorCallback: () => {} }
+              );
+              aladin.setImageSurvey(layer);
+            } catch (layerErr) {
+              console.warn("[AetherScope] Falló creación segura de capa base:", layerErr);
             }
           }
-        } catch (err) {
-          console.warn("[AetherScope] Error aplicando colormap LUT:", err);
+        } else {
+          console.warn(`[AetherScope] Sin endpoint disponible para survey: ${primarySurvey.name}`);
         }
-      }, 80);
-    } catch (err1) {
-      console.warn(`[AetherScope] Error cambiando capa base a ${primarySurvey.name}:`, err1);
-      try {
-        aladin.setImageSurvey(NON_CDS_FALLBACK_SURVEY_URL);
-      } catch (fallbackErr) {
-        console.warn("[AetherScope] Error aplicando fallback a survey no-CDS:", fallbackErr);
+
+        setTimeout(() => {
+          if (cancelled) return;
+          try {
+            const layer = aladin.getBaseImageLayer() as {
+              setColormap?: (cmap: string | null, opts?: object) => void;
+            } | null;
+            if (layer && typeof layer.setColormap === "function") {
+              if (primarySurvey.id === "nasa-composite" || primarySurvey.id === "jwst") {
+                layer.setColormap("magma", { stretch: "asinh" });
+              } else {
+                layer.setColormap("native");
+              }
+            }
+          } catch (err) {
+            console.warn("[AetherScope] Error aplicando colormap LUT:", err);
+          }
+        }, 80);
+      } catch (err1) {
+        console.warn(`[AetherScope] Error cambiando capa base a ${primarySurvey.name}:`, err1);
       }
-    }
+    };
+
+    applyPrimarySurvey();
+
+    return () => {
+      cancelled = true;
+    };
   }, [primarySurvey, loadingState]);
 
-  // Al recuperarse el CDS, reasignar automáticamente el survey base actual
+  // Al recuperarse el CDS, no forzar vuelta al principal en la misma sesión (política de estabilidad)
   useCdsRecovery({
     onRecovered: () => {
-      const aladin = aladinInstanceRef.current;
-      if (!aladin || loadingState !== "ready") return;
-      console.info("[AetherScope] CDS recuperado. Reasignando survey base actual:", primarySurvey.name);
-      try {
-        aladin.setImageSurvey(primarySurvey.hipsUrl || primarySurvey.hipsId);
-      } catch (err) {
-        console.warn("[AetherScope] Error reasignando survey base tras recuperación:", err);
-      }
+      console.info("[AetherScope] CDS recuperado. Manteniendo estado de sesión actual.");
     },
   });
 
@@ -385,39 +430,53 @@ export default function SpaceCanvas(props: SpaceCanvasProps = {}) {
     const aladin = aladinInstanceRef.current;
     if (!aladin || loadingState !== "ready") return;
 
-    try {
-      if (blendOpacity > 0.02 && secondarySurvey?.hipsUrl) {
-        const overlayUrl = secondarySurvey.hipsUrl || secondarySurvey.hipsId;
-        try {
-          aladin.setOverlayImageLayer(overlayUrl);
-        } catch {
+    let cancelled = false;
+
+    const applyOverlay = async () => {
+      try {
+        if (blendOpacity > 0.02 && secondarySurvey?.hipsUrl) {
+          const resolvedSec = await resolveSurveyUrl(secondarySurvey);
+          if (cancelled) return;
+
+          const targetSecUrl = resolvedSec.url || secondarySurvey.hipsUrl;
           try {
             const layerObj = aladin.createImageSurvey(
               secondarySurvey.hipsId,
               secondarySurvey.name,
-              secondarySurvey.hipsUrl,
+              targetSecUrl,
               "equatorial",
-              9
+              9,
+              { imgFormat: "png", errorCallback: () => {} }
             );
             aladin.setOverlayImageLayer(layerObj);
-          } catch (e) {
-            console.warn(`[AetherScope] Falló capa superpuesta ${secondarySurvey.name}:`, e);
+          } catch {
+            try {
+              aladin.setOverlayImageLayer(targetSecUrl);
+            } catch (e) {
+              console.warn(`[AetherScope] Falló capa superpuesta ${secondarySurvey.name}:`, e);
+            }
+          }
+
+          const overlay = aladin.getOverlayImageLayer();
+          if (overlay && typeof overlay.setAlpha === "function") {
+            overlay.setAlpha(blendOpacity);
+          }
+        } else {
+          const overlay = aladin.getOverlayImageLayer();
+          if (overlay && typeof overlay.setAlpha === "function") {
+            overlay.setAlpha(0);
           }
         }
-
-        const overlay = aladin.getOverlayImageLayer();
-        if (overlay && typeof overlay.setAlpha === "function") {
-          overlay.setAlpha(blendOpacity);
-        }
-      } else {
-        const overlay = aladin.getOverlayImageLayer();
-        if (overlay && typeof overlay.setAlpha === "function") {
-          overlay.setAlpha(0);
-        }
+      } catch (e) {
+        console.warn("[AetherScope] Error al sincronizar superposición:", e);
       }
-    } catch (e) {
-      console.warn("[AetherScope] Error al sincronizar superposición:", e);
-    }
+    };
+
+    applyOverlay();
+
+    return () => {
+      cancelled = true;
+    };
   }, [secondarySurvey, blendOpacity, loadingState]);
 
   // Handle cinematic target transitions

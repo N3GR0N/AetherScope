@@ -10,7 +10,9 @@ import {
   DEFAULT_PRIMARY_SURVEY,
   DEFAULT_OVERLAY_SURVEY,
   NASA_COMPOSITE_SURVEY,
-  checkSurveyHealth,
+  SPECTRAL_SURVEYS,
+  resolveSurveyUrl,
+  type ResolvedSurveyInfo,
   type SpectralSurvey,
 } from "@/lib/astronomy/surveys";
 import {
@@ -62,6 +64,7 @@ interface SpaceContextValue {
   primarySurvey: SpectralSurvey;
   secondarySurvey: SpectralSurvey;
   isPrimarySurveyAvailable: boolean;
+  resolvedBaseInfo: ResolvedSurveyInfo | null;
   blendOpacity: number;
   isNasaComposite: boolean;
   setPrimarySurvey: (survey: SpectralSurvey) => void;
@@ -160,22 +163,25 @@ export function SpaceProvider({
     return () => clearTimeout(timer);
   }, [initialRa, initialDec, initialFov]);
 
-  // Optical base permanent survey: DSS2 Color baseline with 0 overlay
+  // Survey inicial: base DSS2 Color con overlay activo de JWST (NIRCam) para M16
+  const jwstSurvey = SPECTRAL_SURVEYS.find((s) => s.id === "jwst") || DEFAULT_OVERLAY_SURVEY;
   const [primarySurvey, setPrimarySurveyState] = useState<SpectralSurvey>(DEFAULT_PRIMARY_SURVEY);
-  const [secondarySurvey, setSecondarySurvey] = useState<SpectralSurvey>(DEFAULT_OVERLAY_SURVEY);
-  const [blendOpacity, setBlendOpacity] = useState<number>(0.0);
+  const [secondarySurvey, setSecondarySurvey] = useState<SpectralSurvey>(jwstSurvey);
+  const [blendOpacity, setBlendOpacity] = useState<number>(0.65);
   const [isNasaComposite, setIsNasaComposite] = useState<boolean>(false);
 
-  // Health check del survey primario (sin conmutación automática de survey)
+  // Health check y resolución de espejo para el survey primario
   const [isPrimarySurveyAvailable, setIsPrimarySurveyAvailable] = useState<boolean>(true);
+  const [resolvedBaseInfo, setResolvedBaseInfo] = useState<ResolvedSurveyInfo | null>(null);
 
   useEffect(() => {
     let cancelled = false;
 
     async function evaluatePrimarySurveyHealth() {
-      const isHealthy = await checkSurveyHealth(primarySurvey);
+      const resolved = await resolveSurveyUrl(primarySurvey);
       if (!cancelled) {
-        setIsPrimarySurveyAvailable(isHealthy);
+        setResolvedBaseInfo(resolved);
+        setIsPrimarySurveyAvailable(resolved.isAvailable);
       }
     }
 
@@ -244,6 +250,13 @@ export function SpaceProvider({
     setCurrentDec(decDeg);
     setCurrentFov(tel.fovInitial);
 
+    if (id === "jwst") {
+      setSecondarySurvey(jwstSurvey);
+      setBlendOpacity(0.65);
+    } else {
+      setBlendOpacity(0.0);
+    }
+
     if (aladinRef.current) {
       try {
         aladinRef.current.animateToRaDec(raDeg, decDeg, 0.5);
@@ -252,7 +265,7 @@ export function SpaceProvider({
         console.warn("[AetherScope] Error moviendo telescopio activo:", err);
       }
     }
-  }, []);
+  }, [jwstSurvey]);
 
   const navigateToTarget = useCallback((target: CosmicTarget) => {
     setSelectedTarget(target);
@@ -377,6 +390,7 @@ export function SpaceProvider({
     primarySurvey,
     secondarySurvey,
     isPrimarySurveyAvailable,
+    resolvedBaseInfo,
     blendOpacity,
     isNasaComposite,
     setPrimarySurvey,
