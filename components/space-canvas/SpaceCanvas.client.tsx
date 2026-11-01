@@ -5,7 +5,6 @@ import { useCdsRecovery } from "@/lib/hooks/useCdsRecovery";
 import {
   DEFAULT_PRIMARY_SURVEY,
   NON_CDS_FALLBACK_SURVEY_URL,
-  resolveSurveyUrl,
   type SpectralSurvey,
 } from "@/lib/astronomy/surveys";
 import { sexagesimalToDecimal, type CosmicTarget } from "@/lib/astronomy/targets";
@@ -199,17 +198,12 @@ export default function SpaceCanvas(props: SpaceCanvasProps = {}) {
         }
 
         container.innerHTML = "";
-        setStatusMessage("Resolviendo servidores HiPS activos...");
-
-        const resolvedPrimary = await resolveSurveyUrl(primarySurvey);
-        if (cancelled) return;
-        const baseSurveyUrl = resolvedPrimary.url || NON_CDS_FALLBACK_SURVEY_URL;
-
         setStatusMessage("Montando lienzo celeste en espacio profundo...");
 
         const startRa = props.initialRa ?? spaceContext?.currentRa ?? 274.7;
         const startDec = props.initialDec ?? spaceContext?.currentDec ?? -13.8;
         const startFov = props.initialFov ?? spaceContext?.currentFov ?? 0.25;
+        const baseSurveyUrl = primarySurvey.hipsUrl || NON_CDS_FALLBACK_SURVEY_URL;
 
         let aladin: AladinInstance;
         try {
@@ -261,11 +255,10 @@ export default function SpaceCanvas(props: SpaceCanvasProps = {}) {
 
         // Overlay inicial seguro (JWST / filtros secundarios)
         if (blendOpacity > 0.02 && secondarySurvey?.hipsUrl) {
-          setTimeout(async () => {
+          setTimeout(() => {
             if (cancelled) return;
             try {
-              const resolvedSec = await resolveSurveyUrl(secondarySurvey);
-              const targetSecUrl = resolvedSec.url || secondarySurvey.hipsUrl;
+              const targetSecUrl = secondarySurvey.hipsUrl;
               try {
                 const layerObj = aladin.createImageSurvey(
                   secondarySurvey.hipsId,
@@ -360,68 +353,41 @@ export default function SpaceCanvas(props: SpaceCanvasProps = {}) {
     const aladin = aladinInstanceRef.current;
     if (!aladin || loadingState !== "ready") return;
 
-    let cancelled = false;
+    try {
+      aladin.setImageSurvey(primarySurvey.hipsUrl || primarySurvey.hipsId);
 
-    const applyPrimarySurvey = async () => {
-      try {
-        const resolved = await resolveSurveyUrl(primarySurvey);
-        if (cancelled) return;
-
-        if (resolved.url) {
-          try {
-            aladin.setImageSurvey(resolved.url);
-          } catch {
-            try {
-              const layer = aladin.createImageSurvey(
-                primarySurvey.hipsId,
-                primarySurvey.name,
-                resolved.url,
-                "equatorial",
-                9,
-                { imgFormat: "jpg", errorCallback: () => {} }
-              );
-              aladin.setImageSurvey(layer);
-            } catch (layerErr) {
-              console.warn("[AetherScope] Falló creación segura de capa base:", layerErr);
+      setTimeout(() => {
+        try {
+          const layer = aladin.getBaseImageLayer() as {
+            setColormap?: (cmap: string | null, opts?: object) => void;
+          } | null;
+          if (layer && typeof layer.setColormap === "function") {
+            if (primarySurvey.id === "nasa-composite" || primarySurvey.id === "jwst") {
+              layer.setColormap("magma", { stretch: "asinh" });
+            } else {
+              layer.setColormap("native");
             }
           }
-        } else {
-          console.warn(`[AetherScope] Sin endpoint disponible para survey: ${primarySurvey.name}`);
+        } catch (err) {
+          console.warn("[AetherScope] Error aplicando colormap LUT:", err);
         }
-
-        setTimeout(() => {
-          if (cancelled) return;
-          try {
-            const layer = aladin.getBaseImageLayer() as {
-              setColormap?: (cmap: string | null, opts?: object) => void;
-            } | null;
-            if (layer && typeof layer.setColormap === "function") {
-              if (primarySurvey.id === "nasa-composite" || primarySurvey.id === "jwst") {
-                layer.setColormap("magma", { stretch: "asinh" });
-              } else {
-                layer.setColormap("native");
-              }
-            }
-          } catch (err) {
-            console.warn("[AetherScope] Error aplicando colormap LUT:", err);
-          }
-        }, 80);
-      } catch (err1) {
-        console.warn(`[AetherScope] Error cambiando capa base a ${primarySurvey.name}:`, err1);
-      }
-    };
-
-    applyPrimarySurvey();
-
-    return () => {
-      cancelled = true;
-    };
+      }, 80);
+    } catch (err1) {
+      console.warn(`[AetherScope] Error cambiando capa base a ${primarySurvey.name}:`, err1);
+    }
   }, [primarySurvey, loadingState]);
 
-  // Al recuperarse el CDS, no forzar vuelta al principal en la misma sesión (política de estabilidad)
+  // Al recuperarse el CDS, reasignar el survey base actual
   useCdsRecovery({
     onRecovered: () => {
-      console.info("[AetherScope] CDS recuperado. Manteniendo estado de sesión actual.");
+      const aladin = aladinInstanceRef.current;
+      if (!aladin || loadingState !== "ready") return;
+      console.info("[AetherScope] CDS recuperado. Reasignando survey base actual:", primarySurvey.name);
+      try {
+        aladin.setImageSurvey(primarySurvey.hipsUrl || primarySurvey.hipsId);
+      } catch (err) {
+        console.warn("[AetherScope] Error reasignando survey base tras recuperación:", err);
+      }
     },
   });
 
@@ -430,53 +396,40 @@ export default function SpaceCanvas(props: SpaceCanvasProps = {}) {
     const aladin = aladinInstanceRef.current;
     if (!aladin || loadingState !== "ready") return;
 
-    let cancelled = false;
-
-    const applyOverlay = async () => {
-      try {
-        if (blendOpacity > 0.02 && secondarySurvey?.hipsUrl) {
-          const resolvedSec = await resolveSurveyUrl(secondarySurvey);
-          if (cancelled) return;
-
-          const targetSecUrl = resolvedSec.url || secondarySurvey.hipsUrl;
+    try {
+      if (blendOpacity > 0.02 && secondarySurvey?.hipsUrl) {
+        const targetSecUrl = secondarySurvey.hipsUrl;
+        try {
+          const layerObj = aladin.createImageSurvey(
+            secondarySurvey.hipsId,
+            secondarySurvey.name,
+            targetSecUrl,
+            "equatorial",
+            9,
+            { imgFormat: "png", errorCallback: () => {} }
+          );
+          aladin.setOverlayImageLayer(layerObj);
+        } catch {
           try {
-            const layerObj = aladin.createImageSurvey(
-              secondarySurvey.hipsId,
-              secondarySurvey.name,
-              targetSecUrl,
-              "equatorial",
-              9,
-              { imgFormat: "png", errorCallback: () => {} }
-            );
-            aladin.setOverlayImageLayer(layerObj);
-          } catch {
-            try {
-              aladin.setOverlayImageLayer(targetSecUrl);
-            } catch (e) {
-              console.warn(`[AetherScope] Falló capa superpuesta ${secondarySurvey.name}:`, e);
-            }
-          }
-
-          const overlay = aladin.getOverlayImageLayer();
-          if (overlay && typeof overlay.setAlpha === "function") {
-            overlay.setAlpha(blendOpacity);
-          }
-        } else {
-          const overlay = aladin.getOverlayImageLayer();
-          if (overlay && typeof overlay.setAlpha === "function") {
-            overlay.setAlpha(0);
+            aladin.setOverlayImageLayer(targetSecUrl);
+          } catch (e) {
+            console.warn(`[AetherScope] Falló capa superpuesta ${secondarySurvey.name}:`, e);
           }
         }
-      } catch (e) {
-        console.warn("[AetherScope] Error al sincronizar superposición:", e);
+
+        const overlay = aladin.getOverlayImageLayer();
+        if (overlay && typeof overlay.setAlpha === "function") {
+          overlay.setAlpha(blendOpacity);
+        }
+      } else {
+        const overlay = aladin.getOverlayImageLayer();
+        if (overlay && typeof overlay.setAlpha === "function") {
+          overlay.setAlpha(0);
+        }
       }
-    };
-
-    applyOverlay();
-
-    return () => {
-      cancelled = true;
-    };
+    } catch (e) {
+      console.warn("[AetherScope] Error al sincronizar superposición:", e);
+    }
   }, [secondarySurvey, blendOpacity, loadingState]);
 
   // Handle cinematic target transitions

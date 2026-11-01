@@ -12,7 +12,6 @@ export interface SpectralSurvey {
   agency: string;
   hipsId: string;
   hipsUrl: string;
-  mirrors?: string[];
   wavelengthBand: string;
   spectralRange: string;
   frequency: string;
@@ -56,102 +55,48 @@ export function isCdsHost(urlOrHost: string): boolean {
   }
 }
 
-export function getMirrorAgency(url: string): string {
-  if (!url) return 'DESCONOCIDO';
-  if (url.includes('esac.esa.int') || url.includes('esa.int')) return 'ESA';
-  if (url.includes('casda.csiro.au') || url.includes('csiro.au')) return 'CSIRO';
-  if (url.includes('cfa.harvard.edu')) return 'HARVARD';
-  if (url.includes('caltech.edu') || url.includes('ipac.caltech.edu')) return 'IPAC';
-  if (url.includes('unistra.fr') || url.includes('u-strasbg.fr')) return 'CDS';
-  return 'ESPEJO';
-}
-
-export interface ResolvedSurveyInfo {
-  url: string | null;
-  isMirror: boolean;
-  mirrorAgency?: string;
-  isAvailable: boolean;
-}
-
+/**
+ * Evalúa la disponibilidad de un survey HiPS con timeout de 4 s y caché de 60 s.
+ * Protegido contra NetworkError / excepciones de red para no lanzar jamás excepciones al llamador.
+ */
 export async function checkSurveyHealth(
   survey: { hipsUrl: string } | string,
   timeoutMs: number = 4000
 ): Promise<boolean> {
-  const hipsUrl = typeof survey === 'string' ? survey : survey.hipsUrl;
-  if (!hipsUrl) return false;
-
-  const baseUrl = hipsUrl.replace(/\/+$/, '');
-  const propertiesUrl = `${baseUrl}/properties`;
-
-  const cached = surveyHealthCache.get(propertiesUrl);
-  if (cached && Date.now() - cached.checkedAt < SURVEY_HEALTH_CACHE_TTL_MS) {
-    return cached.available;
-  }
-
-  const controller = new AbortController();
-  const timer = setTimeout(() => controller.abort(), timeoutMs);
-
   try {
-    const res = await fetch(propertiesUrl, {
-      method: 'GET',
-      signal: controller.signal,
-      headers: { Accept: 'text/plain, */*' },
-    });
-    const isAvailable = res.ok;
-    surveyHealthCache.set(propertiesUrl, { available: isAvailable, checkedAt: Date.now() });
-    return isAvailable;
+    const hipsUrl = typeof survey === 'string' ? survey : survey.hipsUrl;
+    if (!hipsUrl) return false;
+
+    const baseUrl = hipsUrl.replace(/\/+$/, '');
+    const propertiesUrl = `${baseUrl}/properties`;
+
+    const cached = surveyHealthCache.get(propertiesUrl);
+    if (cached && Date.now() - cached.checkedAt < SURVEY_HEALTH_CACHE_TTL_MS) {
+      return cached.available;
+    }
+
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), timeoutMs);
+
+    try {
+      const res = await fetch(propertiesUrl, {
+        method: 'GET',
+        signal: controller.signal,
+        headers: { Accept: 'text/plain, */*' },
+      }).catch(() => null);
+
+      const isAvailable = Boolean(res && res.ok);
+      surveyHealthCache.set(propertiesUrl, { available: isAvailable, checkedAt: Date.now() });
+      return isAvailable;
+    } catch {
+      surveyHealthCache.set(propertiesUrl, { available: false, checkedAt: Date.now() });
+      return false;
+    } finally {
+      clearTimeout(timer);
+    }
   } catch {
-    surveyHealthCache.set(propertiesUrl, { available: false, checkedAt: Date.now() });
     return false;
-  } finally {
-    clearTimeout(timer);
   }
-}
-
-/**
- * Resuelve la primera URL sana para un survey dado:
- * 1. Prueba primero la URL principal (`hipsUrl`).
- * 2. Si falla, prueba secuencialmente los espejos verificados (`mirrors`).
- * 3. Si todos fallan o no hay ninguno sano, retorna `{ url: null, isMirror: false, isAvailable: false }`.
- */
-export async function resolveSurveyUrl(
-  survey: { hipsUrl: string; mirrors?: string[] } | string,
-  timeoutMs: number = 4000
-): Promise<ResolvedSurveyInfo> {
-  const primaryUrl = typeof survey === 'string' ? survey : survey.hipsUrl;
-  const mirrors = typeof survey === 'string' ? [] : (survey.mirrors ?? []);
-
-  // 1. Probar la URL principal
-  if (primaryUrl) {
-    const primaryOk = await checkSurveyHealth(primaryUrl, timeoutMs);
-    if (primaryOk) {
-      return {
-        url: primaryUrl,
-        isMirror: false,
-        isAvailable: true,
-      };
-    }
-  }
-
-  // 2. Probar espejos en orden
-  for (const mirrorUrl of mirrors) {
-    const mirrorOk = await checkSurveyHealth(mirrorUrl, timeoutMs);
-    if (mirrorOk) {
-      return {
-        url: mirrorUrl,
-        isMirror: true,
-        mirrorAgency: getMirrorAgency(mirrorUrl),
-        isAvailable: true,
-      };
-    }
-  }
-
-  // 3. Ningún endpoint respondió
-  return {
-    url: null,
-    isMirror: false,
-    isAvailable: false,
-  };
 }
 
 export async function findFirstAvailableNonCdsSurvey(
@@ -184,7 +129,6 @@ export const HST_COLOR_SURVEY: SpectralSurvey = {
   agency: 'NASA / ESA / STScI',
   hipsId: 'CDS/P/HST/color',
   hipsUrl: HST_COLOR_SURVEY_URL,
-  mirrors: [],
   wavelengthBand: 'Óptico Compuesto (ACS/WFC3)',
   spectralRange: '390 nm – 850 nm',
   frequency: '350 THz – 770 THz',
@@ -203,7 +147,6 @@ export const NASA_COMPOSITE_SURVEY: SpectralSurvey = {
   agency: 'NASA / ESA / CSA / STScI',
   hipsId: 'ESAVO/P/JWST/NIRCam_Imaging',
   hipsUrl: JWST_NIRCAM_OVERLAY_URL,
-  mirrors: [],
   wavelengthBand: 'Compuesto Multiespectral Difusión Pública',
   spectralRange: '0.4 µm – 4.4 µm (Hubble Óptico + JWST NIRCam)',
   frequency: '68 THz – 750 THz',
@@ -223,10 +166,6 @@ export const SPECTRAL_SURVEYS: SpectralSurvey[] = [
     agency: 'STScI / ESA / Caltech',
     hipsId: 'CDS/P/DSS2/color',
     hipsUrl: 'https://alasky.cds.unistra.fr/DSS/DSSColor',
-    mirrors: [
-      'https://skies.esac.esa.int/DSSColor',
-      'https://casda.csiro.au/hips/DSS2/color',
-    ],
     wavelengthBand: 'Espectro Visible (Luz Óptica)',
     spectralRange: '380 nm – 750 nm',
     frequency: '400 THz – 790 THz',
@@ -244,9 +183,6 @@ export const SPECTRAL_SURVEYS: SpectralSurvey[] = [
     agency: 'ESA (European Space Agency)',
     hipsId: 'CDS/P/GAIA/DR3/color',
     hipsUrl: 'https://alasky.cds.unistra.fr/ancillary/GaiaDR3/color-Rp-G-Bp-flux-map',
-    mirrors: [
-      'https://skies.esac.esa.int/Gaia/dr3/RGB',
-    ],
     wavelengthBand: 'Flujo Fotométrico G / Densidad Estelar',
     spectralRange: '330 nm – 1050 nm (Banda G)',
     frequency: '285 THz – 909 THz',
@@ -264,7 +200,6 @@ export const SPECTRAL_SURVEYS: SpectralSurvey[] = [
     agency: 'ESA / NASA / CSA',
     hipsId: 'ESAVO/P/JWST/NIRCam_Imaging',
     hipsUrl: JWST_NIRCAM_OVERLAY_URL,
-    mirrors: [],
     wavelengthBand: 'Infrarrojo Cercano / Medio',
     spectralRange: '0.6 µm – 28.0 µm',
     frequency: '10.7 THz – 500 THz',
@@ -282,10 +217,6 @@ export const SPECTRAL_SURVEYS: SpectralSurvey[] = [
     agency: 'NASA / IPAC / Caltech',
     hipsId: 'CDS/P/2MASS/color',
     hipsUrl: 'https://alaskybis.cds.unistra.fr/2MASS/Color',
-    mirrors: [
-      'https://skies.esac.esa.int/2MASSColor',
-      'https://casda.csiro.au/hips/2MASS/Color',
-    ],
     wavelengthBand: 'Infrarrojo Cercano (J, H, Ks)',
     spectralRange: '1.2 µm – 2.2 µm',
     frequency: '136 THz – 240 THz',
@@ -303,9 +234,6 @@ export const SPECTRAL_SURVEYS: SpectralSurvey[] = [
     agency: 'NASA / JPL',
     hipsId: 'CDS/P/allWISE/color',
     hipsUrl: 'https://alasky.cds.unistra.fr/AllWISE/RGB-W4-W2-W1',
-    mirrors: [
-      'https://skies.esac.esa.int/AllWISEColor',
-    ],
     wavelengthBand: 'Infrarrojo Térmico Profundo',
     spectralRange: '3.4 µm – 22.0 µm (W1–W4)',
     frequency: '13.6 THz – 88 THz',
@@ -323,7 +251,6 @@ export const SPECTRAL_SURVEYS: SpectralSurvey[] = [
     agency: 'NASA / Smithsonian (CXC)',
     hipsId: 'cxc.harvard.edu/P/cda/hips/allsky/rgb',
     hipsUrl: 'https://cdaftp.cfa.harvard.edu/cxc-hips',
-    mirrors: [],
     wavelengthBand: 'Rayos X de Alta Energía',
     spectralRange: '0.1 keV – 10.0 keV (0.12 – 12 nm)',
     frequency: '2.4 × 10¹⁶ – 2.4 × 10¹⁸ Hz',

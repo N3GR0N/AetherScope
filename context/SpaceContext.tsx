@@ -11,8 +11,7 @@ import {
   DEFAULT_OVERLAY_SURVEY,
   NASA_COMPOSITE_SURVEY,
   SPECTRAL_SURVEYS,
-  resolveSurveyUrl,
-  type ResolvedSurveyInfo,
+  checkSurveyHealth,
   type SpectralSurvey,
 } from "@/lib/astronomy/surveys";
 import {
@@ -64,7 +63,6 @@ interface SpaceContextValue {
   primarySurvey: SpectralSurvey;
   secondarySurvey: SpectralSurvey;
   isPrimarySurveyAvailable: boolean;
-  resolvedBaseInfo: ResolvedSurveyInfo | null;
   blendOpacity: number;
   isNasaComposite: boolean;
   setPrimarySurvey: (survey: SpectralSurvey) => void;
@@ -170,18 +168,16 @@ export function SpaceProvider({
   const [blendOpacity, setBlendOpacity] = useState<number>(0.65);
   const [isNasaComposite, setIsNasaComposite] = useState<boolean>(false);
 
-  // Health check y resolución de espejo para el survey primario
+  // Health check del survey primario
   const [isPrimarySurveyAvailable, setIsPrimarySurveyAvailable] = useState<boolean>(true);
-  const [resolvedBaseInfo, setResolvedBaseInfo] = useState<ResolvedSurveyInfo | null>(null);
 
   useEffect(() => {
     let cancelled = false;
 
     async function evaluatePrimarySurveyHealth() {
-      const resolved = await resolveSurveyUrl(primarySurvey);
+      const ok = await checkSurveyHealth(primarySurvey);
       if (!cancelled) {
-        setResolvedBaseInfo(resolved);
-        setIsPrimarySurveyAvailable(resolved.isAvailable);
+        setIsPrimarySurveyAvailable(ok);
       }
     }
 
@@ -390,7 +386,6 @@ export function SpaceProvider({
     primarySurvey,
     secondarySurvey,
     isPrimarySurveyAvailable,
-    resolvedBaseInfo,
     blendOpacity,
     isNasaComposite,
     setPrimarySurvey,
