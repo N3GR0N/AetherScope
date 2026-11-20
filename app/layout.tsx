@@ -1,12 +1,17 @@
 import type { Metadata, Viewport } from "next";
 import "./globals.css";
-import { Share_Tech_Mono } from "next/font/google";
+import { Inter, Geist_Mono } from "next/font/google";
 import { AuthProvider } from "@/components/auth/AuthProvider";
 
-const shareTechMono = Share_Tech_Mono({
-  weight: "400",
+const fontSans = Inter({
   subsets: ["latin"],
-  variable: "--font-proto-next",
+  variable: "--font-sans",
+  display: "swap",
+});
+
+const fontMono = Geist_Mono({
+  subsets: ["latin"],
+  variable: "--font-mono",
   display: "swap",
 });
 
@@ -43,9 +48,9 @@ export default function RootLayout({
   return (
     <html
       lang="es"
-      className={`dark h-full w-full overflow-hidden select-none bg-[#101015] ${shareTechMono.variable}`}
+      className={`dark h-full w-full overflow-hidden select-none bg-[#101015] ${fontSans.variable} ${fontMono.variable}`}
     >
-      <body className="h-full w-full overflow-hidden bg-[#101015] text-[#F1F0E1] antialiased font-[family-name:var(--font-proto)]">
+      <body className="h-full w-full overflow-hidden bg-[var(--bg)] text-[var(--text)] antialiased font-[family-name:var(--font-sans)]">
         <AuthProvider>{children}</AuthProvider>
       </body>
     </html>

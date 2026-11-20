@@ -645,7 +645,7 @@ describe('Resiliencia y Failover ante Degradación de CDS Estrasburgo', () => {
 
       try {
         // En entorno de testing / desarrollo con flag activada
-        process.env.NODE_ENV = 'development';
+        (process.env as Record<string, string | undefined>).NODE_ENV = 'development';
         process.env.NEXT_PUBLIC_FORCE_CDS_OK = '1';
         expect(isCdsForcedOkInDev()).toBe(true);
 
@@ -661,11 +661,11 @@ describe('Resiliencia y Failover ante Degradación de CDS Estrasburgo', () => {
         expect(response.headers.get('X-Dev-Forced')).toBe('1');
 
         // En producción la variable de entorno es estrictamente ignorada
-        process.env.NODE_ENV = 'production';
+        (process.env as Record<string, string | undefined>).NODE_ENV = 'production';
         process.env.NEXT_PUBLIC_FORCE_CDS_OK = '1';
         expect(isCdsForcedOkInDev()).toBe(false);
       } finally {
-        process.env.NODE_ENV = originalEnv;
+        (process.env as Record<string, string | undefined>).NODE_ENV = originalEnv;
         if (originalForced !== undefined) {
           process.env.NEXT_PUBLIC_FORCE_CDS_OK = originalForced;
         } else {
