@@ -12,20 +12,20 @@ import {
 
 const CATEGORY_LABELS: Record<CosmicTarget["category"], { label: string; badge: string }> = {
   nebula: {
-    label: "NEBULOSA DE EMISIÓN",
-    badge: "text-[#F1F0E1] border-[#3A3A42] bg-[#17171C]",
+    label: "Nebulosa de emisión",
+    badge: "text-[var(--text)] border-[var(--border)] bg-[var(--surface-2)]",
   },
   galaxy: {
-    label: "GALAXIA ESPIRAL",
-    badge: "text-[#F1F0E1] border-[#3A3A42] bg-[#17171C]",
+    label: "Galaxia espiral",
+    badge: "text-[var(--text)] border-[var(--border)] bg-[var(--surface-2)]",
   },
   "deep-field": {
-    label: "CAMPO PROFUNDO / LENTE",
-    badge: "text-[#F1F0E1] border-[#3A3A42] bg-[#17171C]",
+    label: "Campo profundo / Lente",
+    badge: "text-[var(--text)] border-[var(--border)] bg-[var(--surface-2)]",
   },
   "black-hole": {
-    label: "AGUJERO NEGRO SUPERMASIVO",
-    badge: "text-[#F1F0E1] border-[#3A3A42] bg-[#17171C]",
+    label: "Agujero negro supermasivo",
+    badge: "text-[var(--text)] border-[var(--border)] bg-[var(--surface-2)]",
   },
 };
 
@@ -47,25 +47,22 @@ export default function DossierDrawer() {
     <>
       {/* ─── 1. Full Targets Catalog Modal / Gallery Drawer ─── */}
       {isCatalogOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-2.5 sm:p-4 bg-black/80 backdrop-blur-xs select-none font-[family-name:var(--font-proto)]">
-          <div className="bg-[#1A1A1F] border border-[#2B2B31] w-full max-w-4xl max-h-[90vh] sm:max-h-[85vh] flex flex-col overflow-hidden shadow-2xl">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-6 bg-black/70 backdrop-blur-xs select-none animate-panel-enter">
+          <div className="bg-[var(--surface-1)] border border-[var(--border)] rounded-[20px] w-full max-w-4xl max-h-[85vh] flex flex-col overflow-hidden shadow-[0_8px_24px_rgba(0,0,0,0.35)]">
             {/* Modal Header */}
-            <div className="p-3 sm:p-4 bg-[#17171C] border-b border-[#2B2B31] flex items-center justify-between">
-              <div className="flex items-center gap-2.5 sm:gap-3">
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img
-                  src="/favicon.ico"
-                  alt="AetherScope"
-                  className="w-4.5 h-4.5 sm:w-5 sm:h-5 shrink-0 object-contain"
-                />
+            <div className="p-4 sm:p-5 bg-[var(--surface-2)] border-b border-[var(--border)] flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <div className="w-8 h-8 rounded-full bg-[var(--accent)] text-[var(--on-accent)] flex items-center justify-center shrink-0 font-bold">
+                  <Compass className="w-4 h-4" />
+                </div>
                 <div>
-                  <h2 className="text-[#F1F0E1] font-semibold text-xs sm:text-sm tracking-[0.14em] uppercase flex items-center gap-2">
-                    <span>CATÁLOGO CIENTÍFICO DEEP SPACE</span>
-                    <span className="text-[9px] sm:text-[10px] font-normal px-1.5 sm:px-2 py-0.5 bg-[#101015] border border-[#2B2B31] text-[#9A9A92]">
-                      {COSMIC_TARGETS.length} OBJETOS
+                  <h2 className="text-[var(--text)] font-semibold text-sm sm:text-base tracking-tight flex items-center gap-2">
+                    <span>Catálogo Científico Deep Space</span>
+                    <span className="text-[11px] font-mono font-normal px-2 py-0.5 rounded-full bg-[var(--surface-1)] border border-[var(--border)] text-[var(--text-muted)]">
+                      {COSMIC_TARGETS.length} objetivos
                     </span>
                   </h2>
-                  <p className="hidden xs:block text-[9.5px] sm:text-[10px] text-[#9A9A92] uppercase tracking-wider">
+                  <p className="hidden xs:block text-[12px] text-[var(--text-muted)] mt-0.5">
                     Selecciona un objetivo cósmico para navegación y análisis espectral
                   </p>
                 </div>
@@ -73,14 +70,14 @@ export default function DossierDrawer() {
 
               <button
                 onClick={() => setCatalogOpen(false)}
-                className="w-7 h-7 sm:w-8 sm:h-8 bg-transparent hover:bg-[#101015] text-[#9A9A92] hover:text-[#F1F0E1] flex items-center justify-center transition-colors cursor-pointer border border-[#2B2B31]"
+                className="w-8 h-8 rounded-full hover:bg-[var(--surface-1)] text-[var(--text-muted)] hover:text-[var(--text)] flex items-center justify-center transition-colors cursor-pointer"
               >
                 <X className="w-4 h-4" />
               </button>
             </div>
 
             {/* Catalog Grid Cards */}
-            <div className="flex-1 overflow-y-auto p-3 sm:p-4 grid grid-cols-1 md:grid-cols-2 gap-2.5 sm:gap-3 bg-[#101015]">
+            <div className="flex-1 overflow-y-auto p-4 sm:p-5 grid grid-cols-1 md:grid-cols-2 gap-3.5 bg-[var(--bg)]">
               {COSMIC_TARGETS.map((target) => {
                 const isSelected = selectedTarget?.id === target.id;
                 const cat = CATEGORY_LABELS[target.category];
@@ -88,36 +85,36 @@ export default function DossierDrawer() {
                 return (
                   <div
                     key={target.id}
-                    className={`p-3.5 sm:p-4 border transition-colors flex flex-col justify-between gap-3 ${
+                    className={`p-4 rounded-[12px] border transition-colors flex flex-col justify-between gap-3 ${
                       isSelected
-                        ? "bg-[#506385] border-[#506385] text-[#F1F0E1]"
-                        : "bg-[#1A1A1F] border-[#2B2B31] hover:border-[#3A3A42]"
+                        ? "bg-[var(--surface-2)] border-[var(--accent)] shadow-[0_4px_16px_rgba(0,0,0,0.25)]"
+                        : "bg-[var(--surface-1)] border-[var(--border)] hover:border-[var(--border-strong)]"
                     }`}
                   >
                     <div className="space-y-2">
                       <div className="flex items-start justify-between gap-2">
-                        <span className={`text-[9px] sm:text-[9.5px] uppercase tracking-wider px-2 py-0.5 border ${cat.badge}`}>
+                        <span className={`text-[11px] px-2.5 py-0.5 rounded-full border ${cat.badge}`}>
                           {cat.label}
                         </span>
-                        <span className="text-[9.5px] sm:text-[10px] uppercase tracking-wider text-[#9A9A92]">
+                        <span className="text-[11px] text-[var(--text-muted)]">
                           {target.constellation}
                         </span>
                       </div>
 
-                      <h3 className="text-[#F1F0E1] font-bold text-sm sm:text-base uppercase tracking-wide">
+                      <h3 className="text-[var(--text)] font-semibold text-base tracking-tight">
                         {target.name}
                       </h3>
 
-                      <p className="text-[10.5px] sm:text-[11px] text-[#F1F0E1]/75 leading-relaxed line-clamp-2 uppercase">
+                      <p className="text-[12px] text-[var(--text-muted)] leading-relaxed line-clamp-2">
                         {target.description}
                       </p>
 
                       {/* Chemical Elements Detected Chips */}
-                      <div className="flex flex-wrap gap-1 pt-1">
+                      <div className="flex flex-wrap gap-1.5 pt-1">
                         {target.spectroscopy.detectedElements.slice(0, 4).map((elem) => (
                           <span
                             key={elem}
-                            className="text-[8.5px] sm:text-[9px] px-1.5 py-0.5 bg-[#101015] text-[#F1F0E1]/80 border border-[#2B2B31]"
+                            className="text-[10px] font-mono px-2 py-0.5 rounded-[6px] bg-[var(--surface-2)] text-[var(--text-muted)] border border-[var(--border)]"
                           >
                             {elem}
                           </span>
@@ -125,8 +122,8 @@ export default function DossierDrawer() {
                       </div>
                     </div>
 
-                    <div className="pt-2 border-t border-[#2B2B31] flex items-center justify-between text-xs">
-                      <span className="text-[10.5px] sm:text-[11px] text-[#9A9A92] tabular-nums uppercase">
+                    <div className="pt-3 border-t border-[var(--border)] flex items-center justify-between text-xs">
+                      <span className="text-[11px] font-mono tabular-nums text-[var(--text-muted)]">
                         {target.distance}
                       </span>
                       <button
@@ -134,10 +131,10 @@ export default function DossierDrawer() {
                           navigateToTarget(target);
                           setCatalogOpen(false);
                         }}
-                        className={`px-2.5 sm:px-3 py-1.5 text-[9.5px] sm:text-[10px] uppercase font-bold tracking-[0.1em] transition-colors flex items-center gap-1.5 cursor-pointer border ${
+                        className={`px-3 py-1.5 text-[12px] rounded-full font-medium transition-colors flex items-center gap-1.5 cursor-pointer ${
                           isSelected
-                            ? "bg-[#F1F0E1] text-[#101015] border-[#F1F0E1]"
-                            : "bg-[#506385] text-[#F1F0E1] border-[#506385] hover:opacity-90"
+                            ? "bg-[var(--accent)] text-[var(--on-accent)] font-semibold"
+                            : "bg-[var(--surface-2)] text-[var(--text)] border border-[var(--border)] hover:border-[var(--border-strong)]"
                         }`}
                       >
                         <Telescope className="w-3.5 h-3.5" />
@@ -150,13 +147,13 @@ export default function DossierDrawer() {
             </div>
 
             {/* Modal Footer */}
-            <div className="p-3 bg-[#17171C] border-t border-[#2B2B31] flex items-center justify-between text-[9.5px] sm:text-[10px] uppercase tracking-[0.14em] text-[#9A9A92]">
-              <span className="truncate max-w-[200px] xs:max-w-none">ALADIN LITE V3 • MOTOR CINEMÁTICO</span>
+            <div className="p-3.5 bg-[var(--surface-2)] border-t border-[var(--border)] flex items-center justify-between text-[11px] text-[var(--text-muted)]">
+              <span className="truncate">Aladin Lite v3 · Motor Cinemático HiPS</span>
               <button
                 onClick={() => setCatalogOpen(false)}
-                className="text-[#F1F0E1] hover:underline transition-colors cursor-pointer shrink-0"
+                className="text-[var(--text)] hover:underline transition-colors cursor-pointer shrink-0 font-medium"
               >
-                CERRAR GALERÍA
+                Cerrar galería
               </button>
             </div>
           </div>
@@ -167,63 +164,63 @@ export default function DossierDrawer() {
       {currentMode === "dossier" && selectedTarget && !isCatalogOpen && (
         <aside
           aria-label="Laboratorio de Análisis Astrofísico"
-          className="fixed top-16 left-2.5 right-2.5 sm:left-auto sm:right-4 sm:top-20 z-40 w-auto sm:w-[360px] max-w-[calc(100vw-1.25rem)] bg-[#1A1A1F] border border-[#2B2B31] flex flex-col overflow-hidden font-[family-name:var(--font-proto)] select-none shadow-2xl"
+          className="fixed top-20 right-6 z-30 w-auto sm:w-[360px] max-w-[calc(100vw-3rem)] solid-card flex flex-col overflow-hidden select-none shadow-[0_8px_24px_rgba(0,0,0,0.35)] animate-panel-enter"
         >
           {/* Card Header */}
-          <div className="p-3 sm:p-3.5 bg-[#17171C] border-b border-[#2B2B31] flex items-center justify-between">
+          <div className="p-4 bg-[var(--surface-2)] border-b border-[var(--border)] flex items-center justify-between">
             <div>
-              <span className="text-[8.5px] sm:text-[9px] tracking-[0.16em] text-[#9A9A92] uppercase font-medium block">
-                DOSSIER DE OBJETIVO CÓSMICO
+              <span className="text-[11px] text-[var(--text-muted)] font-medium block">
+                Dossier de Objetivo Cósmico
               </span>
-              <h3 className="text-[#F1F0E1] text-xs font-bold uppercase tracking-wide truncate max-w-[220px] sm:max-w-[240px]">
+              <h3 className="text-[var(--text)] text-[15px] font-bold tracking-tight truncate max-w-[220px]">
                 {selectedTarget.name}
               </h3>
             </div>
 
             <button
               onClick={returnToFreeFlight}
-              className="p-1.5 bg-transparent hover:bg-[#101015] text-[#9A9A92] hover:text-[#F1F0E1] transition-colors cursor-pointer border border-[#2B2B31]"
-              title="Volver a Modo Observatorio 360°"
+              className="p-1.5 rounded-full hover:bg-[var(--surface-1)] text-[var(--text-muted)] hover:text-[var(--text)] transition-colors cursor-pointer"
+              title="Volver a Modo Observatorio"
             >
-              <X className="w-3.5 h-3.5" />
+              <X className="w-4 h-4" />
             </button>
           </div>
 
           {/* Dossier Content */}
-          <div className="p-3 sm:p-3.5 space-y-3 max-h-[calc(100vh-140px)] overflow-y-auto">
+          <div className="p-4 space-y-3 max-h-[calc(100vh-160px)] overflow-y-auto">
             {/* Category and Constellation Badges */}
             <div className="flex items-center justify-between">
-              <span className={`text-[9px] sm:text-[9.5px] uppercase tracking-wider px-2 py-0.5 border ${CATEGORY_LABELS[selectedTarget.category].badge}`}>
+              <span className={`text-[11px] px-2.5 py-0.5 rounded-full border ${CATEGORY_LABELS[selectedTarget.category].badge}`}>
                 {CATEGORY_LABELS[selectedTarget.category].label}
               </span>
-              <span className="text-[9.5px] sm:text-[10px] uppercase tracking-wider text-[#9A9A92]">
+              <span className="text-[11px] text-[var(--text-muted)]">
                 {selectedTarget.constellation}
               </span>
             </div>
 
             {/* Astrophysical Telemetry Grid */}
             <div className="grid grid-cols-2 gap-2 text-xs">
-              <div className="p-2 border border-[#2B2B31] bg-[#101015]">
-                <span className="text-[8.5px] text-[#9A9A92] uppercase tracking-[0.14em] block">
+              <div className="p-2.5 rounded-[12px] border border-[var(--border)] bg-[var(--surface-2)]">
+                <span className="text-[11px] text-[var(--text-muted)] block">
                   Distancia
                 </span>
-                <span className="text-[#F1F0E1] font-medium text-[11px] tabular-nums uppercase">
+                <span className="text-[var(--text)] font-medium text-[12px] font-mono tabular-nums">
                   {selectedTarget.distance}
                 </span>
               </div>
-              <div className="p-2 border border-[#2B2B31] bg-[#101015]">
-                <span className="text-[8.5px] text-[#9A9A92] uppercase tracking-[0.14em] block">
+              <div className="p-2.5 rounded-[12px] border border-[var(--border)] bg-[var(--surface-2)]">
+                <span className="text-[11px] text-[var(--text-muted)] block">
                   Redshift (z)
                 </span>
-                <span className="text-[#F1F0E1] font-medium text-[11px] tabular-nums">
+                <span className="text-[var(--text)] font-medium text-[12px] font-mono tabular-nums">
                   {selectedTarget.redshift || "z = 0.000"}
                 </span>
               </div>
-              <div className="p-2 border border-[#2B2B31] bg-[#101015] col-span-2">
-                <span className="text-[8.5px] text-[#9A9A92] uppercase tracking-[0.14em] block">
+              <div className="p-2.5 rounded-[12px] border border-[var(--border)] bg-[var(--surface-2)] col-span-2">
+                <span className="text-[11px] text-[var(--text-muted)] block">
                   Sensor / Observatorio Líder
                 </span>
-                <span className="text-[#F1F0E1] font-medium text-[11px] uppercase">
+                <span className="text-[var(--text)] font-medium text-[12px]">
                   {selectedTarget.spectroscopy.primarySensor}
                 </span>
               </div>
@@ -231,25 +228,25 @@ export default function DossierDrawer() {
 
             {/* Scientific Description */}
             <div className="space-y-1">
-              <span className="text-[8.5px] text-[#9A9A92] uppercase tracking-[0.14em] block">
+              <span className="text-[11px] text-[var(--text-muted)] block font-medium">
                 Dossier Científico
               </span>
-              <p className="text-[10.5px] sm:text-[11px] text-[#F1F0E1]/80 leading-relaxed p-2 sm:p-2.5 border border-[#2B2B31] bg-[#101015] uppercase">
+              <p className="text-[12px] text-[var(--text-muted)] leading-relaxed p-3 rounded-[12px] border border-[var(--border)] bg-[var(--surface-2)]">
                 {selectedTarget.description}
               </p>
             </div>
 
             {/* Detected Chemical Elements Tags */}
             <div className="space-y-1.5">
-              <span className="text-[8.5px] text-[#9A9A92] uppercase tracking-[0.14em] flex items-center gap-1">
-                <Atom className="w-3 h-3 text-[#9A9A92]" />
+              <span className="text-[11px] text-[var(--text-muted)] flex items-center gap-1 font-medium">
+                <Atom className="w-3.5 h-3.5 text-[var(--accent)]" />
                 <span>Firmas Espectroscópicas Detectadas</span>
               </span>
-              <div className="flex flex-wrap gap-1">
+              <div className="flex flex-wrap gap-1.5">
                 {selectedTarget.spectroscopy.detectedElements.map((elem) => (
                   <span
                     key={elem}
-                    className="px-2 py-0.5 text-[9px] sm:text-[9.5px] bg-[#101015] text-[#F1F0E1] border border-[#2B2B31]"
+                    className="px-2.5 py-0.5 text-[11px] font-mono rounded-[6px] bg-[var(--surface-2)] text-[var(--text)] border border-[var(--border)]"
                   >
                     {elem}
                   </span>
@@ -258,10 +255,10 @@ export default function DossierDrawer() {
             </div>
 
             {/* Action Buttons inside Card */}
-            <div className="pt-2 flex flex-col gap-1.5 border-t border-[#2B2B31]">
+            <div className="pt-2 flex flex-col gap-2 border-t border-[var(--border)]">
               <button
                 onClick={() => setCatalogOpen(true)}
-                className="w-full py-2 px-3 bg-[#506385] text-[#F1F0E1] text-[10.5px] sm:text-[11px] uppercase tracking-[0.12em] font-medium transition-colors flex items-center justify-center gap-1.5 cursor-pointer"
+                className="w-full py-2 px-3 rounded-full bg-[var(--accent)] text-[var(--on-accent)] font-semibold text-[12px] transition-opacity hover:opacity-90 flex items-center justify-center gap-1.5 cursor-pointer"
               >
                 <Compass className="w-3.5 h-3.5" />
                 <span>Explorar Otros Objetos</span>
@@ -269,10 +266,10 @@ export default function DossierDrawer() {
 
               <button
                 onClick={returnToFreeFlight}
-                className="w-full py-1.5 px-3 bg-transparent hover:bg-[#101015] text-[#9A9A92] hover:text-[#F1F0E1] text-[9.5px] sm:text-[10px] uppercase tracking-[0.12em] border border-[#2B2B31] transition-colors flex items-center justify-center gap-1 cursor-pointer"
+                className="w-full py-2 px-3 rounded-full bg-[var(--surface-2)] text-[var(--text-muted)] hover:text-[var(--text)] text-[12px] border border-[var(--border)] transition-colors flex items-center justify-center gap-1 cursor-pointer"
               >
-                <span>Volver a Observatorio 360°</span>
-                <ArrowRight className="w-3 h-3" />
+                <span>Volver a Observatorio Libre</span>
+                <ArrowRight className="w-3.5 h-3.5" />
               </button>
             </div>
           </div>

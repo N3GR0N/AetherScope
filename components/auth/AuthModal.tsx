@@ -207,19 +207,19 @@ export default function AuthModal({ isOpen, onClose }: AuthModalProps) {
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-black/80 backdrop-blur-xs select-none font-[family-name:var(--font-proto)] animate-in fade-in duration-150">
-      <div className="bg-[#17171C] border border-[#2B2B31] w-full max-w-md max-h-[92vh] overflow-hidden shadow-2xl flex flex-col">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-black/70 backdrop-blur-xs select-none animate-panel-enter">
+      <div className="bg-[var(--surface-1)] border border-[var(--border)] rounded-[20px] w-full max-w-md max-h-[92vh] overflow-hidden shadow-[0_8px_24px_rgba(0,0,0,0.35)] flex flex-col">
         {/* Modal Header */}
-        <div className="p-3.5 sm:p-4 bg-[#141418] border-b border-[#2B2B31] flex items-center justify-between shrink-0">
+        <div className="p-4 sm:p-5 bg-[var(--surface-2)] border-b border-[var(--border)] flex items-center justify-between shrink-0">
           <div className="flex items-center gap-2.5">
-            <div className={`w-2 h-2 ${isLockedOut ? "bg-[#EF4444] animate-ping" : "bg-[#F1F0E1]"}`} />
-            <h2 className="text-[#F1F0E1] font-semibold text-xs tracking-[0.16em] uppercase">
-              {user ? "PERFIL DE OPERADOR ESPACIAL" : "CONTROL DE ACCESO Y SEGURIDAD"}
+            <div className={`w-2 h-2 rounded-full ${isLockedOut ? "bg-[var(--error)] animate-ping" : "bg-[var(--accent)]"}`} />
+            <h2 className="text-[var(--text)] font-semibold text-[14px] tracking-tight">
+              {user ? "Perfil de Operador Espacial" : "Control de Acceso y Sesión"}
             </h2>
           </div>
           <button
             onClick={onClose}
-            className="w-7 h-7 bg-transparent hover:bg-[#202027] text-[#9A9A92] hover:text-[#F1F0E1] flex items-center justify-center transition-colors cursor-pointer border border-[#2B2B31]"
+            className="w-8 h-8 rounded-full hover:bg-[var(--surface-1)] text-[var(--text-muted)] hover:text-[var(--text)] flex items-center justify-center transition-colors cursor-pointer"
             title="Cerrar modal"
           >
             <X className="w-4 h-4" />
@@ -227,25 +227,25 @@ export default function AuthModal({ isOpen, onClose }: AuthModalProps) {
         </div>
 
         {/* Modal Body */}
-        <div className="p-4 sm:p-6 bg-[#17171C] flex flex-col gap-4 overflow-y-auto">
+        <div className="p-5 sm:p-6 bg-[var(--surface-1)] flex flex-col gap-4 overflow-y-auto">
           {user ? (
             /* Usuario autenticado */
-            <div className="flex flex-col gap-5">
-              <div className="p-4 border border-[#2B2B31] bg-[#101015] flex flex-col gap-2">
-                <div className="flex items-center gap-2 text-[#9A9A92] text-[11px] uppercase tracking-wider">
-                  <User className="w-3.5 h-3.5 text-[#22C55E]" />
-                  <span>OPERADOR IDENTIFICADO</span>
+            <div className="flex flex-col gap-4">
+              <div className="p-4 rounded-[12px] border border-[var(--border)] bg-[var(--surface-2)] flex flex-col gap-1.5">
+                <div className="flex items-center gap-2 text-[var(--ok)] text-[11px] font-medium">
+                  <User className="w-3.5 h-3.5 text-[var(--ok)]" />
+                  <span>Operador Identificado</span>
                 </div>
-                <div className="text-[#F1F0E1] font-medium text-sm break-all font-mono">
+                <div className="text-[var(--text)] font-medium text-sm break-all font-mono">
                   {user.email}
                 </div>
-                <div className="text-[10px] text-[#9A9A92] font-mono break-all">
+                <div className="text-[11px] text-[var(--text-muted)] font-mono break-all">
                   UID: {user.id}
                 </div>
               </div>
 
-              <div className="p-3 border border-[#22503B]/60 bg-[#12221A] text-[#86EFAC] text-[11px] leading-relaxed flex items-start gap-2">
-                <CheckCircle2 className="w-4 h-4 shrink-0 mt-0.5" />
+              <div className="p-3 rounded-[12px] border border-[var(--border)] bg-[var(--surface-2)] text-[var(--text-muted)] text-[12px] leading-relaxed flex items-start gap-2">
+                <CheckCircle2 className="w-4 h-4 shrink-0 text-[var(--ok)] mt-0.5" />
                 <span>
                   Protección RLS activa: Las notas en cada coordenada solo son visibles para este UID de operador.
                 </span>
@@ -254,27 +254,27 @@ export default function AuthModal({ isOpen, onClose }: AuthModalProps) {
               <Link
                 href="/profile"
                 onClick={onClose}
-                className="w-full py-2.5 px-4 bg-[#506385] hover:bg-[#5E749C] text-[#F1F0E1] text-xs uppercase tracking-[0.14em] font-semibold transition-colors flex items-center justify-center gap-2 cursor-pointer border border-[#506385]"
+                className="w-full py-2.5 px-4 rounded-full bg-[var(--accent)] text-[var(--on-accent)] text-[13px] font-semibold transition-opacity hover:opacity-90 flex items-center justify-center gap-2 cursor-pointer"
               >
-                <User className="w-4 h-4 text-[#F1F0E1]" />
-                <span>IR A MI PERFIL Y BITÁCORA</span>
+                <User className="w-4 h-4" />
+                <span>Ir a mi perfil y bitácora</span>
               </Link>
 
               <button
                 type="button"
                 onClick={handleSignOut}
                 disabled={loading}
-                className="w-full py-2.5 px-4 bg-transparent hover:bg-[#2A1F1F] text-[#F87171] border border-[#7F1D1D] hover:border-[#DC2626] text-xs uppercase tracking-[0.14em] font-medium transition-colors flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50"
+                className="w-full py-2.5 px-4 rounded-full bg-[var(--surface-2)] hover:bg-[var(--surface-1)] text-[var(--error)] border border-[var(--error)]/40 text-[12px] font-medium transition-colors flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50"
               >
                 {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : <LogOut className="w-4 h-4" />}
-                <span>DESCONECTAR SESIÓN</span>
+                <span>Desconectar sesión</span>
               </button>
             </div>
           ) : (
             /* Formulario de Login / Registro */
             <>
               {/* Tab Selector */}
-              <div className="grid grid-cols-2 border border-[#2B2B31] bg-[#101015] p-0.5">
+              <div className="grid grid-cols-2 p-1 rounded-full bg-[var(--surface-2)] border border-[var(--border)]">
                 <button
                   type="button"
                   onClick={() => {
@@ -282,13 +282,13 @@ export default function AuthModal({ isOpen, onClose }: AuthModalProps) {
                     setErrorMsg(null);
                     setSuccessMsg(null);
                   }}
-                  className={`py-2 text-[11px] uppercase tracking-[0.12em] font-medium transition-colors cursor-pointer ${
+                  className={`py-1.5 rounded-full text-[12px] font-medium transition-colors cursor-pointer ${
                     mode === "signin"
-                      ? "bg-[#506385] text-[#F1F0E1]"
-                      : "text-[#9A9A92] hover:text-[#F1F0E1]"
+                      ? "bg-[var(--accent)] text-[var(--on-accent)] font-semibold"
+                      : "text-[var(--text-muted)] hover:text-[var(--text)]"
                   }`}
                 >
-                  INICIAR SESIÓN
+                  Iniciar sesión
                 </button>
                 <button
                   type="button"
@@ -297,29 +297,29 @@ export default function AuthModal({ isOpen, onClose }: AuthModalProps) {
                     setErrorMsg(null);
                     setSuccessMsg(null);
                   }}
-                  className={`py-2 text-[11px] uppercase tracking-[0.12em] font-medium transition-colors cursor-pointer ${
+                  className={`py-1.5 rounded-full text-[12px] font-medium transition-colors cursor-pointer ${
                     mode === "signup"
-                      ? "bg-[#506385] text-[#F1F0E1]"
-                      : "text-[#9A9A92] hover:text-[#F1F0E1]"
+                      ? "bg-[var(--accent)] text-[var(--on-accent)] font-semibold"
+                      : "text-[var(--text-muted)] hover:text-[var(--text)]"
                   }`}
                 >
-                  REGISTRARSE
+                  Registrarse
                 </button>
               </div>
 
               {/* Banner de Bloqueo por Fuerza Bruta */}
               {isLockedOut ? (
-                <div className="p-3 bg-[#3B1515] border border-[#DC2626] text-[#FCA5A5] text-[11px] flex items-start gap-2.5">
-                  <ShieldAlert className="w-5 h-5 shrink-0 text-[#EF4444]" />
+                <div className="p-3 rounded-[12px] bg-[var(--surface-2)] border border-[var(--error)] text-[var(--error)] text-[12px] flex items-start gap-2.5">
+                  <ShieldAlert className="w-5 h-5 shrink-0 text-[var(--error)]" />
                   <div className="space-y-1">
-                    <div className="font-semibold uppercase tracking-wider text-[#F87171]">
-                      TERMINAL BLOQUEADA POR SEGURIDAD
+                    <div className="font-semibold text-[var(--error)]">
+                      Terminal bloqueada por seguridad
                     </div>
                     <div>
                       Se excedió el límite de 4 intentos incorrectos. El acceso está suspendido temporalmente.
                     </div>
-                    <div className="font-mono text-xs flex items-center gap-1.5 pt-1 text-[#F1F0E1]">
-                      <Clock className="w-3.5 h-3.5 text-[#EF4444]" />
+                    <div className="font-mono text-xs flex items-center gap-1.5 pt-1 text-[var(--text)]">
+                      <Clock className="w-3.5 h-3.5 text-[var(--error)]" />
                       <span>Reintento habilitado en: {formatSeconds(secondsRemaining)}</span>
                     </div>
                   </div>
@@ -328,7 +328,7 @@ export default function AuthModal({ isOpen, onClose }: AuthModalProps) {
                 /* Intentos restantes advertencia */
                 mode === "signin" &&
                 lockout.attempts > 0 && (
-                  <div className="px-3 py-1.5 bg-[#2B2215] border border-[#B45309] text-[#FDE68A] text-[10px] uppercase flex items-center justify-between">
+                  <div className="px-3 py-1.5 rounded-[12px] bg-[var(--surface-2)] border border-[var(--accent)]/50 text-[var(--accent)] text-[11px] flex items-center justify-between">
                     <span>Advertencia de seguridad</span>
                     <span className="font-mono font-bold">
                       {remainingAttempts} / {MAX_FAILED_ATTEMPTS} intentos restantes
@@ -339,23 +339,23 @@ export default function AuthModal({ isOpen, onClose }: AuthModalProps) {
 
               {/* Mensajes de error o éxito */}
               {errorMsg && !isLockedOut && (
-                <div className="p-3 bg-[#2D1515] border border-[#7F1D1D] text-[#FCA5A5] text-[11px] flex items-start gap-2">
+                <div className="p-3 rounded-[12px] bg-[var(--surface-2)] border border-[var(--error)] text-[var(--error)] text-[12px] flex items-start gap-2">
                   <AlertCircle className="w-4 h-4 shrink-0 mt-0.5" />
                   <span>{errorMsg}</span>
                 </div>
               )}
               {successMsg && (
-                <div className="p-3 bg-[#132B1E] border border-[#166534] text-[#86EFAC] text-[11px] flex items-center gap-2">
+                <div className="p-3 rounded-[12px] bg-[var(--surface-2)] border border-[var(--ok)] text-[var(--ok)] text-[12px] flex items-center gap-2">
                   <CheckCircle2 className="w-4 h-4 shrink-0" />
                   <span>{successMsg}</span>
                 </div>
               )}
 
-              <form onSubmit={handleSubmit} className="flex flex-col gap-4">
+              <form onSubmit={handleSubmit} className="flex flex-col gap-3.5">
                 <div className="flex flex-col gap-1.5">
-                  <label className="text-[11px] text-[#9A9A92] uppercase tracking-wider flex items-center gap-1.5">
-                    <User className="w-3 h-3 text-[#F1F0E1]" />
-                    <span>CORREO ELECTRÓNICO</span>
+                  <label className="text-[11px] text-[var(--text-muted)] font-medium flex items-center gap-1.5">
+                    <User className="w-3 h-3 text-[var(--accent)]" />
+                    <span>Correo electrónico</span>
                   </label>
                   <input
                     type="email"
@@ -365,14 +365,14 @@ export default function AuthModal({ isOpen, onClose }: AuthModalProps) {
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
                     placeholder="operador@aetherscope.org"
-                    className="w-full bg-[#101015] border border-[#2B2B31] focus:border-[#506385] px-3 py-2 text-xs text-[#F1F0E1] outline-hidden placeholder:text-[#55555F] disabled:opacity-40"
+                    className="w-full bg-[var(--surface-2)] border border-[var(--border)] focus:border-[var(--border-strong)] rounded-[12px] px-3.5 py-2 text-[13px] text-[var(--text)] placeholder:text-[var(--text-muted)] disabled:opacity-40"
                   />
                 </div>
 
                 <div className="flex flex-col gap-1.5">
-                  <label className="text-[11px] text-[#9A9A92] uppercase tracking-wider flex items-center gap-1.5">
-                    <KeyRound className="w-3 h-3 text-[#F1F0E1]" />
-                    <span>CONTRASEÑA</span>
+                  <label className="text-[11px] text-[var(--text-muted)] font-medium flex items-center gap-1.5">
+                    <KeyRound className="w-3 h-3 text-[var(--accent)]" />
+                    <span>Contraseña</span>
                   </label>
                   <input
                     type="password"
@@ -382,16 +382,16 @@ export default function AuthModal({ isOpen, onClose }: AuthModalProps) {
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
                     placeholder="••••••••"
-                    className="w-full bg-[#101015] border border-[#2B2B31] focus:border-[#506385] px-3 py-2 text-xs text-[#F1F0E1] outline-hidden placeholder:text-[#55555F] disabled:opacity-40"
+                    className="w-full bg-[var(--surface-2)] border border-[var(--border)] focus:border-[var(--border-strong)] rounded-[12px] px-3.5 py-2 text-[13px] text-[var(--text)] placeholder:text-[var(--text-muted)] disabled:opacity-40"
                   />
                 </div>
 
                 {mode === "signin" && (
-                  <div className="flex justify-end -mt-1.5">
+                  <div className="flex justify-end -mt-1">
                     <Link
                       href="/reset-password"
                       onClick={onClose}
-                      className="text-[10px] uppercase text-[#9A9A92] hover:text-[#F1F0E1] tracking-wider transition-colors cursor-pointer"
+                      className="text-[11px] text-[var(--text-muted)] hover:text-[var(--text)] transition-colors cursor-pointer"
                     >
                       ¿Olvidaste tu contraseña?
                     </Link>
@@ -399,43 +399,43 @@ export default function AuthModal({ isOpen, onClose }: AuthModalProps) {
                 )}
 
                 {/* Checklist visual de requisitos de contraseña */}
-                <div className="p-2.5 bg-[#101015] border border-[#2B2B31] flex flex-col gap-1.5">
-                  <span className="text-[9.5px] uppercase tracking-wider text-[#9A9A92]">
-                    REGLAS DE SEGURIDAD DE CONTRASEÑA:
+                <div className="p-3 rounded-[12px] bg-[var(--surface-2)] border border-[var(--border)] flex flex-col gap-2">
+                  <span className="text-[11px] text-[var(--text-muted)] font-medium">
+                    Seguridad de contraseña:
                   </span>
-                  <div className="grid grid-cols-2 gap-2 text-[10px]">
+                  <div className="grid grid-cols-2 gap-2 text-[11px]">
                     <div
                       className={`flex items-center gap-1.5 transition-colors ${
-                        hasMinLength ? "text-[#86EFAC]" : "text-[#9A9A92]"
+                        hasMinLength ? "text-[var(--ok)]" : "text-[var(--text-muted)]"
                       }`}
                     >
                       <div
-                        className={`w-3 h-3 rounded-full flex items-center justify-center border text-[8px] ${
+                        className={`w-3.5 h-3.5 rounded-full flex items-center justify-center border text-[8px] ${
                           hasMinLength
-                            ? "bg-[#166534] border-[#22C55E]"
-                            : "border-[#4A4A52] bg-transparent"
+                            ? "bg-[var(--ok)]/20 border-[var(--ok)] text-[var(--ok)]"
+                            : "border-[var(--border)] bg-transparent"
                         }`}
                       >
-                        {hasMinLength && <Check className="w-2 h-2" strokeWidth={3} />}
+                        {hasMinLength && <Check className="w-2.5 h-2.5" strokeWidth={3} />}
                       </div>
                       <span>Mín. 6 caracteres</span>
                     </div>
 
                     <div
                       className={`flex items-center gap-1.5 transition-colors ${
-                        hasUppercase ? "text-[#86EFAC]" : "text-[#9A9A92]"
+                        hasUppercase ? "text-[var(--ok)]" : "text-[var(--text-muted)]"
                       }`}
                     >
                       <div
-                        className={`w-3 h-3 rounded-full flex items-center justify-center border text-[8px] ${
+                        className={`w-3.5 h-3.5 rounded-full flex items-center justify-center border text-[8px] ${
                           hasUppercase
-                            ? "bg-[#166534] border-[#22C55E]"
-                            : "border-[#4A4A52] bg-transparent"
+                            ? "bg-[var(--ok)]/20 border-[var(--ok)] text-[var(--ok)]"
+                            : "border-[var(--border)] bg-transparent"
                         }`}
                       >
-                        {hasUppercase && <Check className="w-2 h-2" strokeWidth={3} />}
+                        {hasUppercase && <Check className="w-2.5 h-2.5" strokeWidth={3} />}
                       </div>
-                      <span>Al menos 1 mayúscula (A-Z)</span>
+                      <span>1 mayúscula (A-Z)</span>
                     </div>
                   </div>
                 </div>
@@ -443,20 +443,20 @@ export default function AuthModal({ isOpen, onClose }: AuthModalProps) {
                 <button
                   type="submit"
                   disabled={isLockedOut || loading || (mode === "signup" && !isPasswordValid)}
-                  className="w-full mt-1 py-2.5 px-4 bg-[#F1F0E1] hover:bg-[#D5D4C5] text-[#101015] font-semibold text-xs uppercase tracking-[0.14em] transition-colors flex items-center justify-center gap-2 cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed"
+                  className="w-full mt-1 py-2.5 px-4 rounded-full bg-[var(--accent)] text-[var(--on-accent)] font-semibold text-[13px] hover:opacity-90 transition-opacity flex items-center justify-center gap-2 cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed"
                 >
-                  {loading && <Loader2 className="w-4 h-4 animate-spin" />}
+                  {loading && <Loader2 className="w-4 h-4 animate-spin text-[var(--on-accent)]" />}
                   <span>
                     {isLockedOut
-                      ? `BLOQUEADO (${formatSeconds(secondsRemaining)})`
+                      ? `Bloqueado (${formatSeconds(secondsRemaining)})`
                       : mode === "signin"
-                      ? "INGRESAR A MISIÓN"
-                      : "CREAR CUENTA SEGURA"}
+                      ? "Ingresar a misión"
+                      : "Crear cuenta segura"}
                   </span>
                 </button>
               </form>
 
-              <div className="text-[9.5px] text-[#9A9A92] text-center pt-2 border-t border-[#2B2B31]/60">
+              <div className="text-[10px] text-[var(--text-muted)] text-center pt-1 border-t border-[var(--border)]">
                 Máx. 4 intentos de login fallidos antes de bloqueo preventivo por 5 min.
               </div>
             </>

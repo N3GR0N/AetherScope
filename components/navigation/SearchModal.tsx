@@ -4,7 +4,6 @@ import React, { useState, useEffect, useMemo, useRef } from "react";
 import { COSMIC_TARGETS, type CosmicTarget } from "@/lib/astronomy/targets";
 import { useSpace } from "@/context/SpaceContext";
 import { Search, X, Telescope, Compass, ArrowRight } from "lucide-react";
-import { formatCoordinates } from "@/lib/astronomy/coordinates";
 
 interface SearchModalProps {
   isOpen: boolean;
@@ -20,7 +19,7 @@ export default function SearchModal({ isOpen, onClose }: SearchModalProps) {
     if (isOpen) {
       setTimeout(() => inputRef.current?.focus(), 50);
     } else {
-      setQuery("");
+      setTimeout(() => setQuery(""), 0);
     }
   }, [isOpen]);
 

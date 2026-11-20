@@ -534,61 +534,53 @@ function LaboratoryContent() {
   }, [identifiedTarget]);
 
   return (
-    <div className="relative w-screen h-screen overflow-hidden bg-[#101015] text-[#F1F0E1] select-none flex flex-col font-[family-name:var(--font-proto)]">
+    <div className="relative w-screen h-screen overflow-hidden bg-[var(--bg)] text-[var(--text)] select-none flex flex-col font-[family-name:var(--font-sans)]">
       {/* ─── 1. TOP UNIFIED TECHNICAL HEADER ─── */}
-      <header className="h-14 shrink-0 px-2.5 sm:px-4 md:px-6 flex items-center justify-between bg-[#17171C] border-b border-[#2B2B31] z-40 select-none">
-        {/* Left Section: Favicon + Volver + Telemetry strip */}
-        <div className="flex items-center gap-2 sm:gap-3 shrink-0">
-          {/* Favicon icon */}
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img
-            src="/favicon.ico"
-            alt="AetherScope"
-            className="w-4.5 h-4.5 sm:w-5 sm:h-5 shrink-0 object-contain"
-          />
-
+      <header className="h-16 shrink-0 px-4 md:px-6 flex items-center justify-between bg-[var(--surface-1)] border-b border-[var(--border)] z-40 select-none">
+        {/* Left Section: Volver + Telemetry strip */}
+        <div className="flex items-center gap-3 shrink-0">
           <button
             onClick={handleReturnToExplorer}
-            className="border border-[#3A3A42] bg-transparent text-[#F1F0E1] text-[10.5px] sm:text-[11px] uppercase tracking-[0.12em] px-2 sm:px-3 py-1.5 hover:bg-[#1A1A1F] transition-colors flex items-center gap-1.5 cursor-pointer shrink-0"
+            className="rounded-full bg-[var(--surface-2)] text-[var(--text)] hover:bg-[var(--surface-1)] border border-[var(--border)] text-[12px] font-medium px-4 py-1.5 min-h-[40px] transition-colors flex items-center gap-2 cursor-pointer shrink-0"
             title="Volver al lienzo de exploración libre preservando las coordenadas"
           >
-            <ArrowLeft className="w-3.5 h-3.5 text-[#F1F0E1]" />
-            <span className="hidden xs:inline">VOLVER</span>
+            <ArrowLeft className="w-3.5 h-3.5 text-[var(--accent)]" />
+            <span>Volver al mapa</span>
           </button>
 
-          <div className="w-px h-6 bg-[#2B2B31] mx-1 hidden md:block" />
+          <div className="w-px h-6 bg-[var(--border)] mx-1 hidden md:block" />
 
           {/* Telemetry Strip */}
-          <div className="hidden md:flex items-center gap-4 lg:gap-6 text-[10px] tracking-wider uppercase">
+          <div className="hidden md:flex items-center gap-5 lg:gap-6 text-[12px] text-[var(--text-muted)]">
             <div>
-              <span className="text-[#9A9A92] block text-[8.5px] leading-tight">OBJETO</span>
-              <span className="text-[#F1F0E1] font-semibold text-[11px] block truncate max-w-[130px]">
+              <span className="text-[10px] text-[var(--text-muted)] block leading-tight">OBJETO</span>
+              <span className="text-[var(--text)] font-semibold text-[13px] block truncate max-w-[150px]">
                 {isIdentifying
                   ? "..."
-                  : identifiedTarget?.name || (activeState === "unavailable" ? "SECTOR NO RESUELTO" : activeState === "none" ? "CAMPO NO CATALOGADO" : "SECTOR")}
+                  : identifiedTarget?.name || (activeState === "unavailable" ? "Sector no resuelto" : activeState === "none" ? "Campo no catalogado" : "Sector")}
               </span>
             </div>
             <div>
-              <span className="text-[#9A9A92] block text-[8.5px] leading-tight">RA</span>
-              <span className="text-[#F1F0E1] font-medium text-[11px] block tabular-nums">
+              <span className="text-[10px] text-[var(--text-muted)] block leading-tight">RA</span>
+              <span className="text-[var(--text)] font-mono tabular-nums text-[12px] block">
                 {coords.raHms}
               </span>
             </div>
             <div>
-              <span className="text-[#9A9A92] block text-[8.5px] leading-tight">DEC</span>
-              <span className="text-[#F1F0E1] font-medium text-[11px] block tabular-nums">
+              <span className="text-[10px] text-[var(--text-muted)] block leading-tight">DEC</span>
+              <span className="text-[var(--text)] font-mono tabular-nums text-[12px] block">
                 {coords.decDms}
               </span>
             </div>
             <div>
-              <span className="text-[#9A9A92] block text-[8.5px] leading-tight">FOV</span>
-              <span className="text-[#F1F0E1] font-medium text-[11px] block tabular-nums">
+              <span className="text-[10px] text-[var(--text-muted)] block leading-tight">FOV</span>
+              <span className="text-[var(--text)] font-mono tabular-nums text-[12px] block">
                 {fovInfo.rawText}
               </span>
             </div>
             <div>
-              <span className="text-[#9A9A92] block text-[8.5px] leading-tight">DISTANCIA</span>
-              <span className="text-[#F1F0E1] font-semibold text-[11px] block tabular-nums truncate max-w-[130px] lg:max-w-[160px]" title={distanceInfo.fullText}>
+              <span className="text-[10px] text-[var(--text-muted)] block leading-tight">DISTANCIA</span>
+              <span className="text-[var(--text)] font-mono tabular-nums text-[12px] block truncate max-w-[140px] lg:max-w-[170px]" title={distanceInfo.fullText}>
                 {distanceInfo.fullText}
               </span>
             </div>
@@ -596,24 +588,24 @@ function LaboratoryContent() {
         </div>
 
         {/* Right Section: Registration / Edge Chip + Toggle Panel Button */}
-        <div className="flex items-center gap-1.5 sm:gap-2.5">
+        <div className="flex items-center gap-2.5">
           {!isIdentifying && (
             <div
-              className={`hidden sm:flex px-2.5 sm:px-3 py-1.5 text-[9.5px] sm:text-[10px] font-bold uppercase tracking-[0.14em] items-center gap-1.5 border shrink-0 ${
+              className={`hidden sm:flex px-3 py-1 text-[11px] font-medium rounded-full items-center gap-2 border shrink-0 min-h-[36px] ${
                 activeState === "inside"
-                  ? "bg-[#506385] text-[#F1F0E1] border-[#506385]"
+                  ? "bg-[var(--surface-2)] text-[var(--accent)] border-[var(--accent)]"
                   : activeState === "edge"
-                  ? "bg-[#506385] text-[#F1F0E1] border-[#506385]"
-                  : "bg-[#1A1A1F] text-[#9A9A92] border-[#3A3A42]"
+                  ? "bg-[var(--surface-2)] text-[var(--accent)] border-[var(--accent)]"
+                  : "bg-[var(--surface-2)] text-[var(--text-muted)] border-[var(--border)]"
               }`}
             >
-              <div className="w-1.5 h-1.5 bg-[#F1F0E1]" />
-              <span className="truncate max-w-[120px] lg:max-w-none">
+              <div className={`w-1.5 h-1.5 rounded-full ${activeState === "none" ? "bg-[var(--text-muted)]" : "bg-[var(--accent)]"}`} />
+              <span className="truncate max-w-[130px] lg:max-w-none">
                 {activeState === "inside"
-                  ? "REGISTRADO"
+                  ? "Objetivo registrado"
                   : activeState === "edge"
-                  ? `BORDE DE ${identifiedTarget?.name.toUpperCase() || "OBJETO"}`
-                  : "CAMPO SIN OBJETO"}
+                  ? `Borde de ${identifiedTarget?.name || "objeto"}`
+                  : "Campo no catalogado"}
               </span>
             </div>
           )}
@@ -623,68 +615,52 @@ function LaboratoryContent() {
             onClick={toggleSidebar}
             aria-expanded={isSidebarOpen}
             aria-controls="laboratory-analysis-panel"
-            className="border border-[#3A3A42] bg-transparent text-[#F1F0E1] text-[10.5px] sm:text-[11px] uppercase tracking-[0.12em] px-2.5 sm:px-3 py-1.5 hover:bg-[#1A1A1F] transition-colors flex items-center gap-1.5 sm:gap-2 cursor-pointer shrink-0"
+            className="rounded-full bg-[var(--surface-2)] hover:bg-[var(--surface-1)] border border-[var(--border)] text-[var(--text)] text-[12px] font-medium px-4 py-1.5 min-h-[40px] transition-colors flex items-center gap-2 cursor-pointer shrink-0"
             title={isSidebarOpen ? "Ocultar panel" : "Mostrar panel"}
           >
-            <div className="w-3.5 h-3.5 border border-[#F1F0E1] flex items-center justify-center p-[1px] shrink-0">
-              <div
-                className={`w-1.5 h-2.5 bg-[#F1F0E1] ml-auto ${
-                  isSidebarOpen ? "opacity-100" : "opacity-30"
-                }`}
-              />
-            </div>
-            <span className="hidden sm:inline">
-              {isSidebarOpen ? "OCULTAR PANEL" : "MOSTRAR PANEL"}
-            </span>
-            <span className="sm:hidden font-semibold">
-              {isSidebarOpen ? "VISOR" : "PANEL"}
-            </span>
+            <span>{isSidebarOpen ? "Ocultar panel" : "Mostrar panel"}</span>
           </button>
 
           {/* Profile Navigation Button (if authenticated and mounted) */}
           {isMounted && user ? (
             <Link
               href="/profile"
-              className="border border-[#3A3A42] bg-[#1A1A1F] hover:bg-[#506385] hover:border-[#506385] text-[#F1F0E1] text-[10.5px] sm:text-[11px] uppercase tracking-[0.12em] p-1.5 sm:px-3 sm:py-1.5 transition-colors flex items-center justify-center gap-1.5 cursor-pointer shrink-0"
+              className="rounded-full bg-[var(--surface-2)] hover:bg-[var(--surface-1)] border border-[var(--border)] text-[var(--text)] text-[12px] font-medium px-3.5 py-1.5 min-h-[40px] transition-colors flex items-center gap-1.5 cursor-pointer shrink-0"
               title="Ir a Mi Perfil y Bitácora Personal"
             >
-              <User className="w-3.5 h-3.5 text-[#506385]" />
-              <span className="hidden lg:inline">MI PERFIL</span>
+              <User className="w-3.5 h-3.5 text-[var(--accent)]" />
+              <span className="hidden lg:inline">Mi perfil</span>
             </Link>
           ) : null}
 
           {/* Operator Auth Status / Access Button */}
           <button
             onClick={() => setAuthModalOpen(true)}
-            className={`px-2 sm:px-3 py-1.5 text-[10.5px] sm:text-[11px] uppercase tracking-[0.12em] font-[family-name:var(--font-proto)] transition-colors cursor-pointer border flex items-center gap-1.5 shrink-0 ${
-              isMounted && user
-                ? "bg-[#16222F] text-[#F1F0E1] border-[#506385] hover:bg-[#1E2E3E]"
-                : "bg-transparent text-[#F1F0E1] border-[#3A3A42] hover:bg-[#1A1A1F]"
-            }`}
+            className="rounded-full bg-[var(--surface-2)] hover:bg-[var(--surface-1)] border border-[var(--border)] text-[var(--text)] text-[12px] font-medium px-3.5 py-1.5 min-h-[40px] transition-colors cursor-pointer flex items-center gap-2 shrink-0"
             title={isMounted && user ? `Operador: ${user.email} (Haz clic para gestionar sesión)` : "Iniciar sesión o registrarse"}
           >
             <span
               className={`w-1.5 h-1.5 rounded-full shrink-0 ${
-                isMounted && user ? "bg-[#506385] animate-pulse" : "bg-[#9A9A92]"
+                isMounted && user ? "bg-[var(--ok)]" : "bg-[var(--text-muted)]"
               }`}
             />
-            <span className="truncate max-w-[65px] xs:max-w-[80px] sm:max-w-[110px]">
-              {isMounted && user ? user.email.split("@")[0].toUpperCase() : "ACCESO"}
+            <span className="truncate max-w-[80px] sm:max-w-[120px]">
+              {isMounted && user ? user.email.split("@")[0] : "Acceso"}
             </span>
           </button>
         </div>
       </header>
 
       {/* ─── 2. MAIN WORKSPACE LAYOUT ─── */}
-      <div className="relative flex-1 flex overflow-hidden">
+      <div className="relative flex-1 flex flex-col md:flex-row overflow-y-auto md:overflow-hidden">
         {/* Left Side: Captured Celestial Field Viewport & Spectral Mixer */}
-        <div className={`relative flex-1 h-full bg-[#101015] flex flex-col ${cdsState === "down" ? "items-center justify-center p-4" : ""} overflow-hidden`}>
+        <div className={`relative w-full shrink-0 md:flex-1 md:h-full bg-[#101015] flex flex-col ${cdsState === "down" ? "items-center justify-center p-4 min-h-[260px]" : ""}`}>
           {cdsState === "down" ? (
             <CdsDownCard lastCheckedTime={lastCheckedTime} />
           ) : (
             <>
               {/* Aladin Lite WebGL Canvas locked on captured coordinates */}
-              <div className="absolute inset-0">
+              <div className="relative w-full h-[260px] md:h-full md:absolute md:inset-0 overflow-hidden">
                 <SpaceCanvas
                   containerId="aladin-analyze-div"
                   initialRa={raParam}
@@ -694,21 +670,20 @@ function LaboratoryContent() {
                   secondarySurvey={secondarySurveyProp}
                   blendOpacity={blendOpacity}
                 />
+                {/* Reticle */}
+                <PrecisionCrosshair visible={true} fov={fovParam} variant="compact" label="CENTRO DE CAPTURA" />
               </div>
 
-              {/* Reticle */}
-              <PrecisionCrosshair visible={true} fov={fovParam} variant="compact" label="CENTRO DE CAPTURA" />
-
-              {/* Bottom Floating Spectral Filters & Mixing Dock */}
-              <div className="absolute bottom-2 left-2 right-2 sm:bottom-4 sm:left-4 sm:right-4 z-30 pointer-events-none flex justify-center">
-                <div className="w-full max-w-4xl bg-[#101015]/95 border border-[#2B2B31] p-2.5 sm:p-3 pointer-events-auto flex flex-col gap-2 sm:gap-2.5 font-[family-name:var(--font-proto)] select-none shadow-2xl">
+              {/* Spectral Filters & Mixing Dock: Docked under canvas on mobile, floating on desktop */}
+              <div className="w-full z-30 p-3 bg-[var(--surface-1)] border-b border-[var(--border)] md:bg-transparent md:border-b-0 md:p-0 md:absolute md:bottom-6 md:left-6 md:right-6 md:pointer-events-none md:flex md:justify-center">
+                <div className="w-full max-w-4xl glass-panel md:glass-panel rounded-[20px] p-3.5 sm:p-4 pointer-events-auto flex flex-col gap-3 shadow-[0_8px_24px_rgba(0,0,0,0.35)] select-none">
                   {/* Filter Row: 5 Spectral Surveys */}
-                  <div className="flex items-center justify-between text-[9px] sm:text-[10px] uppercase tracking-[0.14em]">
-                    <span className="text-[#F1F0E1] font-semibold">CAPAS ESPECTRALES</span>
-                    <span className="text-[#9A9A92]">05 CAPAS</span>
+                  <div className="flex items-center justify-between text-[11px] text-[var(--text-muted)] font-medium">
+                    <span className="text-[var(--text)] font-semibold">Capas Espectrales</span>
+                    <span className="font-mono text-[11px]">05 capas disponibles</span>
                   </div>
 
-                  <div className="flex flex-wrap items-center gap-1.5 sm:gap-2">
+                  <div className="flex flex-wrap items-center gap-2">
                     {LABORATORY_SPECTRAL_FILTERS.map((filter) => {
                       const isPrimary = activePrimaryFilter.id === filter.id;
                       const isOverlay = activeOverlayFilter?.id === filter.id;
@@ -719,23 +694,23 @@ function LaboratoryContent() {
                           key={filter.id}
                           disabled={isProcessingFilter}
                           onClick={() => handleApplyFilter(filter)}
-                          className={`px-2 py-1 sm:px-3 sm:py-1.5 text-[10px] sm:text-[11px] uppercase tracking-wider font-medium flex items-center gap-1.5 sm:gap-2 border transition-colors cursor-pointer ${
+                          className={`px-3.5 py-1.5 rounded-full text-[12px] font-medium flex items-center gap-2 transition-all cursor-pointer min-h-[36px] ${
                             isBeingProcessed
-                              ? "bg-[#506385]/50 border-[#506385] text-[#F1F0E1]"
+                              ? "bg-[var(--surface-2)] text-[var(--text-muted)] border border-[var(--border)] opacity-60"
                               : isPrimary
-                              ? "bg-[#F1F0E1] text-[#101015] border-[#F1F0E1] font-bold"
+                              ? "bg-[var(--accent)] text-[var(--on-accent)] font-semibold"
                               : isOverlay
-                              ? "bg-[#506385] text-[#F1F0E1] border-[#506385] font-bold"
-                              : "bg-[#17171C] text-[#F1F0E1] border-[#3A3A42] hover:bg-[#1A1A1F]"
+                              ? "bg-[var(--surface-2)] text-[var(--text)] border border-[var(--accent)] font-semibold"
+                              : "bg-[var(--surface-2)] text-[var(--text-muted)] hover:text-[var(--text)] border border-[var(--border)]"
                           }`}
                         >
                           <span>{filter.shortLabel}</span>
                           {isPrimary ? (
-                            <span className="px-1 py-0.2 bg-[#101015] text-[#F1F0E1] text-[8.5px] sm:text-[9px] font-bold">
+                            <span className="px-1.5 py-0.5 rounded-full bg-[var(--on-accent)] text-[var(--accent)] text-[9px] font-bold">
                               BASE
                             </span>
                           ) : isOverlay ? (
-                            <span className="px-1 py-0.2 bg-[#F1F0E1] text-[#101015] text-[8.5px] sm:text-[9px] font-bold">
+                            <span className="px-1.5 py-0.5 rounded-full bg-[var(--accent)] text-[var(--on-accent)] text-[9px] font-bold">
                               CAPA
                             </span>
                           ) : null}
@@ -745,12 +720,12 @@ function LaboratoryContent() {
                   </div>
 
                   {/* Spectral Blend Opacity Slider */}
-                  <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-1.5 sm:gap-4 pt-2 border-t border-[#2B2B31]">
-                    <span className="text-[9.5px] sm:text-[10px] uppercase tracking-wider text-[#F1F0E1]">
-                      MEZCLA MULTIESPECTRAL ({activeOverlayFilter ? activeOverlayFilter.shortLabel : "SIN CAPA"})
+                  <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 sm:gap-4 pt-2.5 border-t border-[var(--border)]">
+                    <span className="text-[12px] text-[var(--text)] font-medium">
+                      Mezcla Multiespectral ({activeOverlayFilter ? activeOverlayFilter.shortLabel : "Sin capa"})
                     </span>
 
-                    <div className="flex items-center gap-2.5 sm:gap-3 w-full sm:flex-1 sm:max-w-sm">
+                    <div className="flex items-center gap-3 w-full sm:flex-1 sm:max-w-sm">
                       <input
                         type="range"
                         min="0"
@@ -758,9 +733,9 @@ function LaboratoryContent() {
                         step="0.02"
                         value={blendOpacity}
                         onChange={(e) => setBlendOpacity(parseFloat(e.target.value))}
-                        className="w-full accent-[#F1F0E1] cursor-pointer h-1.5 bg-[#2B2B31]"
+                        className="w-full accent-[var(--accent)] cursor-pointer h-1.5 bg-[var(--surface-2)] rounded-full"
                       />
-                      <span className="text-[18px] sm:text-[20px] font-bold text-[#F1F0E1] tabular-nums w-12 text-right">
+                      <span className="text-[15px] font-bold text-[var(--accent)] font-mono tabular-nums w-12 text-right">
                         {Math.round(blendOpacity * 100)}%
                       </span>
                     </div>
@@ -775,98 +750,82 @@ function LaboratoryContent() {
         <aside
           id="laboratory-analysis-panel"
           aria-hidden={!isSidebarOpen}
-          className={`h-full border-l border-[#2B2B31] bg-[#101015] overflow-y-auto p-2.5 sm:p-3 transition-all duration-200 ease-in-out font-[family-name:var(--font-proto)] ${
-            isSidebarOpen
-              ? "fixed inset-x-0 top-14 bottom-0 z-40 w-full md:relative md:inset-auto md:top-auto md:bottom-auto md:z-20 md:w-[480px] lg:w-[540px] md:shrink-0 opacity-100 translate-x-0"
-              : "w-0 p-0 border-l-0 opacity-0 pointer-events-none translate-x-full overflow-hidden hidden md:block"
+          className={`w-full p-3.5 sm:p-5 md:w-[480px] lg:w-[540px] md:h-full md:overflow-y-auto md:border-l md:border-[var(--border)] md:shrink-0 font-[family-name:var(--font-sans)] transition-all duration-200 ease-in-out ${
+            isSidebarOpen ? "block" : "hidden"
           }`}
         >
-          {/* Mobile Return to Visor bar (only visible on < md) */}
-          <div className="md:hidden flex items-center justify-between p-2.5 mb-2.5 bg-[#17171C] border border-[#2B2B31]">
-            <div className="flex items-center gap-2 text-xs uppercase tracking-wider text-[#F1F0E1] font-semibold">
-              <div className="w-2 h-2 bg-[#506385]" />
-              <span>PANEL DE ANÁLISIS</span>
-            </div>
-            <button
-              onClick={() => setIsSidebarOpen(false)}
-              className="px-2.5 py-1 text-[10px] uppercase tracking-wider bg-[#506385] text-[#F1F0E1] font-semibold flex items-center gap-1 cursor-pointer"
-            >
-              <ArrowLeft className="w-3 h-3" />
-              <span>VOLVER AL VISOR</span>
-            </button>
-          </div>
-          <div className="grid grid-cols-2 gap-2 pb-8">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5 pb-10">
             {/* ── CARD 1: IDENTIFICACIÓN CELESTE (Full Width) ── */}
-            <div className="col-span-2 bg-[#1A1A1F] border border-[#2B2B31] p-3.5 sm:p-4 space-y-2">
-              <div className="flex items-center justify-between text-[9.5px] uppercase tracking-[0.16em]">
-                <span className="text-[#9A9A92]">IDENTIFICACIÓN CELESTE</span>
-                <span className="text-[#F1F0E1]/80 truncate max-w-[200px]">
+            <div className="col-span-1 sm:col-span-2 solid-card p-5 space-y-3">
+              <div className="flex items-center justify-between text-[11px] font-medium text-[var(--text-muted)]">
+                <span>Identificación Celeste</span>
+                <span className="font-mono text-[11px] truncate max-w-[200px]">
                   {identifiedTarget?.designation || (activeState === "unavailable" ? "CDS / SIMBAD OFF" : activeState === "none" ? "ICRS FIELD" : "SECTOR")}
                 </span>
               </div>
 
               {isIdentifying ? (
-                <div className="py-4 flex items-center gap-2 text-xs text-[#9A9A92]">
-                  <Loader2 className="w-4 h-4 animate-spin text-[#F1F0E1]" />
-                  <span>CLASIFICANDO EXTENSIÓN ANGULAR...</span>
+                <div className="py-4 flex items-center gap-2 text-[13px] text-[var(--text-muted)]">
+                  <Loader2 className="w-4 h-4 animate-spin text-[var(--accent)]" />
+                  <span>Clasificando extensión angular...</span>
                 </div>
               ) : (
                 <>
-                  <h2 className="text-[22px] sm:text-[26px] font-bold text-[#F1F0E1] uppercase tracking-wide leading-tight truncate">
+                  <h2 className="text-[22px] sm:text-[24px] font-bold text-[var(--text)] tracking-tight leading-snug truncate">
                     {activeState === "unavailable"
-                      ? "SIMBAD NO DISPONIBLE"
+                      ? "SIMBAD no disponible"
                       : activeState === "none"
-                      ? "CAMPO SIN OBJETO CATALOGADO"
-                      : identifiedTarget?.name || "SECTOR CÓSMICO"}
+                      ? "Campo sin objeto catalogado"
+                      : identifiedTarget?.name || "Sector cósmico"}
                   </h2>
 
                   {currentMatch?.simbadUnavailable && (
-                    <div className="p-2 border border-[#C9B98F]/40 bg-[#C9B98F]/10 flex items-center gap-2 text-[10px] text-[#C9B98F] tracking-wide uppercase font-mono">
-                      <span className="w-1.5 h-1.5 bg-[#C9B98F] animate-pulse shrink-0" />
-                      <span>SIMBAD no disponible: mostrando solo catálogo local</span>
+                    <div className="p-2.5 rounded-[12px] border border-[var(--border)] bg-[var(--surface-2)] flex items-center gap-2 text-[11px] text-[var(--text-muted)] font-mono">
+                      <span className="w-1.5 h-1.5 rounded-full bg-[var(--accent)] animate-pulse shrink-0" />
+                      <span>SIMBAD no disponible: mostrando catálogo local</span>
                     </div>
                   )}
 
                   <div className="flex items-center gap-2 flex-wrap">
                     {activeState === "edge" && identifiedTarget ? (
-                      <span className="inline-block border border-[#506385] bg-[#506385]/20 px-2 py-0.5 text-[10px] uppercase tracking-wider text-[#F1F0E1]">
-                        BORDE DE {identifiedTarget.name.toUpperCase()} · PARCIAL
+                      <span className="inline-block rounded-full border border-[var(--border-strong)] bg-[var(--surface-2)] px-3 py-1 text-[11px] font-medium text-[var(--accent)]">
+                        Borde de {identifiedTarget.name} · Parcial
                       </span>
                     ) : activeState === "inside" && identifiedTarget ? (
-                      <span className="inline-block border border-[#3A3A42] bg-[#101015]/60 px-2 py-0.5 text-[10px] uppercase tracking-wider text-[#F1F0E1]">
-                        {identifiedTarget.objectType.toUpperCase()}
+                      <span className="inline-block rounded-full border border-[var(--border)] bg-[var(--surface-2)] px-3 py-1 text-[11px] font-medium text-[var(--text)]">
+                        {identifiedTarget.objectType}
                       </span>
                     ) : (
-                      <span className="inline-block border border-[#3A3A42] bg-[#101015]/60 px-2 py-0.5 text-[10px] uppercase tracking-wider text-[#9A9A92]">
-                        SIN OBJETO EN HUELLA ANGULAR
+                      <span className="inline-block rounded-full border border-[var(--border)] bg-[var(--surface-2)] px-3 py-1 text-[11px] font-medium text-[var(--text-muted)]">
+                        Sin objeto en huella angular
                       </span>
                     )}
 
                     {identifiedTarget?.sizeSource && (
-                      <span className="text-[9px] uppercase font-mono px-1.5 py-0.5 bg-[#101015] border border-[#2B2B31] text-[#9A9A92]">
-                        TAMAÑO: {identifiedTarget.sizeSource.toUpperCase()}
+                      <span className="text-[11px] font-mono px-2.5 py-1 rounded-full bg-[var(--surface-2)] border border-[var(--border)] text-[var(--text-muted)]">
+                        Tamaño: {identifiedTarget.sizeSource}
                       </span>
                     )}
                   </div>
 
                   {/* Detalle para 'none': Selección manual de candidatos en el cono */}
                   {activeState === "none" && currentMatch?.candidates && currentMatch.candidates.length > 0 && (
-                    <div className="pt-2 border-t border-[#2B2B31] space-y-1.5">
-                      <span className="text-[9px] uppercase tracking-[0.14em] text-[#9A9A92] block">
-                        CANDIDATOS CERCANOS EN EL CONO (HASTA 5) — SELECCIONAR:
+                    <div className="pt-2 border-t border-[var(--border)] space-y-2">
+                      <span className="text-[11px] font-medium text-[var(--text-muted)] block">
+                        Candidatos cercanos en el cono (hasta 5) — Seleccionar:
                       </span>
-                      <div className="space-y-1">
+                      <div className="space-y-1.5">
                         {currentMatch.candidates.slice(0, 5).map((cand) => (
                           <button
                             key={cand.id || cand.name}
                             onClick={() => setSelectedCandidate(cand)}
-                            className="w-full p-2 bg-[#101015] border border-[#2B2B31] hover:border-[#506385] text-left flex items-center justify-between text-[11px] uppercase transition-colors cursor-pointer"
+                            className="w-full p-2.5 rounded-[12px] bg-[var(--surface-2)] border border-[var(--border)] hover:border-[var(--accent)] text-left flex items-center justify-between text-[12px] transition-colors cursor-pointer"
                           >
                             <div>
-                              <span className="text-[#F1F0E1] font-medium block">{cand.name}</span>
-                              <span className="text-[#9A9A92] text-[9.5px] block">{cand.objectType}</span>
+                              <span className="text-[var(--text)] font-medium block">{cand.name}</span>
+                              <span className="text-[var(--text-muted)] text-[10px] block">{cand.objectType}</span>
                             </div>
-                            <span className="text-[#9A9A92] text-[10px] tabular-nums font-mono">
+                            <span className="text-[var(--text-muted)] text-[11px] tabular-nums font-mono">
                               {(cand.separationDeg * 60).toFixed(1)}&apos;
                             </span>
                           </button>
@@ -879,44 +838,44 @@ function LaboratoryContent() {
                   {selectedCandidate && (
                     <button
                       onClick={() => setSelectedCandidate(null)}
-                      className="text-[9.5px] uppercase tracking-wider text-[#9A9A92] hover:text-[#F1F0E1] underline cursor-pointer pt-1"
+                      className="text-[11px] text-[var(--accent)] hover:underline cursor-pointer pt-1 block"
                     >
                       Restablecer a detección automática
                     </button>
                   )}
 
-                  {/* Astrometric details toggle bar with circular button */}
-                  <div className="pt-2 border-t border-[#2B2B31] flex items-center justify-between">
-                    <span className="text-[10px] uppercase tracking-[0.14em] text-[#9A9A92]">
-                      DETALLES ASTROMÉTRICOS
+                  {/* Astrometric details toggle bar with pill button */}
+                  <div className="pt-2.5 border-t border-[var(--border)] flex items-center justify-between">
+                    <span className="text-[11px] font-medium text-[var(--text-muted)]">
+                      Detalles astrométricos
                     </span>
                     <button
                       onClick={() => setShowFullDossier((v) => !v)}
-                      className="w-8 h-8 rounded-full bg-[#F1F0E1] text-[#101015] flex items-center justify-center hover:opacity-90 active:scale-95 transition-all cursor-pointer"
+                      className="w-8 h-8 rounded-full bg-[var(--surface-2)] hover:bg-[var(--surface-1)] border border-[var(--border)] text-[var(--text)] flex items-center justify-center transition-colors cursor-pointer"
                       title={showFullDossier ? "Ocultar detalles astrométricos" : "Ver detalles astrométricos"}
                     >
-                      <ArrowUpRight className="w-4 h-4 text-[#101015]" strokeWidth={2.5} />
+                      <ArrowUpRight className="w-4 h-4 text-[var(--accent)]" strokeWidth={2.2} />
                     </button>
                   </div>
 
                   {/* Collapsible Astrometric Details */}
                   {showFullDossier && (
-                    <div className="space-y-2 pt-2 border-t border-[#2B2B31] text-[10px] uppercase animate-in fade-in duration-150">
+                    <div className="space-y-2 pt-2 border-t border-[var(--border)] text-[11px] animate-panel-enter">
                       <div className="grid grid-cols-2 gap-2">
-                        <div className="p-2 border border-[#2B2B31] bg-[#101015]">
-                          <span className="text-[#9A9A92] block text-[8.5px]">RA J2000</span>
-                          <span className="text-[#F1F0E1] tabular-nums font-medium">{coords.raHms}</span>
+                        <div className="p-2.5 rounded-[12px] border border-[var(--border)] bg-[var(--surface-2)]">
+                          <span className="text-[var(--text-muted)] block text-[10px]">RA J2000</span>
+                          <span className="text-[var(--text)] font-mono tabular-nums font-medium">{coords.raHms}</span>
                         </div>
-                        <div className="p-2 border border-[#2B2B31] bg-[#101015]">
-                          <span className="text-[#9A9A92] block text-[8.5px]">DEC J2000</span>
-                          <span className="text-[#F1F0E1] tabular-nums font-medium">{coords.decDms}</span>
+                        <div className="p-2.5 rounded-[12px] border border-[var(--border)] bg-[var(--surface-2)]">
+                          <span className="text-[var(--text-muted)] block text-[10px]">DEC J2000</span>
+                          <span className="text-[var(--text)] font-mono tabular-nums font-medium">{coords.decDms}</span>
                         </div>
                       </div>
 
                       {identifiedTarget?.majorDiameterArcmin && (
-                        <div className="p-2 border border-[#2B2B31] bg-[#101015] space-y-0.5">
-                          <span className="text-[#9A9A92] block text-[8.5px]">DIMENSIONES ANGULARES (DIÁMETROS)</span>
-                          <div className="text-[#F1F0E1] text-[10px] tabular-nums">
+                        <div className="p-2.5 rounded-[12px] border border-[var(--border)] bg-[var(--surface-2)] space-y-0.5">
+                          <span className="text-[var(--text-muted)] block text-[10px]">Dimensiones angulares (diámetros)</span>
+                          <div className="text-[var(--text)] text-[11px] font-mono tabular-nums font-medium">
                             {identifiedTarget.majorDiameterArcmin.toFixed(1)}&apos; ×{" "}
                             {(identifiedTarget.minorDiameterArcmin ?? identifiedTarget.majorDiameterArcmin).toFixed(1)}&apos;
                             {identifiedTarget.positionAngleDeg ? ` (PA ${identifiedTarget.positionAngleDeg}°)` : ""}
@@ -925,13 +884,15 @@ function LaboratoryContent() {
                       )}
 
                       {identifiedTarget?.spectralFeatures && identifiedTarget.spectralFeatures.length > 0 && (
-                        <div className="p-2 border border-[#2B2B31] bg-[#101015] space-y-1">
-                          <span className="text-[#9A9A92] block text-[8.5px]">FIRMAS CATALOGADAS</span>
-                          {identifiedTarget.spectralFeatures.map((feat, idx) => (
-                            <div key={idx} className="text-[#F1F0E1] text-[9.5px]">
-                              • {feat.toUpperCase()}
-                            </div>
-                          ))}
+                        <div className="p-2.5 rounded-[12px] border border-[var(--border)] bg-[var(--surface-2)] space-y-1">
+                          <span className="text-[var(--text-muted)] block text-[10px]">Firmas catalogadas</span>
+                          <div className="flex flex-wrap gap-1.5 pt-0.5">
+                            {identifiedTarget.spectralFeatures.map((feat, idx) => (
+                              <span key={idx} className="text-[10px] font-mono px-2 py-0.5 rounded-[6px] bg-[var(--surface-1)] text-[var(--text)] border border-[var(--border)]">
+                                {feat}
+                              </span>
+                            ))}
+                          </div>
                         </div>
                       )}
                     </div>
@@ -941,18 +902,18 @@ function LaboratoryContent() {
             </div>
 
             {/* ── CARD 2: DISTANCIA (Col 1) ── */}
-            <div className="bg-[#506385] border border-[#506385] p-3.5 sm:p-4 flex flex-col justify-between min-h-[140px]">
-              <span className="text-[9.5px] uppercase tracking-[0.16em] text-[#F1F0E1]/80 block">
-                DISTANCIA
+            <div className="solid-card p-5 flex flex-col justify-between min-h-[140px]">
+              <span className="text-[11px] font-medium text-[var(--text-muted)] block">
+                Distancia
               </span>
 
               {distanceInfo.isUnreliable ? (
-                <div className="my-auto py-1.5">
-                  <div className="text-[13px] sm:text-[14px] font-bold text-[#F1F0E1] uppercase tracking-wide leading-tight">
-                    NO CALCULABLE DE FORMA FIABLE
+                <div className="my-auto py-1">
+                  <div className="text-[14px] font-semibold text-[var(--text)] leading-snug">
+                    No calculable de forma fiable
                   </div>
-                  <p className="text-[10px] text-[#F1F0E1]/90 leading-snug mt-1.5 font-sans normal-case">
-                    Para este objeto no se dispone de datos de paralaje trigonométrico suficientes en CDS / Gaia para determinar su distancia con precisión.
+                  <p className="text-[11px] text-[var(--text-muted)] leading-relaxed mt-1">
+                    Sin paralaje suficiente en CDS / Gaia para determinar distancia con precisión.
                   </p>
                 </div>
               ) : (
@@ -960,150 +921,134 @@ function LaboratoryContent() {
                   <div
                     className={`${
                       distanceInfo.isKnown
-                        ? "text-[38px] sm:text-[46px]"
-                        : "text-[30px] sm:text-[38px]"
-                    } font-bold text-[#F1F0E1] leading-none tabular-nums my-1`}
+                        ? "text-[36px] sm:text-[42px]"
+                        : "text-[28px] sm:text-[34px]"
+                    } font-bold text-[var(--text)] font-mono leading-none tabular-nums my-1`}
                   >
                     {distanceInfo.value}
                   </div>
-                  <div className="text-[9.5px] uppercase tracking-[0.14em] text-[#F1F0E1]/80">
+                  <div className="text-[11px] text-[var(--text-muted)] font-mono">
                     {distanceInfo.unit}
                   </div>
                 </div>
               )}
 
-              <div className="pt-2 border-t border-[#F1F0E1]/20 flex items-center justify-between text-[9.5px] uppercase tracking-wider text-[#F1F0E1]/80">
-                <span>PARALAJE ESTELAR</span>
-                <span className="text-[#F1F0E1] font-semibold">
-                  {distanceInfo.isKnown ? "VERIFICADO" : distanceInfo.isUnreliable ? "NO ACOTADO" : "N/A (FONDO)"}
+              <div className="pt-2 border-t border-[var(--border)] flex items-center justify-between text-[11px] text-[var(--text-muted)]">
+                <span>Paralaje estelar</span>
+                <span className="text-[var(--text)] font-medium">
+                  {distanceInfo.isKnown ? "Verificado" : distanceInfo.isUnreliable ? "No acotado" : "Fondo"}
                 </span>
               </div>
             </div>
 
             {/* ── CARD 3: CONSTELACIÓN (Col 2) ── */}
-            <div className="bg-[#1A1A1F] border border-[#2B2B31] p-3.5 sm:p-4 flex flex-col justify-between min-h-[140px]">
+            <div className="solid-card p-5 flex flex-col justify-between min-h-[140px]">
               <div>
-                <span className="text-[9.5px] uppercase tracking-[0.16em] text-[#9A9A92] block">
-                  CONSTELACIÓN
+                <span className="text-[11px] font-medium text-[var(--text-muted)] block">
+                  Constelación
                 </span>
-                <div className="text-[19px] sm:text-[22px] font-bold uppercase text-[#F1F0E1] leading-tight my-1 truncate">
-                  {constellation.replace(/\s*\([^)]*\)/, "") || "CAMPO"}
+                <div className="text-[20px] sm:text-[22px] font-bold text-[var(--text)] leading-tight my-1 truncate">
+                  {constellation.replace(/\s*\([^)]*\)/, "") || "Campo"}
                 </div>
-                <div className="text-[9.5px] uppercase text-[#9A9A92] truncate">
-                  {constellation.includes("(") ? constellation.slice(constellation.indexOf("(")) : `(${constellation.toUpperCase()} SECTOR)`}
+                <div className="text-[11px] text-[var(--text-muted)] truncate">
+                  {constellation.includes("(") ? constellation.slice(constellation.indexOf("(")) : `Sector ${constellation}`}
                 </div>
               </div>
 
-              <div className="pt-2 border-t border-[#2B2B31] flex items-center justify-between text-[9.5px] uppercase tracking-wider">
-                <span className="text-[#9A9A92]">CATÁLOGO</span>
-                <span className="text-[#F1F0E1] font-semibold">
+              <div className="pt-2 border-t border-[var(--border)] flex items-center justify-between text-[11px] text-[var(--text-muted)]">
+                <span>Catálogo</span>
+                <span className="text-[var(--text)] font-medium">
                   {identifiedTarget?.source === "local_dossier"
-                    ? "DOSSIER LOCAL"
+                    ? "Dossier Local"
                     : identifiedTarget?.source === "simbad_api"
                     ? "SIMBAD (CDS)"
-                    : "CAMPO ABIERTO"}
+                    : "Campo Abierto"}
                 </span>
               </div>
             </div>
 
-            {/* ── CARD 4: DESCRIPCIÓN CON ARTE GEOMÉTRICO (Full Width) ── */}
-            <div className="col-span-2 bg-[#506385] border border-[#506385] p-3.5 sm:p-4 relative overflow-hidden">
-              {/* Concentric arcs and radial lines in cream at 55% */}
-              <svg
-                aria-hidden="true"
-                className="absolute top-0 right-0 w-36 h-36 pointer-events-none"
-                viewBox="0 0 144 144"
-                fill="none"
-              >
-                <circle cx="144" cy="0" r="130" stroke="#F1F0E1" strokeOpacity="0.30" strokeWidth="1" />
-                <circle cx="144" cy="0" r="95" stroke="#F1F0E1" strokeOpacity="0.45" strokeWidth="1" />
-                <circle cx="144" cy="0" r="60" stroke="#F1F0E1" strokeOpacity="0.55" strokeWidth="1" />
-                <circle cx="144" cy="0" r="25" stroke="#F1F0E1" strokeOpacity="0.45" strokeWidth="1" />
-                <line x1="144" y1="0" x2="30" y2="130" stroke="#F1F0E1" strokeOpacity="0.30" strokeWidth="1" />
-                <line x1="144" y1="0" x2="70" y2="140" stroke="#F1F0E1" strokeOpacity="0.35" strokeWidth="1" />
-                <line x1="144" y1="0" x2="0" y2="90" stroke="#F1F0E1" strokeOpacity="0.30" strokeWidth="1" />
-              </svg>
-
-              <span className="text-[9.5px] uppercase tracking-[0.16em] text-[#F1F0E1]/80 mb-2 block">
-                DESCRIPCIÓN
+            {/* ── CARD 4: DESCRIPCIÓN (Full Width - Clean Solid Card, No Concentric Glyphs) ── */}
+            <div className="col-span-1 sm:col-span-2 solid-card p-5">
+              <span className="text-[11px] font-medium text-[var(--text-muted)] mb-2 block">
+                Descripción
               </span>
-              <p className="text-[11px] sm:text-[11.5px] uppercase tracking-wide text-[#F1F0E1] leading-relaxed relative z-10 max-w-[92%]">
-                {identifiedTarget?.description?.toUpperCase() ||
-                  "SECTOR DE CIELO PROFUNDO SIN SINGULARIDAD CATALOGADA DENTRO DE SU EXTENSIÓN ANGULAR. EL CAMPO CORRESPONDE A RADIACIÓN DIFUSA Y ESTRELLAS DE CAMPO NO RESUELTAS."}
+              <p className="text-[12px] sm:text-[13px] text-[var(--text)] leading-relaxed">
+                {identifiedTarget?.description ||
+                  "Sector de cielo profundo sin singularidad catalogada dentro de su extensión angular. El campo corresponde a radiación difusa y estrellas de campo no resueltas."}
               </p>
             </div>
 
             {/* ── CARD 5: COMPOSICIÓN Y RÉGIMEN FÍSICO (Full Width) ── */}
-            <div className="col-span-2 bg-[#1A1A1F] border border-[#2B2B31] p-3.5 sm:p-4 space-y-3">
-              <div className="flex items-center justify-between text-[9.5px] uppercase tracking-[0.16em]">
-                <span className="text-[#9A9A92]">
+            <div className="col-span-1 sm:col-span-2 solid-card p-5 space-y-3.5">
+              <div className="flex items-center justify-between text-[11px] font-medium text-[var(--text-muted)]">
+                <span>
                   {activeState === "none"
-                    ? "COMPOSICIÓN Y RÉGIMEN FÍSICO (CAMPO DIFUSO)"
-                    : "COMPOSICIÓN Y RÉGIMEN FÍSICO"}
+                    ? "Composición y régimen físico (campo difuso)"
+                    : "Composición y régimen físico"}
                 </span>
-                <span className="text-[#9A9A92]">{analysis.detectedElements.length} FIRMAS ACTIVAS</span>
+                <span className="font-mono">{analysis.detectedElements.length} firmas activas</span>
               </div>
 
               {/* Indicador de análisis parcial si es 'edge' */}
               {isPartial && (
-                <div className="px-2.5 py-1 bg-[#506385]/20 border border-[#506385] text-[9.5px] uppercase tracking-wider text-[#F1F0E1] flex items-center gap-1.5">
-                  <span className="w-1.5 h-1.5 bg-[#F1F0E1]" />
-                  <span>ANÁLISIS PARCIAL · PERIFERIA DE HUELLA ANGULAR (NO ATRIBUIDO AL 100%)</span>
+                <div className="px-3 py-1.5 rounded-[12px] bg-[var(--surface-2)] border border-[var(--border)] text-[11px] text-[var(--accent)] flex items-center gap-2">
+                  <span className="w-1.5 h-1.5 rounded-full bg-[var(--accent)]" />
+                  <span>Análisis parcial · Periferia de huella angular</span>
                 </div>
               )}
 
               {/* Top half: Hero metric + 3-bar vertical histogram */}
               <div className="flex items-end justify-between gap-4 pt-1">
                 <div>
-                  <div className="text-[44px] sm:text-[52px] font-bold text-[#F1F0E1] leading-none tabular-nums">
+                  <div className="text-[44px] sm:text-[50px] font-bold text-[var(--text)] font-mono leading-none tabular-nums">
                     {analysis.detectedElements[0]?.abundancePct || 85}
-                    <span className="text-[26px] font-normal">%</span>
+                    <span className="text-[24px] font-normal text-[var(--text-muted)]">%</span>
                   </div>
-                  <div className="text-[9.5px] uppercase tracking-wider text-[#9A9A92] mt-1">
-                    {analysis.detectedElements[0]?.formula?.split(" ")[0]?.toUpperCase() || "H-ALFA"} · DOMINANTE
+                  <div className="text-[11px] text-[var(--text-muted)] mt-1.5">
+                    {analysis.detectedElements[0]?.formula?.split(" ")[0] || "H-Alfa"} · Dominante
                   </div>
                 </div>
 
                 {/* 3 Vertical Bars Histogram */}
                 <div className="flex items-end gap-3 h-24 pb-1">
                   {/* Bar 1: Dominant in --accent */}
-                  <div className="flex flex-col items-center gap-1 w-10">
-                    <span className="text-[9.5px] text-[#F1F0E1] tabular-nums font-bold">
+                  <div className="flex flex-col items-center gap-1.5 w-11">
+                    <span className="text-[11px] text-[var(--accent)] tabular-nums font-mono font-bold">
                       {analysis.detectedElements[0]?.abundancePct || 85}%
                     </span>
                     <div
-                      className="w-full bg-[#506385] transition-all duration-300"
+                      className="w-full bg-[var(--accent)] rounded-t-[4px] transition-all duration-300"
                       style={{ height: `${(analysis.detectedElements[0]?.abundancePct || 85) * 0.7}px` }}
                     />
-                    <span className="text-[8.5px] text-[#9A9A92] uppercase mt-0.5 truncate max-w-full">
-                      {analysis.detectedElements[0]?.formula?.split(" ")[0] || "H-ALFA"}
+                    <span className="text-[10px] text-[var(--text-muted)] font-mono mt-0.5 truncate max-w-full">
+                      {analysis.detectedElements[0]?.formula?.split(" ")[0] || "Hα"}
                     </span>
                   </div>
 
-                  {/* Bar 2: in --beige */}
-                  <div className="flex flex-col items-center gap-1 w-10">
-                    <span className="text-[9.5px] text-[#F1F0E1] tabular-nums font-bold">
+                  {/* Bar 2: in --surface-2 */}
+                  <div className="flex flex-col items-center gap-1.5 w-11">
+                    <span className="text-[11px] text-[var(--text)] tabular-nums font-mono font-medium">
                       {analysis.detectedElements[1]?.abundancePct || 76}%
                     </span>
                     <div
-                      className="w-full bg-[#B7B6A8] transition-all duration-300"
+                      className="w-full bg-[var(--surface-2)] border border-[var(--border-strong)] rounded-t-[4px] transition-all duration-300"
                       style={{ height: `${(analysis.detectedElements[1]?.abundancePct || 76) * 0.7}px` }}
                     />
-                    <span className="text-[8.5px] text-[#9A9A92] uppercase mt-0.5 truncate max-w-full">
-                      {analysis.detectedElements[1]?.formula?.split(" ")[0] || "FOTO."}
+                    <span className="text-[10px] text-[var(--text-muted)] font-mono mt-0.5 truncate max-w-full">
+                      {analysis.detectedElements[1]?.formula?.split(" ")[0] || "Foto."}
                     </span>
                   </div>
 
-                  {/* Bar 3: in --beige */}
-                  <div className="flex flex-col items-center gap-1 w-10">
-                    <span className="text-[9.5px] text-[#F1F0E1] tabular-nums font-bold">
+                  {/* Bar 3: in --surface-2 */}
+                  <div className="flex flex-col items-center gap-1.5 w-11">
+                    <span className="text-[11px] text-[var(--text)] tabular-nums font-mono font-medium">
                       {analysis.detectedElements[2]?.abundancePct || 48}%
                     </span>
                     <div
-                      className="w-full bg-[#B7B6A8] transition-all duration-300"
+                      className="w-full bg-[var(--surface-2)] border border-[var(--border-strong)] rounded-t-[4px] transition-all duration-300"
                       style={{ height: `${(analysis.detectedElements[2]?.abundancePct || 48) * 0.7}px` }}
                     />
-                    <span className="text-[8.5px] text-[#9A9A92] uppercase mt-0.5 truncate max-w-full">
+                    <span className="text-[10px] text-[var(--text-muted)] font-mono mt-0.5 truncate max-w-full">
                       {analysis.detectedElements[2]?.formula?.split(" ")[0] || "[O III]"}
                     </span>
                   </div>
@@ -1111,14 +1056,14 @@ function LaboratoryContent() {
               </div>
 
               {/* Bottom half: Element summary rows */}
-              <div className="space-y-1.5 pt-2 border-t border-[#2B2B31]">
+              <div className="space-y-1.5 pt-2 border-t border-[var(--border)]">
                 {analysis.detectedElements.slice(0, 3).map((el, i) => (
                   <div
                     key={i}
-                    className="flex items-center justify-between py-1 text-[11px] border-b border-[#2B2B31]/50 last:border-b-0"
+                    className="flex items-center justify-between py-1 text-[12px] border-b border-[var(--border)]/50 last:border-b-0"
                   >
-                    <span className="text-[#F1F0E1] font-medium">{el.formula}</span>
-                    <span className="text-[#9A9A92] uppercase text-[9.5px]">{el.name.toUpperCase()}</span>
+                    <span className="text-[var(--text)] font-medium font-mono">{el.formula}</span>
+                    <span className="text-[var(--text-muted)] text-[11px]">{el.name}</span>
                   </div>
                 ))}
               </div>
@@ -1128,21 +1073,21 @@ function LaboratoryContent() {
                 <div className="pt-1">
                   <button
                     onClick={toggleChemistry}
-                    className="w-full py-1.5 px-3 bg-[#101015] border border-[#3A3A42] text-[10px] uppercase text-[#F1F0E1] flex items-center justify-between hover:bg-[#17171C] transition-colors cursor-pointer"
+                    className="w-full py-2 px-3 rounded-[12px] bg-[var(--surface-2)] border border-[var(--border)] text-[11px] text-[var(--text)] flex items-center justify-between hover:bg-[var(--surface-1)] transition-colors cursor-pointer"
                   >
-                    <span>{showFullChemistry ? "OCULTAR DETALLE QUÍMICO" : "VER DETALLE QUÍMICO Y BANDAS"}</span>
-                    {showFullChemistry ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
+                    <span>{showFullChemistry ? "Ocultar detalle químico" : "Ver detalle químico y bandas"}</span>
+                    {showFullChemistry ? <ChevronUp className="w-3.5 h-3.5 text-[var(--text-muted)]" /> : <ChevronDown className="w-3.5 h-3.5 text-[var(--text-muted)]" />}
                   </button>
 
                   {showFullChemistry && (
-                    <div className="space-y-1.5 pt-2 animate-in fade-in duration-150">
+                    <div className="space-y-1.5 pt-2 animate-panel-enter">
                       {analysis.detectedElements.slice(3).map((el, i) => (
                         <div
                           key={i}
-                          className="flex items-center justify-between py-1 text-[10px] uppercase border-b border-[#2B2B31]"
+                          className="flex items-center justify-between py-1 text-[11px] border-b border-[var(--border)]"
                         >
-                          <span className="text-[#F1F0E1]">{el.formula}</span>
-                          <span className="text-[#9A9A92]">{el.abundancePct}% · {el.detectionBand.toUpperCase()}</span>
+                          <span className="text-[var(--text)] font-mono">{el.formula}</span>
+                          <span className="text-[var(--text-muted)] font-mono">{el.abundancePct}% · {el.detectionBand}</span>
                         </div>
                       ))}
                     </div>
@@ -1152,47 +1097,47 @@ function LaboratoryContent() {
             </div>
 
             {/* ── CARD 6: RÉGIMEN TÉRMICO (Col 1) ── */}
-            <div className="bg-[#1A1A1F] border border-[#2B2B31] p-3.5 sm:p-4 flex flex-col justify-between min-h-[140px]">
-              <span className="text-[9.5px] uppercase tracking-[0.16em] text-[#9A9A92] block">
-                RÉGIMEN TÉRMICO
+            <div className="solid-card p-5 flex flex-col justify-between min-h-[140px]">
+              <span className="text-[11px] font-medium text-[var(--text-muted)] block">
+                Régimen Térmico
               </span>
-              <div className="space-y-2.5 my-1">
+              <div className="space-y-3 my-1">
                 <div>
-                  <div className="text-[26px] sm:text-[30px] font-bold text-[#F1F0E1] leading-none tabular-nums">
-                    {minTemp}
+                  <div className="text-[24px] sm:text-[28px] font-bold text-[var(--text)] font-mono leading-none tabular-nums">
+                    {minTemp} K
                   </div>
-                  <div className="text-[8.5px] uppercase tracking-[0.14em] text-[#9A9A92] mt-0.5">
-                    MÍN / K
+                  <div className="text-[10px] text-[var(--text-muted)] font-mono mt-0.5">
+                    Temperatura mínima
                   </div>
                 </div>
-                <div className="pt-2 border-t border-[#2B2B31]">
-                  <div className="text-[26px] sm:text-[30px] font-bold text-[#F1F0E1] leading-none tabular-nums">
-                    {maxTemp}
+                <div className="pt-2 border-t border-[var(--border)]">
+                  <div className="text-[24px] sm:text-[28px] font-bold text-[var(--text)] font-mono leading-none tabular-nums">
+                    {maxTemp} K
                   </div>
-                  <div className="text-[8.5px] uppercase tracking-[0.14em] text-[#9A9A92] mt-0.5">
-                    MÁX / K
+                  <div className="text-[10px] text-[var(--text-muted)] font-mono mt-0.5">
+                    Temperatura máxima
                   </div>
                 </div>
               </div>
             </div>
 
-            {/* ── CARD 7: CAMPO RADIATIVO EN --BEIGE (Col 2) ── */}
-            <div className="bg-[#B7B6A8] border border-[#B7B6A8] p-3.5 sm:p-4 flex flex-col justify-between min-h-[140px] text-[#101015]">
+            {/* ── CARD 7: CAMPO RADIATIVO (Col 2) ── */}
+            <div className="solid-card p-5 flex flex-col justify-between min-h-[140px]">
               <div className="flex items-center justify-between">
-                <span className="text-[9.5px] uppercase tracking-[0.16em] text-[#101015]/75 font-semibold">
-                  CAMPO RADIATIVO
+                <span className="text-[11px] font-medium text-[var(--text-muted)]">
+                  Campo Radiativo
                 </span>
-                <div className="w-7 h-7 rounded-full bg-[#101015] text-[#F1F0E1] flex items-center justify-center">
-                  <ArrowUpRight className="w-4 h-4 text-[#F1F0E1]" strokeWidth={2.5} />
+                <div className="w-7 h-7 rounded-full bg-[var(--surface-2)] text-[var(--accent)] flex items-center justify-center">
+                  <ArrowUpRight className="w-3.5 h-3.5" strokeWidth={2.2} />
                 </div>
               </div>
 
-              <div className="text-[22px] sm:text-[25px] font-bold uppercase tracking-tight text-[#101015] leading-none my-2">
-                {analysis.radiationFieldIntensity.toUpperCase()}
+              <div className="text-[20px] sm:text-[22px] font-bold text-[var(--text)] tracking-tight leading-none my-2">
+                {analysis.radiationFieldIntensity}
               </div>
 
               {/* 5-segment meter */}
-              <div className="grid grid-cols-5 gap-1 pt-1">
+              <div className="grid grid-cols-5 gap-1.5 pt-1">
                 {[1, 2, 3, 4, 5].map((seg) => {
                   const activeCount =
                     analysis.radiationFieldIntensity === "Extrema"
@@ -1206,7 +1151,7 @@ function LaboratoryContent() {
                   return (
                     <div
                       key={seg}
-                      className={`h-2 ${isFilled ? "bg-[#101015]" : "bg-[#101015]/20"}`}
+                      className={`h-2 rounded-[2px] transition-colors ${isFilled ? "bg-[var(--accent)]" : "bg-[var(--surface-2)]"}`}
                     />
                   );
                 })}
@@ -1214,7 +1159,7 @@ function LaboratoryContent() {
             </div>
 
             {/* ── CARD 8: CONFIANZA PROMEDIO (Col 1) ── */}
-            <div className="bg-[#1A1A1F] border border-[#2B2B31] p-3.5 sm:p-4 flex flex-col items-center justify-center min-h-[140px]">
+            <div className="solid-card p-5 flex flex-col items-center justify-center min-h-[140px]">
               {/* Circular gauge ring in --accent */}
               <div className="relative w-20 h-20 flex items-center justify-center">
                 <svg className="w-20 h-20 -rotate-90" viewBox="0 0 80 80">
@@ -1222,7 +1167,7 @@ function LaboratoryContent() {
                     cx="40"
                     cy="40"
                     r="34"
-                    stroke="#2B2B31"
+                    stroke="var(--surface-2)"
                     strokeWidth="4"
                     fill="none"
                   />
@@ -1230,61 +1175,61 @@ function LaboratoryContent() {
                     cx="40"
                     cy="40"
                     r="34"
-                    stroke="#506385"
+                    stroke="var(--accent)"
                     strokeWidth="4"
                     fill="none"
                     strokeDasharray={213.6}
                     strokeDashoffset={213.6 - (213.6 * averageConfidence) / 100}
-                    strokeLinecap="butt"
+                    strokeLinecap="round"
                   />
                 </svg>
-                <span className="absolute text-[24px] font-bold text-[#F1F0E1] tabular-nums">
-                  {averageConfidence}
+                <span className="absolute text-[22px] font-bold text-[var(--text)] font-mono tabular-nums">
+                  {averageConfidence}%
                 </span>
               </div>
-              <span className="text-[9px] uppercase tracking-[0.16em] text-[#9A9A92] mt-2">
-                CONF. PROMEDIO
+              <span className="text-[11px] font-medium text-[var(--text-muted)] mt-2">
+                Confianza promedio
               </span>
             </div>
 
             {/* ── CARD 9: FENÓMENO DOMINANTE INFERIDO (Col 2) ── */}
-            <div className="bg-[#1A1A1F] border border-[#2B2B31] p-3.5 sm:p-4 flex flex-col justify-between min-h-[140px]">
-              <span className="text-[9px] uppercase tracking-[0.14em] text-[#9A9A92] block leading-tight">
-                FENÓMENO DOMINANTE INFERIDO
+            <div className="solid-card p-5 flex flex-col justify-between min-h-[140px]">
+              <span className="text-[11px] font-medium text-[var(--text-muted)] block leading-tight">
+                Fenómeno Dominante
               </span>
-              <p className="text-[11px] uppercase text-[#F1F0E1] leading-relaxed my-auto font-medium">
-                {analysis.dominantPhenomenon.toUpperCase()}
+              <p className="text-[12px] sm:text-[13px] text-[var(--text)] leading-relaxed my-auto font-medium">
+                {analysis.dominantPhenomenon}
               </p>
             </div>
 
             {/* ── CARD 10: METADATOS DE ESPECTRO (Full Width) ── */}
-            <div className="col-span-2 bg-[#1A1A1F] border border-[#2B2B31] p-3.5 sm:p-4 space-y-2.5">
-              <div className="flex items-center justify-between text-[9.5px] uppercase tracking-[0.16em]">
-                <span className="text-[#9A9A92]">METADATOS DE ESPECTRO</span>
-                <span className="text-[#9A9A92]">SENSORES ACTIVOS</span>
+            <div className="col-span-1 sm:col-span-2 solid-card p-5 space-y-3">
+              <div className="flex items-center justify-between text-[11px] font-medium text-[var(--text-muted)]">
+                <span>Metadatos de Espectro</span>
+                <span className="font-mono">Sensores Activos</span>
               </div>
 
               <div className="space-y-1.5 pt-1">
                 {analysis.detectedElements.slice(0, 3).map((el, idx) => (
                   <div
                     key={idx}
-                    className="flex items-center justify-between py-1.5 border-t border-[#2B2B31]"
+                    className="flex items-center justify-between py-2 border-t border-[var(--border)]"
                   >
                     <div className="flex items-start gap-2.5">
-                      <span className="text-[10px] text-[#9A9A92] font-mono">
+                      <span className="text-[11px] text-[var(--text-muted)] font-mono">
                         0{idx + 1}
                       </span>
                       <div>
-                        <div className="text-[12px] text-[#F1F0E1] font-medium">
+                        <div className="text-[13px] text-[var(--text)] font-medium font-mono">
                           {el.formula}
                         </div>
-                        <div className="text-[9px] uppercase text-[#9A9A92]">
-                          {el.detectionBand.toUpperCase()}
+                        <div className="text-[10px] text-[var(--text-muted)]">
+                          {el.detectionBand}
                         </div>
                       </div>
                     </div>
 
-                    <div className="text-[20px] font-bold text-[#F1F0E1] tabular-nums">
+                    <div className="text-[18px] font-bold text-[var(--accent)] font-mono tabular-nums">
                       {el.confidencePct}%
                     </div>
                   </div>
@@ -1292,16 +1237,16 @@ function LaboratoryContent() {
               </div>
             </div>
 
-            {/* ── CARD 11: BITÁCORA DE MISIÓN DESACOPLADA (Full Width - Parte B) ── */}
-            <div className="col-span-2 bg-[#1A1A1F] border border-[#2B2B31] p-3.5 sm:p-4 space-y-3">
+            {/* ── CARD 11: BITÁCORA DE MISIÓN (Full Width) ── */}
+            <div className="col-span-1 sm:col-span-2 solid-card p-5 space-y-3.5">
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2">
-                  <span className="text-[9.5px] uppercase tracking-[0.16em] text-[#9A9A92] font-semibold">
-                    BITÁCORA DE MISIÓN
+                  <span className="text-[12px] font-semibold text-[var(--text)]">
+                    Bitácora de Misión
                   </span>
                   {noteSaved && (
-                    <span className="text-[#F1F0E1] font-bold text-[10px] animate-pulse">
-                      ¡REGISTRO GUARDADO!
+                    <span className="text-[var(--accent)] font-semibold text-[11px] animate-pulse">
+                      ¡Registro guardado!
                     </span>
                   )}
                 </div>
@@ -1310,30 +1255,30 @@ function LaboratoryContent() {
                 <div className="flex flex-wrap items-center gap-1.5">
                   <button
                     onClick={handleExportNotes}
-                    className="border border-[#3A3A42] bg-transparent text-[#F1F0E1] hover:bg-[#101015] text-[9.5px] uppercase tracking-wider px-2 py-1 flex items-center gap-1 transition-colors cursor-pointer"
+                    className="rounded-full border border-[var(--border)] bg-[var(--surface-2)] text-[var(--text)] hover:bg-[var(--surface-1)] text-[11px] font-medium px-3 py-1 flex items-center gap-1.5 transition-colors cursor-pointer"
                     title="Exportar todas las notas en formato JSON"
                   >
-                    <Download className="w-3 h-3 text-[#9A9A92]" />
-                    <span>EXPORTAR</span>
+                    <Download className="w-3 h-3 text-[var(--text-muted)]" />
+                    <span>Exportar</span>
                   </button>
 
                   <button
                     onClick={() => fileInputRef.current?.click()}
-                    className="border border-[#3A3A42] bg-transparent text-[#F1F0E1] hover:bg-[#101015] text-[9.5px] uppercase tracking-wider px-2 py-1 flex items-center gap-1 transition-colors cursor-pointer"
+                    className="rounded-full border border-[var(--border)] bg-[var(--surface-2)] text-[var(--text)] hover:bg-[var(--surface-1)] text-[11px] font-medium px-3 py-1 flex items-center gap-1.5 transition-colors cursor-pointer"
                     title="Importar notas desde un archivo JSON"
                   >
-                    <Upload className="w-3 h-3 text-[#9A9A92]" />
-                    <span>IMPORTAR</span>
+                    <Upload className="w-3 h-3 text-[var(--text-muted)]" />
+                    <span>Importar</span>
                   </button>
 
                   {missionNotes.length > 0 && (
                     <button
                       onClick={requestDeleteAllCaptureNotes}
-                      className="border border-[#5C2B2B] bg-[#251515] hover:bg-[#381A1A] text-[#FCA5A5] hover:text-[#EF4444] text-[9.5px] uppercase tracking-wider px-2 py-1 flex items-center gap-1 transition-colors cursor-pointer"
+                      className="rounded-full border border-[var(--border)] bg-[var(--surface-2)] hover:border-[var(--error)] text-[var(--text-muted)] hover:text-[var(--error)] text-[11px] font-medium px-3 py-1 flex items-center gap-1.5 transition-colors cursor-pointer"
                       title="Eliminar todas las notas registradas en este sector"
                     >
-                      <Trash2 className="w-3 h-3 text-[#FCA5A5]" />
-                      <span>VACIAR</span>
+                      <Trash2 className="w-3 h-3" />
+                      <span>Vaciar</span>
                     </button>
                   )}
 
@@ -1347,54 +1292,54 @@ function LaboratoryContent() {
                 </div>
               </div>
 
-              {/* Línea de estado requerida (B5): MODO LOCAL */}
-              <div className="text-[9px] uppercase tracking-[0.16em] text-[#9A9A92] border-b border-[#2B2B31] pb-2">
-                MODO LOCAL · las notas viven solo en este navegador
+              {/* Línea de estado requerida: MODO LOCAL */}
+              <div className="text-[11px] text-[var(--text-muted)] border-b border-[var(--border)] pb-2 font-medium">
+                Modo local · Las notas viven solo en este navegador
               </div>
 
               {/* Mensaje de error de almacenamiento / cuota si ocurre */}
               {notesError && (
-                <div className="p-2 bg-[#506385]/20 border border-[#506385] text-[#F1F0E1] text-[10px] uppercase flex items-center gap-2">
-                  <AlertTriangle className="w-3.5 h-3.5 text-[#F1F0E1] shrink-0" />
+                <div className="p-2.5 rounded-[12px] bg-[var(--surface-2)] border border-[var(--error)] text-[var(--error)] text-[11px] flex items-center gap-2">
+                  <AlertTriangle className="w-3.5 h-3.5 shrink-0" />
                   <span>{notesError}</span>
                 </div>
               )}
 
-              {/* Lista de notas para esta captura actual (B6) */}
-              <div className="space-y-1.5 max-h-48 overflow-y-auto pr-1 scrollbar-none">
+              {/* Lista de notas para esta captura actual */}
+              <div className="space-y-2 max-h-48 overflow-y-auto pr-1">
                 {missionNotes.length === 0 ? (
-                  <div className="text-[10px] uppercase text-[#9A9A92] py-2 italic text-center">
+                  <div className="text-[12px] text-[var(--text-muted)] py-3 text-center">
                     No hay observaciones registradas para este sector.
                   </div>
                 ) : (
                   missionNotes.map((note) => (
                     <div
                       key={note.id}
-                      className="p-2 border border-[#2B2B31] bg-[#101015] flex items-start justify-between gap-3 text-xs"
+                      className="p-3 rounded-[12px] border border-[var(--border)] bg-[var(--surface-2)] flex items-start justify-between gap-3 text-xs"
                     >
                       <div className="flex-1 space-y-1 min-w-0">
-                        <div className="flex items-center gap-2 text-[9px] font-mono text-[#9A9A92] uppercase">
+                        <div className="flex items-center gap-2 text-[10px] font-mono text-[var(--text-muted)]">
                           <span>{new Date(note.createdAt).toLocaleDateString()}</span>
                           <span>•</span>
                           <span>{new Date(note.createdAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}</span>
                           {note.objectName && (
                             <>
                               <span>•</span>
-                              <span className="text-[#F1F0E1] truncate">{note.objectName}</span>
+                              <span className="text-[var(--text)] font-medium truncate">{note.objectName}</span>
                             </>
                           )}
                         </div>
-                        <p className="text-[11px] text-[#F1F0E1] uppercase tracking-wide leading-relaxed break-words">
+                        <p className="text-[12px] text-[var(--text)] leading-relaxed break-words">
                           {note.body}
                         </p>
                       </div>
 
                       <button
                         onClick={() => requestDeleteNote(note)}
-                        className="w-6 h-6 rounded-full bg-[#1A1A1F] border border-[#3A3A42] hover:border-[#EF4444] text-[#9A9A92] hover:text-[#EF4444] flex items-center justify-center shrink-0 transition-colors cursor-pointer"
+                        className="w-7 h-7 rounded-full bg-[var(--surface-1)] border border-[var(--border)] hover:border-[var(--error)] text-[var(--text-muted)] hover:text-[var(--error)] flex items-center justify-center shrink-0 transition-colors cursor-pointer"
                         title="Eliminar observación"
                       >
-                        <Trash2 className="w-3 h-3" />
+                        <Trash2 className="w-3.5 h-3.5" />
                       </button>
                     </div>
                   ))
@@ -1402,29 +1347,29 @@ function LaboratoryContent() {
               </div>
 
               {/* Formulario de registro de nota */}
-              <div className="space-y-2 pt-1 border-t border-[#2B2B31]">
+              <div className="space-y-2 pt-2 border-t border-[var(--border)]">
                 <textarea
                   value={newNoteBody}
                   onChange={(e) => setNewNoteBody(e.target.value)}
                   disabled={noteSaving}
-                  placeholder="ANOTAR HIPÓTESIS U OBSERVACIONES ESPECTRALES..."
-                  className="w-full h-16 bg-[#101015] border border-[#2B2B31] p-2 text-xs uppercase text-[#F1F0E1] placeholder-[#9A9A92]/50 focus:outline-hidden focus:border-[#506385] resize-none disabled:opacity-50"
+                  placeholder="Anotar hipótesis u observaciones espectrales..."
+                  className="w-full h-18 bg-[var(--surface-2)] border border-[var(--border)] rounded-[12px] p-3 text-[12px] text-[var(--text)] placeholder:text-[var(--text-muted)] focus:outline-none focus:border-[var(--border-strong)] resize-none disabled:opacity-50"
                 />
 
                 <button
                   onClick={handleSaveNote}
                   disabled={noteSaving || !newNoteBody.trim()}
-                  className="w-full py-2 bg-[#506385] disabled:bg-[#1A1A1F] disabled:text-[#9A9A92] disabled:border-[#3A3A42] disabled:cursor-not-allowed text-[#F1F0E1] text-[11px] uppercase tracking-[0.14em] font-semibold transition-colors flex items-center justify-center gap-2 hover:opacity-95 cursor-pointer border border-[#506385]"
+                  className="w-full py-2.5 rounded-full bg-[var(--accent)] text-[var(--on-accent)] font-semibold text-[12px] transition-opacity flex items-center justify-center gap-2 hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
                 >
                   {noteSaving ? (
                     <>
-                      <Loader2 className="w-3.5 h-3.5 text-[#F1F0E1] animate-spin" />
-                      <span>GUARDANDO EN BASE DE DATOS...</span>
+                      <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                      <span>Guardando en bitácora...</span>
                     </>
                   ) : (
                     <>
-                      <Bookmark className="w-3.5 h-3.5 text-[#F1F0E1]" />
-                      <span>REGISTRAR OBSERVACIÓN</span>
+                      <Bookmark className="w-3.5 h-3.5" />
+                      <span>Registrar observación</span>
                     </>
                   )}
                 </button>
@@ -1456,10 +1401,10 @@ export default function AnalyzePage() {
     <SpaceProvider>
       <Suspense
         fallback={
-          <div className="w-screen h-screen bg-[#101015] flex flex-col items-center justify-center text-[#F1F0E1] space-y-4 font-[family-name:var(--font-proto)]">
-            <div className="w-10 h-10 border-2 border-[#506385] border-t-[#F1F0E1] animate-spin" />
-            <p className="text-xs uppercase tracking-[0.16em] text-[#9A9A92]">
-              INICIANDO LABORATORIO ASTROFÍSICO...
+          <div className="w-screen h-screen bg-[var(--bg)] flex flex-col items-center justify-center text-[var(--text)] space-y-4">
+            <div className="w-8 h-8 rounded-full border-2 border-[var(--border)] border-t-[var(--accent)] animate-spin" />
+            <p className="text-[13px] text-[var(--text-muted)] font-medium">
+              Iniciando laboratorio astrofísico...
             </p>
           </div>
         }

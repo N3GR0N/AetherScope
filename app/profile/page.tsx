@@ -447,11 +447,11 @@ export default function ProfilePage() {
 
   if (authLoading || !user) {
     return (
-      <div className="w-screen h-screen bg-[#101015] flex items-center justify-center text-[#F1F0E1] font-[family-name:var(--font-proto)]">
+      <div className="w-screen h-screen bg-[var(--bg)] flex items-center justify-center text-[var(--text)] font-[family-name:var(--font-sans)]">
         <div className="flex flex-col items-center gap-3">
-          <div className="w-8 h-8 border-2 border-[#506385] border-t-transparent rounded-full animate-spin" />
-          <span className="text-xs uppercase tracking-[0.2em] text-[#9A9A92]">
-            VERIFICANDO IDENTIDAD DE OPERADOR...
+          <div className="w-8 h-8 border-2 border-[var(--accent)] border-t-transparent rounded-full animate-spin" />
+          <span className="text-xs text-[var(--text-muted)]">
+            Verificando identidad de operador...
           </span>
         </div>
       </div>
@@ -459,110 +459,105 @@ export default function ProfilePage() {
   }
 
   return (
-    <div className="h-full w-full bg-[#101015] text-[#F1F0E1] select-none font-[family-name:var(--font-proto)] flex flex-col overflow-hidden">
+    <div className="h-full w-full bg-[var(--bg)] text-[var(--text)] select-none font-[family-name:var(--font-sans)] flex flex-col overflow-hidden">
       {/* ─── 1. Header de Navegación ─── */}
-      <header className="h-14 bg-[#17171C] border-b border-[#2B2B31] px-3 sm:px-4 md:px-6 flex items-center justify-between z-20 shrink-0">
-        <div className="flex items-center gap-2.5 sm:gap-4">
+      <header className="h-16 bg-[var(--surface-1)] border-b border-[var(--border)] px-4 md:px-6 flex items-center justify-between z-20 shrink-0">
+        <div className="flex items-center gap-3">
           <Link
             href="/"
-            className="px-2.5 sm:px-3 py-1.5 border border-[#3A3A42] bg-transparent hover:bg-[#1A1A1F] text-[#F1F0E1] text-[10.5px] sm:text-[11px] uppercase tracking-wider flex items-center gap-1.5 sm:gap-2 transition-colors cursor-pointer"
+            className="px-3.5 py-1.5 rounded-full border border-[var(--border)] bg-[var(--surface-2)] hover:bg-[var(--surface-1)] text-[var(--text)] text-xs font-medium flex items-center gap-2 transition-colors cursor-pointer min-h-[36px]"
             title="Regresar a la visualización celeste libre"
           >
-            <ArrowLeft className="w-3.5 h-3.5 text-[#506385]" />
-            <span>VOLVER AL MAPA</span>
+            <ArrowLeft className="w-3.5 h-3.5 text-[var(--accent)]" />
+            <span>Volver al mapa</span>
           </Link>
 
-          <div className="hidden sm:flex items-center gap-2 text-[10px] text-[#9A9A92] uppercase tracking-[0.18em]">
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img
-              src="/favicon.ico"
-              alt="AetherScope"
-              className="w-4 h-4 shrink-0 object-contain"
-            />
-            <span>AETHERSCOPE</span>
-            <span>{"//"}</span>
-            <span className="text-[#F1F0E1]">PERFIL DE OPERADOR Y BITÁCORA</span>
+          <div className="hidden sm:flex items-center gap-2 text-xs text-[var(--text-muted)]">
+            <span className="text-[var(--border-strong)]">/</span>
+            <span className="text-[var(--text)] font-semibold">AetherScope</span>
+            <span className="text-[var(--border-strong)]">/</span>
+            <span>Perfil de operador y bitácora</span>
           </div>
         </div>
 
         <div className="flex items-center gap-2 sm:gap-3">
           <button
             onClick={() => signOut()}
-            className="px-2.5 sm:px-3 py-1.5 border border-[#3A3A42] hover:border-[#506385] bg-transparent hover:bg-[#1A1A1F] text-[#9A9A92] hover:text-[#F1F0E1] text-[10.5px] sm:text-[11px] uppercase tracking-wider flex items-center gap-1.5 transition-colors cursor-pointer"
+            className="px-3.5 py-1.5 rounded-full border border-[var(--border)] hover:border-[var(--border-strong)] bg-[var(--surface-2)] hover:bg-[var(--surface-1)] text-[var(--text-muted)] hover:text-[var(--text)] text-xs font-medium flex items-center gap-1.5 transition-colors cursor-pointer min-h-[36px]"
           >
-            <LogOut className="w-3.5 h-3.5 text-[#506385]" />
-            <span className="hidden sm:inline">CERRAR SESIÓN</span>
+            <LogOut className="w-3.5 h-3.5 text-[var(--accent)]" />
+            <span className="hidden sm:inline">Cerrar sesión</span>
           </button>
         </div>
       </header>
 
       {/* ─── 2. Contenido Principal del Perfil ─── */}
-      <main className="flex-1 p-3 sm:p-4 md:p-6 max-w-7xl w-full mx-auto grid grid-cols-1 lg:grid-cols-12 gap-5 sm:gap-6 overflow-y-auto">
+      <main className="flex-1 p-4 md:p-6 max-w-7xl w-full mx-auto grid grid-cols-1 lg:grid-cols-12 gap-5 sm:gap-6 overflow-y-auto">
         {/* COLUMNA IZQUIERDA: Tarjeta de Operador y Seguridad (4 cols) */}
         <section className="lg:col-span-4 flex flex-col gap-5">
           {/* Tarjeta de Avatar y Credenciales */}
-          <div className="p-5 bg-[#17171C] border border-[#2B2B31] flex flex-col items-center gap-4 shadow-xl">
+          <div className="solid-card rounded-[20px] p-5 shadow-[0_8px_24px_rgba(0,0,0,0.35)] flex flex-col items-center gap-4">
             {/* Avatar Procedural */}
             <div className="relative group">
               <CelestialAvatar seed={avatarSeed} size={130} />
-              <div className="absolute -bottom-1 -right-1 w-6 h-6 rounded-full bg-[#17171C] border border-[#506385] flex items-center justify-center">
-                <ShieldCheck className="w-3.5 h-3.5 text-[#506385]" />
+              <div className="absolute -bottom-1 -right-1 w-6 h-6 rounded-full bg-[var(--surface-1)] border border-[var(--accent)] flex items-center justify-center">
+                <ShieldCheck className="w-3.5 h-3.5 text-[var(--accent)]" />
               </div>
             </div>
 
             {/* Botón Generador Aleatorio */}
             <button
               onClick={handleGenerateRandomAvatar}
-              className="w-full py-2 px-3 border border-[#3A3A42] hover:border-[#506385] bg-[#1A1A1F] hover:bg-[#202027] text-[#F1F0E1] text-[10.5px] uppercase tracking-[0.14em] flex items-center justify-center gap-2 transition-colors cursor-pointer"
+              className="w-full py-2 px-4 rounded-full border border-[var(--border)] hover:border-[var(--border-strong)] bg-[var(--surface-2)] hover:bg-[var(--surface-1)] text-[var(--text)] text-xs font-medium flex items-center justify-center gap-2 transition-colors cursor-pointer min-h-[40px]"
               title="Generar nueva firma astronómica procedural"
             >
-              <RefreshCw className="w-3.5 h-3.5 text-[#506385]" />
-              <span>GENERAR AVATAR ALEATORIO</span>
+              <RefreshCw className="w-3.5 h-3.5 text-[var(--accent)]" />
+              <span>Generar avatar aleatorio</span>
             </button>
 
             {/* Datos del Operador */}
-            <div className="w-full space-y-2.5 pt-3 border-t border-[#2B2B31]">
+            <div className="w-full space-y-2.5 pt-3 border-t border-[var(--border)]">
               <div className="flex flex-col gap-0.5">
-                <span className="text-[9.5px] uppercase tracking-wider text-[#9A9A92] flex items-center gap-1.5">
-                  <User className="w-3 h-3 text-[#506385]" />
-                  <span>IDENTIFICADOR DE OPERADOR</span>
+                <span className="text-xs text-[var(--text-muted)] flex items-center gap-1.5">
+                  <User className="w-3 h-3 text-[var(--accent)]" />
+                  <span>Identificador de operador</span>
                 </span>
-                <span className="text-xs font-mono text-[#F1F0E1] break-all">{user.email}</span>
+                <span className="text-xs font-mono text-[var(--text)] break-all">{user.email}</span>
               </div>
 
               <div className="flex flex-col gap-0.5">
-                <span className="text-[9.5px] uppercase tracking-wider text-[#9A9A92]">
+                <span className="text-[10px] text-[var(--text-muted)] font-mono">
                   UID EN BASE DE DATOS
                 </span>
-                <span className="text-[10px] font-mono text-[#9A9A92] break-all">{user.id}</span>
+                <span className="text-[10px] font-mono text-[var(--text-muted)] break-all">{user.id}</span>
               </div>
 
-              <div className="p-2.5 bg-[#101015] border border-[#2B2B31] text-[10px] text-[#9A9A92] flex items-start gap-2 leading-relaxed">
-                <ShieldCheck className="w-3.5 h-3.5 text-[#506385] shrink-0 mt-0.5" />
+              <div className="p-3 rounded-[12px] bg-[var(--surface-2)] border border-[var(--border)] text-xs text-[var(--text-muted)] flex items-start gap-2 leading-relaxed">
+                <ShieldCheck className="w-3.5 h-3.5 text-[var(--accent)] shrink-0 mt-0.5" />
                 <span>
-                  Row Level Security activa: cada observación está encriptada y protegida bajo tu UID.
+                  Row Level Security activa: cada observación está protegida bajo tu identificador de operador.
                 </span>
               </div>
             </div>
           </div>
 
-          {/* Tarjeta de Seguridad: Cambio de Contraseña (30 Días) */}
-          <div className="p-5 bg-[#17171C] border border-[#2B2B31] flex flex-col gap-3 shadow-xl">
-            <div className="flex items-center gap-2 text-xs uppercase tracking-[0.16em] text-[#F1F0E1] pb-2 border-b border-[#2B2B31]">
-              <KeyRound className="w-4 h-4 text-[#506385]" />
-              <span>SEGURIDAD Y CONTRASEÑA</span>
+          {/* Tarjeta de Seguridad: Cambio de Contraseña */}
+          <div className="solid-card rounded-[20px] p-5 shadow-[0_8px_24px_rgba(0,0,0,0.35)] flex flex-col gap-3.5">
+            <div className="flex items-center gap-2 text-xs font-semibold text-[var(--text)] pb-2 border-b border-[var(--border)]">
+              <KeyRound className="w-4 h-4 text-[var(--accent)]" />
+              <span>Seguridad y contraseña</span>
             </div>
 
             {isRecoveryMode ? (
               <form onSubmit={handleUpdatePassword} className="space-y-3">
-                <div className="p-2.5 bg-[#101015] border border-[#506385] text-[11px] text-[#F1F0E1] flex items-start gap-2">
-                  <ShieldCheck className="w-4 h-4 text-[#506385] shrink-0 mt-0.5" />
+                <div className="p-3 rounded-[12px] bg-[var(--surface-2)] border border-[var(--border)] text-xs text-[var(--text)] flex items-start gap-2">
+                  <ShieldCheck className="w-4 h-4 text-[var(--accent)] shrink-0 mt-0.5" />
                   <span>Enlace de recuperación autenticado. Establece tu nueva credencial de acceso.</span>
                 </div>
 
-                <div className="space-y-1">
-                  <label className="text-[10px] uppercase tracking-wider text-[#9A9A92]">
-                    Nueva Contraseña
+                <div className="space-y-1.5">
+                  <label className="text-xs text-[var(--text-muted)]">
+                    Nueva contraseña
                   </label>
                   <input
                     type="password"
@@ -570,14 +565,14 @@ export default function ProfilePage() {
                     onChange={(e) => setNewPassword(e.target.value)}
                     placeholder="Mínimo 6 caracteres, 1 mayúscula"
                     maxLength={128}
-                    className="w-full bg-[#101015] border border-[#2B2B31] focus:border-[#506385] px-3 py-2 text-xs text-[#F1F0E1] outline-none font-mono"
+                    className="w-full bg-[var(--surface-2)] border border-[var(--border)] focus:border-[var(--accent)] px-3.5 py-2.5 rounded-[12px] text-xs text-[var(--text)] outline-none font-mono"
                     required
                   />
                 </div>
 
-                <div className="space-y-1">
-                  <label className="text-[10px] uppercase tracking-wider text-[#9A9A92]">
-                    Confirmar Contraseña
+                <div className="space-y-1.5">
+                  <label className="text-xs text-[var(--text-muted)]">
+                    Confirmar contraseña
                   </label>
                   <input
                     type="password"
@@ -585,23 +580,23 @@ export default function ProfilePage() {
                     onChange={(e) => setConfirmPassword(e.target.value)}
                     placeholder="Repite la contraseña"
                     maxLength={128}
-                    className="w-full bg-[#101015] border border-[#2B2B31] focus:border-[#506385] px-3 py-2 text-xs text-[#F1F0E1] outline-none font-mono"
+                    className="w-full bg-[var(--surface-2)] border border-[var(--border)] focus:border-[var(--accent)] px-3.5 py-2.5 rounded-[12px] text-xs text-[var(--text)] outline-none font-mono"
                     required
                   />
                 </div>
 
                 {updateMsg && (
                   <div
-                    className={`p-2.5 border text-[11px] flex items-start gap-2 ${
+                    className={`p-3 rounded-[12px] border text-xs flex items-start gap-2 ${
                       updateMsg.type === "success"
-                        ? "bg-[#101015] border-[#506385] text-[#F1F0E1]"
-                        : "bg-[#251515] border-[#5C2B2B] text-[#F1F0E1]"
+                        ? "bg-[var(--surface-2)] border-[var(--border)] text-[var(--text)]"
+                        : "bg-[var(--surface-2)] border-[var(--error)] text-[var(--error)]"
                     }`}
                   >
                     {updateMsg.type === "success" ? (
-                      <CheckCircle2 className="w-4 h-4 text-[#506385] shrink-0 mt-0.5" />
+                      <CheckCircle2 className="w-4 h-4 text-[var(--ok)] shrink-0 mt-0.5" />
                     ) : (
-                      <AlertCircle className="w-4 h-4 text-[#9A9A92] shrink-0 mt-0.5" />
+                      <AlertCircle className="w-4 h-4 text-[var(--error)] shrink-0 mt-0.5" />
                     )}
                     <span>{updateMsg.text}</span>
                   </div>
@@ -610,30 +605,29 @@ export default function ProfilePage() {
                 <button
                   type="submit"
                   disabled={updatingPassword}
-                  className="w-full py-2.5 px-3 bg-[#506385] hover:bg-[#5E749C] disabled:bg-[#1A1A1F] text-[#F1F0E1] text-[10.5px] uppercase tracking-[0.14em] font-semibold transition-colors flex items-center justify-center gap-2 cursor-pointer border border-[#506385]"
+                  className="w-full py-2.5 px-4 rounded-full bg-[var(--accent)] text-[var(--on-accent)] font-semibold text-xs transition-colors flex items-center justify-center gap-2 cursor-pointer min-h-[40px]"
                 >
                   <Lock className="w-3.5 h-3.5" />
-                  <span>{updatingPassword ? "ACTUALIZANDO..." : "GUARDAR NUEVA CONTRASEÑA"}</span>
+                  <span>{updatingPassword ? "Actualizando..." : "Guardar nueva contraseña"}</span>
                 </button>
               </form>
             ) : (
               <>
-                <p className="text-[11px] text-[#9A9A92] leading-relaxed">
-                  Por protocolo de seguridad criptográfica, las solicitudes de restablecimiento de
-                  contraseña tienen un intervalo de espera de 5 minutos entre intentos.
+                <p className="text-xs text-[var(--text-muted)] leading-relaxed">
+                  Por protocolo de seguridad, las solicitudes de restablecimiento de contraseña tienen un intervalo de espera de 5 minutos entre intentos.
                 </p>
 
                 {/* Advertencia de tiempo restante si aplica */}
                 {cooldownSeconds > 0 ? (
-                  <div className="p-3 bg-[#101015] border border-[#3A3A42] flex items-start gap-2.5 text-[11px] text-[#9A9A92]">
-                    <Lock className="w-4 h-4 text-[#506385] shrink-0 mt-0.5" />
+                  <div className="p-3 rounded-[12px] bg-[var(--surface-2)] border border-[var(--border)] flex items-start gap-2.5 text-xs text-[var(--text-muted)]">
+                    <Lock className="w-4 h-4 text-[var(--accent)] shrink-0 mt-0.5" />
                     <div className="space-y-0.5">
-                      <div className="text-[#F1F0E1] font-semibold uppercase tracking-wider text-[10px]">
-                        INTERVALO DE SEGURIDAD ACTIVO (5 MIN)
+                      <div className="text-[var(--text)] font-semibold text-xs">
+                        Intervalo de seguridad activo (5 min)
                       </div>
                       <div>
-                        Próxima solicitud de cambio habilitada en{" "}
-                        <span className="text-[#F1F0E1] font-mono font-bold">
+                        Próxima solicitud habilitada en{" "}
+                        <span className="text-[var(--accent)] font-mono font-bold">
                           {formatCooldown(cooldownSeconds)}
                         </span>.
                       </div>
@@ -644,16 +638,16 @@ export default function ProfilePage() {
                 {/* Mensajes de feedback */}
                 {passwordMsg && (
                   <div
-                    className={`p-3 border text-[11px] flex items-start gap-2 ${
+                    className={`p-3 rounded-[12px] border text-xs flex items-start gap-2 ${
                       passwordMsg.type === "success"
-                        ? "bg-[#101015] border-[#506385] text-[#F1F0E1]"
-                        : "bg-[#251515] border-[#5C2B2B] text-[#F1F0E1]"
+                        ? "bg-[var(--surface-2)] border-[var(--border)] text-[var(--text)]"
+                        : "bg-[var(--surface-2)] border-[var(--error)] text-[var(--error)]"
                     }`}
                   >
                     {passwordMsg.type === "success" ? (
-                      <CheckCircle2 className="w-4 h-4 text-[#506385] shrink-0 mt-0.5" />
+                      <CheckCircle2 className="w-4 h-4 text-[var(--ok)] shrink-0 mt-0.5" />
                     ) : (
-                      <AlertCircle className="w-4 h-4 text-[#9A9A92] shrink-0 mt-0.5" />
+                      <AlertCircle className="w-4 h-4 text-[var(--error)] shrink-0 mt-0.5" />
                     )}
                     <span>{passwordMsg.text}</span>
                   </div>
@@ -662,15 +656,15 @@ export default function ProfilePage() {
                 <button
                   onClick={handleRequestPasswordReset}
                   disabled={passwordLoading || cooldownSeconds > 0}
-                  className="w-full py-2.5 px-3 bg-[#506385] hover:bg-[#5E749C] disabled:bg-[#1A1A1F] disabled:border-[#3A3A42] disabled:text-[#9A9A92] disabled:cursor-not-allowed text-[#F1F0E1] text-[10.5px] uppercase tracking-[0.14em] font-semibold transition-colors flex items-center justify-center gap-2 cursor-pointer border border-[#506385]"
+                  className="w-full py-2.5 px-4 rounded-full bg-[var(--accent)] text-[var(--on-accent)] disabled:bg-[var(--surface-2)] disabled:text-[var(--text-muted)] text-xs font-semibold transition-colors flex items-center justify-center gap-2 cursor-pointer min-h-[40px] disabled:cursor-not-allowed"
                 >
-                  <KeyRound className="w-3.5 h-3.5 text-[#F1F0E1]" />
+                  <KeyRound className="w-3.5 h-3.5" />
                   <span>
                     {cooldownSeconds > 0
-                      ? `ESPERAR (${formatCooldown(cooldownSeconds)})`
+                      ? `Esperar (${formatCooldown(cooldownSeconds)})`
                       : passwordLoading
-                      ? "ENVIANDO CORREO..."
-                      : "SOLICITAR CAMBIO POR EMAIL"}
+                      ? "Enviando correo..."
+                      : "Solicitar cambio por email"}
                   </span>
                 </button>
               </>
@@ -680,35 +674,35 @@ export default function ProfilePage() {
 
         {/* COLUMNA DERECHA: Catálogo Personal de Objetos Observados (8 cols) */}
         <section className="lg:col-span-8 flex flex-col gap-5">
-          <div className="p-5 bg-[#17171C] border border-[#2B2B31] flex flex-col gap-4 shadow-xl flex-1">
-            <div className="flex items-center justify-between pb-3 border-b border-[#2B2B31]">
+          <div className="solid-card rounded-[20px] p-5 shadow-[0_8px_24px_rgba(0,0,0,0.35)] flex flex-col gap-4 flex-1">
+            <div className="flex items-center justify-between pb-3 border-b border-[var(--border)]">
               <div className="flex items-center gap-2.5">
-                <Telescope className="w-4 h-4 text-[#506385]" />
-                <h2 className="text-xs uppercase tracking-[0.18em] font-semibold text-[#F1F0E1]">
-                  CATÁLOGO PERSONAL DE OBSERVACIONES
+                <Telescope className="w-4 h-4 text-[var(--accent)]" />
+                <h2 className="text-xs font-semibold text-[var(--text)]">
+                  Catálogo personal de observaciones
                 </h2>
               </div>
-              <span className="text-[10px] px-2 py-0.5 bg-[#101015] border border-[#2B2B31] text-[#9A9A92]">
-                {observedObjects.length} OBJETOS REGISTRADOS
+              <span className="text-[11px] px-2.5 py-0.5 rounded-full bg-[var(--surface-2)] border border-[var(--border)] font-mono text-[var(--text-muted)]">
+                {observedObjects.length} {observedObjects.length === 1 ? "objeto" : "objetos"}
               </span>
             </div>
 
             {notesLoading ? (
-              <div className="py-16 text-center text-xs uppercase tracking-[0.16em] text-[#9A9A92]">
+              <div className="py-16 text-center text-xs text-[var(--text-muted)]">
                 Cargando bitácora de observaciones...
               </div>
             ) : observedObjects.length === 0 ? (
               <div className="py-16 text-center space-y-3">
-                <FileText className="w-8 h-8 text-[#506385] mx-auto opacity-60" />
-                <p className="text-xs uppercase tracking-[0.14em] text-[#9A9A92]">
+                <FileText className="w-8 h-8 text-[var(--text-muted)] mx-auto opacity-60" />
+                <p className="text-xs text-[var(--text-muted)]">
                   Aún no has registrado notas de observación en ningún sector celeste.
                 </p>
                 <Link
                   href="/"
-                  className="inline-flex items-center gap-2 px-4 py-2 bg-[#506385] hover:bg-[#5E749C] text-[#F1F0E1] text-[11px] uppercase tracking-wider font-semibold transition-colors"
+                  className="inline-flex items-center gap-2 px-5 py-2 rounded-full bg-[var(--accent)] text-[var(--on-accent)] text-xs font-semibold transition-colors min-h-[40px]"
                 >
                   <Telescope className="w-3.5 h-3.5" />
-                  <span>EXPLORAR EL MAPA CELESTE</span>
+                  <span>Explorar el mapa celeste</span>
                 </Link>
               </div>
             ) : (
@@ -721,19 +715,19 @@ export default function ProfilePage() {
                       <div
                         key={obj.id}
                         onClick={() => setSelectedObjectId(obj.id)}
-                        className={`w-full text-left p-3 border transition-colors flex flex-col gap-1.5 cursor-pointer ${
+                        className={`w-full text-left p-3 rounded-[12px] border transition-colors flex flex-col gap-1.5 cursor-pointer ${
                           isSelected
-                            ? "bg-[#1E2532] border-[#506385] text-[#F1F0E1]"
-                            : "bg-[#101015] border-[#2B2B31] text-[#9A9A92] hover:bg-[#1A1A1F] hover:text-[#F1F0E1]"
+                            ? "bg-[var(--surface-2)] border-[var(--accent)] text-[var(--text)]"
+                            : "bg-[var(--surface-1)] border-[var(--border)] text-[var(--text-muted)] hover:border-[var(--border-strong)] hover:text-[var(--text)]"
                         }`}
                       >
                         <div className="flex items-center justify-between">
-                          <span className="text-[11px] font-semibold uppercase tracking-wide truncate max-w-[160px] text-[#F1F0E1]">
+                          <span className="text-xs font-semibold truncate max-w-[160px] text-[var(--text)]">
                             {obj.name}
                           </span>
                           <div className="flex items-center gap-1.5">
-                            <span className="text-[9px] font-mono px-1.5 py-0.5 bg-[#17171C] border border-[#3A3A42] text-[#F1F0E1]">
-                              {obj.notes.length} {obj.notes.length === 1 ? "NOTA" : "NOTAS"}
+                            <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-[var(--surface-2)] border border-[var(--border)] text-[var(--text-muted)]">
+                              {obj.notes.length} {obj.notes.length === 1 ? "nota" : "notas"}
                             </span>
                             <button
                               type="button"
@@ -741,17 +735,17 @@ export default function ProfilePage() {
                                 e.stopPropagation();
                                 requestDeleteObject(obj);
                               }}
-                              className="w-5 h-5 rounded-sm bg-transparent hover:bg-[#251515] border border-transparent hover:border-[#5C2B2B] text-[#9A9A92] hover:text-[#EF4444] flex items-center justify-center transition-colors cursor-pointer"
+                              className="w-6 h-6 rounded-full hover:bg-[var(--surface-2)] text-[var(--text-muted)] hover:text-[var(--error)] flex items-center justify-center transition-colors cursor-pointer"
                               title={`Eliminar "${obj.name}" y todas sus notas`}
                             >
-                              <Trash2 className="w-3 h-3" />
+                              <Trash2 className="w-3.5 h-3.5" />
                             </button>
                           </div>
                         </div>
-                        <div className="flex items-center gap-2 text-[9.5px] font-mono text-[#9A9A92]">
+                        <div className="flex items-center gap-2 text-[11px] font-mono text-[var(--text-muted)]">
                           <span>{obj.constellation}</span>
                           <span>•</span>
-                          <span>{formatCoordinates(obj.raDeg, obj.decDeg).raHms} {formatCoordinates(obj.raDeg, obj.decDeg).decDms}</span>
+                          <span>{formatCoordinates(obj.raDeg, obj.decDeg).raHms}</span>
                         </div>
                       </div>
                     );
@@ -760,17 +754,17 @@ export default function ProfilePage() {
 
                 {/* Panel de Detalle y Comparativa Astrofísica (7 cols) */}
                 {selectedObject && (
-                  <div className="md:col-span-7 flex flex-col gap-4 p-4 bg-[#101015] border border-[#2B2B31] overflow-hidden">
-                    {/* Encabezado del Objeto - Layout flexible anti-desbordamiento */}
-                    <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-3 pb-3 border-b border-[#2B2B31]">
+                  <div className="md:col-span-7 flex flex-col gap-4 p-4 rounded-[16px] bg-[var(--surface-2)] border border-[var(--border)] overflow-hidden">
+                    {/* Encabezado del Objeto */}
+                    <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-3 pb-3 border-b border-[var(--border)]">
                       <div className="min-w-0 flex-1">
-                        <div className="text-[9.5px] uppercase tracking-wider text-[#506385] font-semibold truncate">
+                        <div className="text-[11px] text-[var(--accent)] font-medium truncate">
                           {selectedObject.categoryLabel}
                         </div>
-                        <h3 className="text-sm font-semibold tracking-wide uppercase text-[#F1F0E1] break-words">
+                        <h3 className="text-base font-semibold text-[var(--text)] break-words">
                           {selectedObject.name}
                         </h3>
-                        <div className="text-[10px] text-[#9A9A92] font-mono truncate">
+                        <div className="text-xs text-[var(--text-muted)] font-mono truncate">
                           Constelación: {selectedObject.constellation} · Distancia: {selectedObject.distance}
                         </div>
                       </div>
@@ -779,64 +773,64 @@ export default function ProfilePage() {
                       <div className="flex items-center gap-2 shrink-0 self-start sm:self-auto flex-wrap">
                         <Link
                           href={`/analyze?ra=${selectedObject.raDeg.toFixed(5)}&dec=${selectedObject.decDeg.toFixed(5)}&fov=${selectedObject.fovDeg.toFixed(3)}`}
-                          className="px-2.5 sm:px-3 py-1.5 bg-[#506385] hover:bg-[#5E749C] text-[#F1F0E1] text-[10px] sm:text-[10.5px] uppercase tracking-[0.14em] font-semibold transition-colors flex items-center gap-1.5 cursor-pointer border border-[#506385]"
+                          className="px-3.5 py-1.5 rounded-full bg-[var(--accent)] text-[var(--on-accent)] text-xs font-semibold transition-colors flex items-center gap-1.5 cursor-pointer min-h-[36px]"
                           title="Ir a analizar este objeto con el espectrógrafo del Laboratorio"
                         >
-                          <Telescope className="w-3.5 h-3.5 text-[#F1F0E1]" />
-                          <span>ANALIZAR</span>
-                          <ExternalLink className="w-3 h-3 text-[#F1F0E1]" />
+                          <Telescope className="w-3.5 h-3.5" />
+                          <span>Analizar</span>
+                          <ExternalLink className="w-3 h-3" />
                         </Link>
 
                         <button
                           type="button"
                           onClick={() => requestDeleteObject(selectedObject)}
-                          className="px-2.5 sm:px-3 py-1.5 bg-[#251515] hover:bg-[#381A1A] text-[#FCA5A5] hover:text-[#EF4444] border border-[#5C2B2B] hover:border-[#EF4444] text-[10px] sm:text-[10.5px] uppercase tracking-[0.12em] font-semibold transition-colors flex items-center gap-1.5 cursor-pointer"
+                          className="px-3 py-1.5 rounded-full bg-[var(--surface-1)] border border-[var(--error)] text-[var(--error)] text-xs font-semibold transition-colors flex items-center gap-1.5 cursor-pointer min-h-[36px]"
                           title={`Eliminar "${selectedObject.name}" y todas sus notas`}
                         >
-                          <Trash2 className="w-3.5 h-3.5 text-[#EF4444]" />
-                          <span>ELIMINAR OBJETO</span>
+                          <Trash2 className="w-3.5 h-3.5" />
+                          <span>Eliminar</span>
                         </button>
                       </div>
                     </div>
 
-                    {/* Ficha Astrofísica Comparativa: Formación, Químicos, Tamaño */}
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
+                    {/* Ficha Astrofísica Comparativa */}
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 text-xs">
                       {/* Formación Cósmica */}
-                      <div className="p-3 bg-[#17171C] border border-[#2B2B31] flex flex-col gap-1">
-                        <div className="flex items-center gap-1.5 text-[10px] uppercase tracking-wider text-[#506385] font-semibold">
-                          <Layers className="w-3 h-3 text-[#506385]" />
-                          <span>TIPO DE FORMACIÓN</span>
+                      <div className="p-3 rounded-[12px] bg-[var(--surface-1)] border border-[var(--border)] flex flex-col gap-1">
+                        <div className="flex items-center gap-1.5 text-xs text-[var(--accent)] font-medium">
+                          <Layers className="w-3 h-3" />
+                          <span>Formación</span>
                         </div>
-                        <p className="text-[11px] text-[#F1F0E1] leading-relaxed">
+                        <p className="text-xs text-[var(--text)] leading-relaxed">
                           {selectedObject.formation}
                         </p>
                       </div>
 
                       {/* Extensión y Dimensiones */}
-                      <div className="p-3 bg-[#17171C] border border-[#2B2B31] flex flex-col gap-1">
-                        <div className="flex items-center gap-1.5 text-[10px] uppercase tracking-wider text-[#506385] font-semibold">
-                          <Compass className="w-3 h-3 text-[#506385]" />
-                          <span>DIMENSIÓN Y TAMAÑO</span>
+                      <div className="p-3 rounded-[12px] bg-[var(--surface-1)] border border-[var(--border)] flex flex-col gap-1">
+                        <div className="flex items-center gap-1.5 text-xs text-[var(--accent)] font-medium">
+                          <Compass className="w-3 h-3" />
+                          <span>Dimensión</span>
                         </div>
-                        <p className="text-[11px] text-[#F1F0E1] font-mono leading-relaxed">
+                        <p className="text-xs text-[var(--text)] font-mono leading-relaxed">
                           {selectedObject.sizeDisplay}
                         </p>
-                        <span className="text-[9.5px] text-[#9A9A92] font-mono">
-                          Coords: {selectedObject.raDeg.toFixed(3)}°, {selectedObject.decDeg.toFixed(3)}°
+                        <span className="text-[10px] text-[var(--text-muted)] font-mono">
+                          {selectedObject.raDeg.toFixed(3)}°, {selectedObject.decDeg.toFixed(3)}°
                         </span>
                       </div>
 
                       {/* Composición Química Espectral */}
-                      <div className="sm:col-span-2 p-3 bg-[#17171C] border border-[#2B2B31] flex flex-col gap-2">
-                        <div className="flex items-center gap-1.5 text-[10px] uppercase tracking-wider text-[#506385] font-semibold">
-                          <Atom className="w-3 h-3 text-[#506385]" />
-                          <span>COMPOSICIÓN QUÍMICA Y LÍNEAS ESPECTRALES</span>
+                      <div className="sm:col-span-2 p-3 rounded-[12px] bg-[var(--surface-1)] border border-[var(--border)] flex flex-col gap-2">
+                        <div className="flex items-center gap-1.5 text-xs text-[var(--accent)] font-medium">
+                          <Atom className="w-3 h-3" />
+                          <span>Composición química y líneas espectrales</span>
                         </div>
                         <div className="flex flex-wrap gap-1.5">
                           {selectedObject.detectedElements.map((el, i) => (
                             <span
                               key={i}
-                              className="px-2 py-0.5 bg-[#101015] border border-[#3A3A42] text-[10.5px] text-[#F1F0E1] font-mono uppercase tracking-wider"
+                              className="px-2.5 py-1 rounded-[8px] bg-[var(--surface-2)] border border-[var(--border)] text-xs text-[var(--text)] font-mono"
                             >
                               {el}
                             </span>
@@ -846,11 +840,11 @@ export default function ProfilePage() {
                     </div>
 
                     {/* Bitácora de Observaciones Personales para este Objeto */}
-                    <div className="flex-1 flex flex-col gap-2 pt-2 border-t border-[#2B2B31]">
-                      <div className="flex items-center justify-between text-[10px] uppercase tracking-wider text-[#9A9A92]">
+                    <div className="flex-1 flex flex-col gap-2 pt-2 border-t border-[var(--border)]">
+                      <div className="flex items-center justify-between text-xs text-[var(--text-muted)] font-medium">
                         <span className="flex items-center gap-1">
-                          <FileText className="w-3 h-3 text-[#506385]" />
-                          <span>NOTAS REGISTRADAS EN ESTE OBJETO ({selectedObject.notes.length})</span>
+                          <FileText className="w-3.5 h-3.5 text-[var(--accent)]" />
+                          <span>Notas registradas ({selectedObject.notes.length})</span>
                         </span>
                       </div>
 
@@ -858,11 +852,11 @@ export default function ProfilePage() {
                         {selectedObject.notes.map((note) => (
                           <div
                             key={note.id}
-                            className="p-2.5 bg-[#17171C] border border-[#2B2B31] flex items-start justify-between gap-3 text-xs"
+                            className="p-3 rounded-[12px] bg-[var(--surface-1)] border border-[var(--border)] flex items-start justify-between gap-3 text-xs"
                           >
                             <div className="flex-1 space-y-1 min-w-0">
-                              <div className="flex items-center gap-2 text-[9px] font-mono text-[#9A9A92]">
-                                <Clock className="w-3 h-3 text-[#506385]" />
+                              <div className="flex items-center gap-2 text-[10px] font-mono text-[var(--text-muted)]">
+                                <Clock className="w-3 h-3 text-[var(--accent)]" />
                                 <span>{new Date(note.createdAt).toLocaleDateString()}</span>
                                 <span>•</span>
                                 <span>
@@ -872,7 +866,7 @@ export default function ProfilePage() {
                                   })}
                                 </span>
                               </div>
-                              <p className="text-[11px] text-[#F1F0E1] uppercase tracking-wide leading-relaxed break-words">
+                              <p className="text-xs text-[var(--text)] leading-relaxed break-words">
                                 {note.body}
                               </p>
                             </div>
@@ -880,10 +874,10 @@ export default function ProfilePage() {
                             <button
                               type="button"
                               onClick={() => requestDeleteNote(note)}
-                              className="w-6 h-6 rounded-sm bg-[#101015] border border-[#2B2B31] hover:border-[#EF4444] text-[#9A9A92] hover:text-[#EF4444] flex items-center justify-center shrink-0 transition-colors cursor-pointer"
+                              className="w-7 h-7 rounded-full hover:bg-[var(--surface-2)] text-[var(--text-muted)] hover:text-[var(--error)] flex items-center justify-center shrink-0 transition-colors cursor-pointer"
                               title="Eliminar esta observación"
                             >
-                              <Trash2 className="w-3 h-3" />
+                              <Trash2 className="w-3.5 h-3.5" />
                             </button>
                           </div>
                         ))}

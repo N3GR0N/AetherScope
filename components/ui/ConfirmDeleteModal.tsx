@@ -20,8 +20,8 @@ export default function ConfirmDeleteModal({
   title,
   description,
   targetName,
-  confirmLabel = "CONFIRMAR ELIMINACIÓN",
-  cancelLabel = "CANCELAR",
+  confirmLabel = "Confirmar eliminación",
+  cancelLabel = "Cancelar",
   isProcessing = false,
   onConfirm,
   onClose,
@@ -45,26 +45,26 @@ export default function ConfirmDeleteModal({
     <div
       role="dialog"
       aria-modal="true"
-      className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-black/80 backdrop-blur-xs select-none font-[family-name:var(--font-proto)]"
+      className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-xs select-none animate-panel-enter"
       onClick={(e) => {
         if (e.target === e.currentTarget && !isProcessing) {
           onClose();
         }
       }}
     >
-      <div className="bg-[#17171C] border border-[#3A3A42] w-full max-w-md flex flex-col overflow-hidden shadow-2xl animate-in fade-in zoom-in-95 duration-150">
-        {/* Cabecera Técnica del Modal */}
-        <div className="p-3.5 sm:p-4 bg-[#1A1A1F] border-b border-[#2B2B31] flex items-center justify-between">
-          <div className="flex items-center gap-2.5">
-            <div className="w-6 h-6 rounded-xs bg-[#251515] border border-[#5C2B2B] flex items-center justify-center">
-              <AlertTriangle className="w-3.5 h-3.5 text-[#EF4444]" />
+      <div className="bg-[var(--surface-1)] border border-[var(--border)] rounded-[20px] w-full max-w-md flex flex-col overflow-hidden shadow-[0_8px_24px_rgba(0,0,0,0.35)]">
+        {/* Modal Header */}
+        <div className="p-4 sm:p-5 bg-[var(--surface-2)] border-b border-[var(--border)] flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <div className="w-8 h-8 rounded-full bg-[var(--error)]/15 border border-[var(--error)]/30 flex items-center justify-center">
+              <AlertTriangle className="w-4 h-4 text-[var(--error)]" />
             </div>
             <div>
-              <h2 className="text-[#F1F0E1] font-semibold text-xs tracking-[0.16em] uppercase">
+              <h2 className="text-[var(--text)] font-semibold text-sm tracking-tight">
                 {title}
               </h2>
-              <span className="text-[9px] text-[#9A9A92] uppercase tracking-wider block">
-                PROTOCOLO DE PURGA DE DATOS
+              <span className="text-[11px] text-[var(--text-muted)] block">
+                Operación de eliminación
               </span>
             </div>
           </div>
@@ -72,43 +72,43 @@ export default function ConfirmDeleteModal({
           <button
             onClick={onClose}
             disabled={isProcessing}
-            className="w-6 h-6 border border-[#2B2B31] bg-transparent text-[#9A9A92] hover:text-[#F1F0E1] hover:border-[#3A3A42] flex items-center justify-center transition-colors cursor-pointer disabled:opacity-40"
+            className="w-8 h-8 rounded-full hover:bg-[var(--surface-1)] text-[var(--text-muted)] hover:text-[var(--text)] flex items-center justify-center transition-colors cursor-pointer disabled:opacity-40"
             title="Cerrar ventana"
           >
-            <X className="w-3.5 h-3.5" />
+            <X className="w-4 h-4" />
           </button>
         </div>
 
-        {/* Cuerpo del Modal */}
-        <div className="p-4 sm:p-5 space-y-3.5 bg-[#17171C]">
-          <p className="text-[11px] sm:text-[11.5px] text-[#9A9A92] leading-relaxed uppercase tracking-wide">
+        {/* Modal Body */}
+        <div className="p-5 space-y-3.5 bg-[var(--surface-1)]">
+          <p className="text-[13px] text-[var(--text-muted)] leading-relaxed">
             {description}
           </p>
 
           {targetName && (
-            <div className="p-2.5 sm:p-3 bg-[#101015] border border-[#2B2B31] flex items-center gap-2">
-              <div className="w-1.5 h-1.5 bg-[#EF4444] rounded-full shrink-0" />
-              <span className="text-xs font-mono text-[#F1F0E1] break-all uppercase truncate">
+            <div className="p-3 rounded-[12px] bg-[var(--surface-2)] border border-[var(--border)] flex items-center gap-2">
+              <div className="w-1.5 h-1.5 bg-[var(--error)] rounded-full shrink-0" />
+              <span className="text-xs font-mono text-[var(--text)] break-all truncate">
                 {targetName}
               </span>
             </div>
           )}
 
-          <div className="p-2.5 bg-[#251515]/60 border border-[#5C2B2B] text-[10px] text-[#FCA5A5] flex items-start gap-2">
-            <Trash2 className="w-3.5 h-3.5 text-[#EF4444] shrink-0 mt-0.5" />
-            <span className="leading-tight">
-              Esta operación es irreversible. Los registros seleccionados serán eliminados permanentemente del sistema.
+          <div className="p-3 rounded-[12px] bg-[var(--surface-2)] border border-[var(--error)]/30 text-[12px] text-[var(--error)] flex items-start gap-2.5">
+            <Trash2 className="w-4 h-4 text-[var(--error)] shrink-0 mt-0.5" />
+            <span className="leading-relaxed">
+              Esta operación es irreversible. Los registros seleccionados serán eliminados de la bitácora.
             </span>
           </div>
         </div>
 
-        {/* Barra de Acciones */}
-        <div className="p-3 sm:p-3.5 bg-[#1A1A1F] border-t border-[#2B2B31] flex flex-col-reverse sm:flex-row items-stretch sm:items-center justify-end gap-2 sm:gap-2.5">
+        {/* Actions Bar */}
+        <div className="p-4 bg-[var(--surface-2)] border-t border-[var(--border)] flex items-center justify-end gap-2.5">
           <button
             type="button"
             onClick={onClose}
             disabled={isProcessing}
-            className="px-3.5 py-2 sm:py-1.5 border border-[#3A3A42] hover:border-[#506385] bg-transparent text-[#9A9A92] hover:text-[#F1F0E1] text-[10.5px] uppercase tracking-wider transition-colors cursor-pointer disabled:opacity-40 font-medium flex items-center justify-center"
+            className="px-4 py-2 rounded-full border border-[var(--border)] hover:bg-[var(--surface-1)] text-[var(--text-muted)] hover:text-[var(--text)] text-[12px] font-medium transition-colors cursor-pointer disabled:opacity-40"
           >
             {cancelLabel}
           </button>
@@ -117,16 +117,16 @@ export default function ConfirmDeleteModal({
             type="button"
             onClick={onConfirm}
             disabled={isProcessing}
-            className="px-4 py-2 sm:py-1.5 bg-[#251515] hover:bg-[#381A1A] text-[#F1F0E1] border border-[#EF4444] hover:border-[#F87171] text-[10.5px] uppercase tracking-[0.14em] font-semibold transition-colors flex items-center justify-center gap-1.5 cursor-pointer shadow-xs disabled:opacity-40"
+            className="px-4 py-2 rounded-full bg-[var(--error)] hover:opacity-90 text-[var(--text)] text-[12px] font-semibold transition-opacity flex items-center gap-1.5 cursor-pointer disabled:opacity-40"
           >
             {isProcessing ? (
               <>
-                <Loader2 className="w-3.5 h-3.5 text-[#F1F0E1] animate-spin" />
-                <span>PROCESANDO...</span>
+                <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                <span>Eliminando...</span>
               </>
             ) : (
               <>
-                <Trash2 className="w-3.5 h-3.5 text-[#EF4444]" />
+                <Trash2 className="w-3.5 h-3.5" />
                 <span>{confirmLabel}</span>
               </>
             )}

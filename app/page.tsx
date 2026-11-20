@@ -1,14 +1,15 @@
 "use client";
 
-import { Suspense } from "react";
+import { Suspense, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import { sanitizeCoordinateParams } from "@/lib/astronomy/coordinates";
 import { SpaceProvider, useSpace } from "@/context/SpaceContext";
 import SpaceCanvas from "@/components/space-canvas/SpaceCanvas";
 import FloatingNavbar from "@/components/navigation/FloatingNavbar";
 import PrecisionCrosshair from "@/components/hud/PrecisionCrosshair";
-import CoordinateOverlay from "@/components/hud/CoordinateOverlay";
-import CaptureZoneButton from "@/components/hud/CaptureZoneButton";
+import SelectedObjectCard from "@/components/hud/SelectedObjectCard";
+import BottomControlBar from "@/components/hud/BottomControlBar";
+import MissionNotesPanel from "@/components/hud/MissionNotesPanel";
 import DossierDrawer from "@/components/dossier/DossierDrawer";
 import CdsDownCard from "@/components/hud/CdsDownCard";
 import { useCdsRecovery } from "@/lib/hooks/useCdsRecovery";
@@ -24,15 +25,19 @@ function AetherScopeMainViewport({
 }) {
   const space = useSpace();
   const { cdsState, lastCheckedTime } = useCdsRecovery();
+  const [isNotesOpen, setIsNotesOpen] = useState(false);
 
   return (
-    <main className="relative w-screen h-screen overflow-hidden bg-[#101015] select-none">
+    <main className="relative w-screen h-screen overflow-hidden bg-[var(--bg)] select-none">
       {/* 1. FloatingNavbar: siempre visible */}
-      <FloatingNavbar />
+      <FloatingNavbar
+        isNotesOpen={isNotesOpen}
+        onToggleNotes={() => setIsNotesOpen((prev) => !prev)}
+      />
 
       {/* 2. Área Central: si CDS está 'down', cartel táctico sin montar Aladin */}
       {cdsState === "down" ? (
-        <div className="absolute inset-0 z-20 flex items-center justify-center p-4 bg-[#101015]">
+        <div className="absolute inset-0 z-20 flex items-center justify-center p-4 bg-[var(--bg)]">
           <CdsDownCard lastCheckedTime={lastCheckedTime} />
         </div>
       ) : cdsState === "ok" ? (
@@ -43,14 +48,18 @@ function AetherScopeMainViewport({
             initialDec={initialDec ?? space.currentDec}
             initialFov={initialFov ?? space.currentFov}
           />
-          {/* HUD táctico: solo visible con mapa activo */}
+          {/* HUD y paneles flotantes sobre el mapa */}
           <PrecisionCrosshair />
-          <CoordinateOverlay />
-          <CaptureZoneButton />
+          <SelectedObjectCard />
+          <BottomControlBar />
+          <MissionNotesPanel
+            isOpen={isNotesOpen}
+            onClose={() => setIsNotesOpen(false)}
+          />
         </>
       ) : (
         /* Estado 'checking': primeros segundos de verificación, sin cartel para evitar parpadeo */
-        <div className="absolute inset-0 bg-[#101015]" />
+        <div className="absolute inset-0 bg-[var(--bg)]" />
       )}
 
       {/* 3. Scientific Astronomical Dossier & Target Selector */}
