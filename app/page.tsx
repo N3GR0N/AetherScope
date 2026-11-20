@@ -5,7 +5,7 @@ import { useSearchParams } from "next/navigation";
 import { sanitizeCoordinateParams } from "@/lib/astronomy/coordinates";
 import { SpaceProvider, useSpace } from "@/context/SpaceContext";
 import SpaceCanvas from "@/components/space-canvas/SpaceCanvas";
-import HeaderBar from "@/components/hud/HeaderBar";
+import FloatingNavbar from "@/components/navigation/FloatingNavbar";
 import PrecisionCrosshair from "@/components/hud/PrecisionCrosshair";
 import CoordinateOverlay from "@/components/hud/CoordinateOverlay";
 import CaptureZoneButton from "@/components/hud/CaptureZoneButton";
@@ -27,8 +27,8 @@ function AetherScopeMainViewport({
 
   return (
     <main className="relative w-screen h-screen overflow-hidden bg-[#101015] select-none">
-      {/* 1. HeaderBar: siempre visible */}
-      <HeaderBar />
+      {/* 1. FloatingNavbar: siempre visible */}
+      <FloatingNavbar />
 
       {/* 2. Área Central: si CDS está 'down', cartel táctico sin montar Aladin */}
       {cdsState === "down" ? (
